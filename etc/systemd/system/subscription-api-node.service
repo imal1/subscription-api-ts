@@ -1,0 +1,21 @@
+[Unit]
+Description=Node.js Subscription API Service
+After=network.target subconverter.service
+Requires=subconverter.service
+
+[Service]
+Type=simple
+User=imal1
+Group=imal1
+WorkingDirectory=/opt/subscription-api
+Environment=NODE_ENV=production
+Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/node app.js
+# 如果使用TypeScript: ExecStart=/usr/bin/npx ts-node src/app.ts
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

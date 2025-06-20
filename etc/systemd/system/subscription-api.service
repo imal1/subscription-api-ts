@@ -1,0 +1,20 @@
+[Unit]
+Description=Subscription API Service
+After=network.target subconverter.service
+Requires=subconverter.service
+
+[Service]
+Type=notify
+User=imal1
+Group=imal1
+WorkingDirectory=/opt/subscription-api
+Environment=PATH=/opt/subscription-api/venv/bin
+ExecStart=/opt/subscription-api/venv/bin/gunicorn --config gunicorn_config.py subscription_api:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

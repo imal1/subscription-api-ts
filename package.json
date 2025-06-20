@@ -1,0 +1,64 @@
+{
+  "name": "subscription-api-ts",
+  "version": "1.0.0",
+  "description": "TypeScript订阅转换API服务 - 将sing-box配置转换为Clash订阅格式",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "dev:watch": "nodemon --exec ts-node -r tsconfig-paths/register src/index.ts",
+    "lint": "echo 'Linting not configured'",
+    "test": "echo 'Tests not configured'",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "postbuild": "cp .env dist/ 2>/dev/null || true",
+    "install:deps": "npm install",
+    "setup": "npm run install:deps && npm run build"
+  },
+  "keywords": [
+    "subscription",
+    "clash",
+    "sing-box",
+    "typescript",
+    "api",
+    "proxy",
+    "vpn"
+  ],
+  "author": "imal1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imal1/subscription-api-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/imal1/subscription-api-ts/issues"
+  },
+  "homepage": "https://github.com/imal1/subscription-api-ts#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.4.0",
+    "fs-extra": "^11.1.1",
+    "node-cron": "^3.0.2",
+    "winston": "^3.9.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6",
+    "ts-node": "^10.9.1",
+    "nodemon": "^3.0.1",
+    "@types/node": "^20.4.5",
+    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.13",
+    "@types/fs-extra": "^11.0.1",
+    "@types/compression": "^1.7.2",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

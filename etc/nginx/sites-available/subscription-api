@@ -1,0 +1,42 @@
+server {
+    listen 80;
+    server_name your_domain_or_ip;  # 替换为您的域名或IP
+    
+    # API代理
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+    
+    # 静态文件直接服务（可选，提升性能）
+    location /static/ {
+        alias /var/www/subscription/;
+        expires 1h;
+        add_header Cache-Control "public, no-transform";
+    }
+    
+    # 健康检查
+    location /health {
+        access_log off;
+        return 200 "OK";
+        add_header Content-Type text/plain;
+    }
+}
+
+# 内部服务，用于subconverter访问订阅文件
+server {
+    listen 8080;
+    server_name localhost;
+    
+    location / {
+        root /var/www/subscription;
+        add_header Content-Type "text/plain; charset=utf-8";
+        add_header Access-Control-Allow-Origin "*";
+    }
+}
