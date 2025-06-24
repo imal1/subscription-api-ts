@@ -74,15 +74,27 @@ if [ "$OS" = "Linux" ]; then
     sudo chown -R $USER:$USER /var/www/subscription
     sudo chown -R $USER:$USER /var/log/subscription
 elif [ "$OS" = "Mac" ]; then
+    mkdir -p data
+    mkdir -p data/backup
     mkdir -p logs
     mkdir -p dist
-    mkdir -p data
 fi
 
 # 复制环境配置文件
 if [ ! -f .env ]; then
     echo "⚙️ 创建环境配置文件..."
     cp .env.example .env
+    
+    # 根据操作系统调整配置文件中的路径
+    if [ "$OS" = "Linux" ]; then
+        sed -i 's|STATIC_DIR=./data|STATIC_DIR=/var/www/subscription|g' .env
+        sed -i 's|LOG_DIR=./logs|LOG_DIR=/var/log/subscription|g' .env
+        sed -i 's|BACKUP_DIR=./data/backup|BACKUP_DIR=/var/www/subscription/backup|g' .env
+        echo "✅ 已配置 Linux 系统路径"
+    elif [ "$OS" = "Mac" ]; then
+        echo "✅ 已配置 macOS 项目本地路径"
+    fi
+    
     echo "请编辑 .env 文件配置您的参数"
 fi
 
