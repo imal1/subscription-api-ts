@@ -14,8 +14,8 @@ app = Flask(__name__)
 # 配置
 SING_BOX_CONFIGS = ["vless-reality", "hysteria2", "trojan", "tuic", "vmess"]  # 根据您的实际配置名修改
 SUBCONVERTER_URL = "http://localhost:25500"
-STATIC_DIR = "/var/www/subscription"
-LOG_DIR = "/var/log/subscription"
+STATIC_DIR = "./data"
+LOG_DIR = "./logs"
 
 # 配置日志
 if not os.path.exists(LOG_DIR):

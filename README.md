@@ -138,8 +138,8 @@ docker build -t subscription-api-ts .
 docker run -d \
   --name subscription-api \
   -p 5000:5000 \
-  -v /var/www/subscription:/var/www/subscription \
-  -v /var/log/subscription:/var/log/subscription \
+  -v ./data:/app/data \
+  -v ./logs:/app/logs \
   --env-file .env \
   subscription-api-ts
 ```
@@ -205,10 +205,10 @@ curl http://localhost:25500/version
 sudo journalctl -u subscription-api-ts --since "1 hour ago"
 
 # 应用日志
-tail -f /var/log/subscription/combined.log
+tail -f ./logs/combined.log
 
 # 错误日志
-tail -f /var/log/subscription/error.log
+tail -f ./logs/error.log
 ```
 ## 🤝 贡献
 欢迎提交 Issue 和 Pull Request！

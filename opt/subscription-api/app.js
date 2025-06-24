@@ -18,9 +18,9 @@ const CONFIG = {
     port: 5000,
     singBoxConfigs: ['vless-reality', 'hysteria2', 'trojan', 'tuic', 'vmess'], // 根据实际配置修改
     subconverterUrl: 'http://localhost:25500',
-    staticDir: '/var/www/subscription',
-    logDir: '/var/log/subscription',
-    backupDir: '/var/www/subscription/backup',
+    staticDir: './data',
+    logDir: './logs',
+    backupDir: './data/backup',
     autoUpdateCron: '0 */2 * * *' // 每2小时更新一次
 };
 
