@@ -235,9 +235,9 @@ npm run build
 # 生产模式
 npm start
 ```
-### Project Structure
+### 项目结构
 
-For detailed project structure, see [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md).
+详细的项目结构请参见 [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)。
 
 ```
 src/
