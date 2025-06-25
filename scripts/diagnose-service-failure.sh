@@ -144,8 +144,8 @@ if [ -n "$SERVICE_USER" ]; then
         # 检查对工作目录的权限
         if [ -d "$WORKING_DIR" ]; then
             echo "   对工作目录的权限:"
-            sudo -u "$SERVICE_USER" test -r "$WORKING_DIR" && echo "   ✅ 读权限" || echo "   ❌ 读权限"
-            sudo -u "$SERVICE_USER" test -x "$WORKING_DIR" && echo "   ✅ 执行权限" || echo "   ❌ 执行权限"
+            -u "$SERVICE_USER" test -r "$WORKING_DIR" && echo "   ✅ 读权限" || echo "   ❌ 读权限"
+            -u "$SERVICE_USER" test -x "$WORKING_DIR" && echo "   ✅ 执行权限" || echo "   ❌ 执行权限"
         fi
     else
         echo "❌ 用户不存在: $SERVICE_USER"
@@ -171,7 +171,7 @@ fi
 
 if [ ! -f "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
     echo "🔧 Node.js 路径问题:"
-    echo "   sudo ln -sf \$(which node) $NODE_PATH"
+    echo "   ln -sf \$(which node) $NODE_PATH"
     echo "   或重新生成服务配置"
     echo ""
 fi
@@ -184,13 +184,13 @@ if [ ! -f "$WORKING_DIR/.env" ]; then
 fi
 
 echo "🔧 重新启动服务:"
-echo "   sudo systemctl daemon-reload"
-echo "   sudo systemctl restart $SERVICE_NAME"
-echo "   sudo systemctl enable $SERVICE_NAME"
+echo "   systemctl daemon-reload"
+echo "   systemctl restart $SERVICE_NAME"
+echo "   systemctl enable $SERVICE_NAME"
 echo ""
 
 echo "🔍 继续监控:"
-echo "   sudo journalctl -u $SERVICE_NAME -f"
+echo "   journalctl -u $SERVICE_NAME -f"
 echo ""
 
 echo "=================================================="
