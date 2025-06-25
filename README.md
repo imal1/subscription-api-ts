@@ -242,9 +242,9 @@ tail -f ./logs/error.log
 本项目基于 MIT 许可证开源。详见 LICENSE 文件。
 
 ## 🙏 致谢
-- sing-box - 通用代理工具
-- subconverter - 订阅转换工具
-- Express.js - Web 框架
+- [sing-box](https://github.com/233boy/sing-box) - 通用代理工具
+- [subconverter](https://github.com/tindy2013/subconverter) - 订阅转换工具
+- [Express.js](https://github.com/expressjs/express) - Web 框架
 ## 📞 支持
 如果您遇到任何问题，请：
 
