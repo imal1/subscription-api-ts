@@ -37,6 +37,37 @@ if [ -z "$NODE_PATH" ]; then
     exit 1
 fi
 
+# 如果使用了版本管理器，尝试使用系统路径
+echo "🔍 检测到的 Node.js 路径: $NODE_PATH"
+
+# 检查是否使用了版本管理器（fnm, nvm等）
+if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
+    echo "⚠️  检测到版本管理器路径，尝试查找系统 Node.js..."
+    
+    # 尝试常见的系统路径
+    SYSTEM_PATHS=(
+        "/usr/bin/node"
+        "/usr/local/bin/node"
+        "/opt/node/bin/node"
+    )
+    
+    for path in "${SYSTEM_PATHS[@]}"; do
+        if [ -f "$path" ] && [ -x "$path" ]; then
+            NODE_PATH="$path"
+            echo "✅ 使用系统 Node.js 路径: $NODE_PATH"
+            break
+        fi
+    done
+    
+    # 如果还是版本管理器路径，尝试复制到系统路径
+    if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
+        echo "⚠️  仍然是版本管理器路径，建议安装系统级 Node.js"
+        echo "   或者将当前 node 复制到系统路径："
+        echo "   sudo cp $(which node) /usr/local/bin/node"
+        echo "   继续使用当前路径，但可能在 systemd 中失败"
+    fi
+fi
+
 # 读取环境变量（如果存在）
 if [ -f "$PROJECT_ROOT/.env" ]; then
     # 读取 .env 文件，忽略注释和空行

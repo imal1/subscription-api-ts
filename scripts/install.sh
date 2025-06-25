@@ -315,6 +315,39 @@ echo "✅ 构建成功！"
 if [ "$OS" = "Linux" ]; then
     echo "🔧 安装 systemd 服务..."
     
+    # 检查并修复 Node.js 路径问题
+    echo "🔍 检查 Node.js 路径..."
+    CURRENT_NODE=$(which node)
+    echo "   当前 Node.js 路径: $CURRENT_NODE"
+    
+    # 如果使用版本管理器路径，自动修复
+    if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+        echo "⚠️  检测到版本管理器路径，自动修复..."
+        
+        # 检查系统路径是否已有 Node.js
+        SYSTEM_NODE=""
+        for path in "/usr/bin/node" "/usr/local/bin/node"; do
+            if [ -f "$path" ] && [ -x "$path" ]; then
+                SYSTEM_NODE="$path"
+                break
+            fi
+        done
+        
+        if [ -z "$SYSTEM_NODE" ]; then
+            echo "   复制 Node.js 到系统路径..."
+            if [[ $EUID -eq 0 ]]; then
+                cp "$CURRENT_NODE" /usr/local/bin/node
+                chmod +x /usr/local/bin/node
+            else
+                sudo cp "$CURRENT_NODE" /usr/local/bin/node
+                sudo chmod +x /usr/local/bin/node
+            fi
+            echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
+        else
+            echo "   ✅ 系统已有 Node.js: $SYSTEM_NODE"
+        fi
+    fi
+    
     # 设置环境变量供服务生成脚本使用
     export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP"
     
@@ -396,11 +429,6 @@ if command -v nginx &> /dev/null; then
     
     if [ "$OS" = "Linux" ]; then
         if [[ $EUID -eq 0 ]]; then
-            # 备份现有配置文件（如果存在）
-            if [ -f "/etc/nginx/sites-available/${SERVICE_NAME}" ]; then
-                echo "📁 备份现有 Nginx 配置文件..."
-                cp "/etc/nginx/sites-available/${SERVICE_NAME}" "/etc/nginx/sites-available/${SERVICE_NAME}.backup.$(date +%Y%m%d_%H%M%S)"
-            fi
             # 删除现有符号链接（如果存在）
             if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
                 rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
@@ -428,11 +456,6 @@ if command -v nginx &> /dev/null; then
                 echo "❌ Nginx 配置测试失败，请检查配置文件"
             fi
         else
-            # 备份现有配置文件（如果存在）
-            if [ -f "/etc/nginx/sites-available/${SERVICE_NAME}" ]; then
-                echo "📁 备份现有 Nginx 配置文件..."
-                sudo cp "/etc/nginx/sites-available/${SERVICE_NAME}" "/etc/nginx/sites-available/${SERVICE_NAME}.backup.$(date +%Y%m%d_%H%M%S)"
-            fi
             # 删除现有符号链接（如果存在）
             if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
                 sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
