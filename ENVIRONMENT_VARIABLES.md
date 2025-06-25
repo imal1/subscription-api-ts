@@ -61,7 +61,7 @@
 1. **搜索硬编码值**：
    ```bash
    # 搜索可能的硬编码端口
-   grep -r "5000\|8080\|25500" src/ --exclude-dir=node_modules
+   grep -r "3000\|8080\|25500" src/ --exclude-dir=node_modules
    
    # 搜索硬编码路径
    grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules

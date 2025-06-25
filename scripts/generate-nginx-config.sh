@@ -12,7 +12,7 @@ if [ ! -f ".env" ]; then
 fi
 
 # 手动读取环境变量
-API_PORT=$(grep '^PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "5000")
+API_PORT=$(grep '^PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
 NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "8080")
 NODE_ENV=$(grep '^NODE_ENV=' .env | cut -d'=' -f2 | tr -d '"' || echo "development")
 STATIC_DIR=$(grep '^STATIC_DIR=' .env | cut -d'=' -f2 | tr -d '"' || echo "./data")

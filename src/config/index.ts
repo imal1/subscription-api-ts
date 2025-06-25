@@ -2,7 +2,7 @@ import * as path from 'path';
 import { Config } from '@/types';
 
 export const config: Config = {
-    port: parseInt(process.env.PORT || '5000'),
+    port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
     subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
     staticDir: process.env.STATIC_DIR || './data',

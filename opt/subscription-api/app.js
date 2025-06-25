@@ -15,7 +15,7 @@ const app = express();
 
 // 配置
 const CONFIG = {
-    port: parseInt(process.env.PORT || '5000'),
+    port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
     subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
     staticDir: process.env.STATIC_DIR || './data',

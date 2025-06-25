@@ -64,7 +64,7 @@ sudo systemctl enable subscription-api-ts
 ```
 ## 📖 API 文档
 ### 基础信息
-- Base URL: http://your-server:5000
+- Base URL: http://your-server:3000
 - Content-Type: application/json
 ### 端点列表
 |方法|端点|描述|
@@ -157,7 +157,7 @@ docker build -t subscription-api-ts .
 # 运行容器
 docker run -d \
   --name subscription-api \
-  -p 5000:5000 \
+  -p 3000:3000 \
   -v ./data:/app/data \
   -v ./logs:/app/logs \
   --env-file .env \
