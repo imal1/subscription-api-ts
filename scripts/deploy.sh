@@ -26,7 +26,7 @@ sleep 3
 if systemctl is-active --quiet subscription-api-ts; then
     echo "✅ 服务部署成功！"
     echo "📊 服务状态: $(systemctl is-active subscription-api-ts)"
-    echo "🌐 访问地址: http://localhost:5000"
+    echo "🌐 访问地址: http://localhost:3000"
 else
     echo "❌ 服务启动失败"
     sudo systemctl status subscription-api-ts

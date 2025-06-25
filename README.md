@@ -81,23 +81,23 @@ sudo systemctl enable subscription-api-ts
 ### 使用示例
 ```bash
 # 更新订阅
-curl -X POST http://localhost:5000/api/update
+curl -X POST http://localhost:3000/api/update
 
 # 获取状态
-curl http://localhost:5000/api/status
+curl http://localhost:3000/api/status
 
 # 获取 Clash 配置
-curl http://localhost:5000/clash.yaml
+curl http://localhost:3000/clash.yaml
 
 # 健康检查
-curl http://localhost:5000/health
+curl http://localhost:3000/health
 ```
 ## ⚙️ 配置说明
 主要配置文件为 .env：
 
 ```bash
 # 服务端口
-PORT=5000
+PORT=3000
 
 # sing-box 配置名称 (逗号分隔)
 SING_BOX_CONFIGS=vless-reality,hysteria2,trojan,tuic,vmess
@@ -107,7 +107,27 @@ SUBCONVERTER_URL=http://localhost:25500
 
 # 定时更新 (cron 格式)
 AUTO_UPDATE_CRON=0 */2 * * *
+
+# Nginx端口配置
+NGINX_PORT=8080
+
+# 网络超时配置
+REQUEST_TIMEOUT=30000
 ```
+
+### Nginx配置生成
+项目提供了自动生成nginx配置的功能：
+
+```bash
+# 根据.env文件生成nginx配置
+npm run nginx:config
+```
+
+该命令会根据当前的环境变量生成对应的nginx配置文件：
+- 开发环境：生成 `config/nginx.dev.conf`
+- 生产环境：生成 `config/nginx.conf`
+
+所有端口配置都将从环境变量中读取，确保配置一致性。
 ## 📦 部署方式
 ### 方式一：systemd 服务 (推荐)
 ```bash

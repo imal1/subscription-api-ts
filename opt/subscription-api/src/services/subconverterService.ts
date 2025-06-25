@@ -18,7 +18,7 @@ export class SubconverterService {
     async checkHealth(): Promise<boolean> {
         try {
             const response = await axios.get(`${config.subconverterUrl}/version`, { 
-                timeout: 5000 
+                timeout: config.requestTimeout 
             });
             return response.status === 200;
         } catch (error) {
@@ -33,7 +33,7 @@ export class SubconverterService {
     async getVersion(): Promise<string> {
         try {
             const response = await axios.get(`${config.subconverterUrl}/version`, { 
-                timeout: 5000 
+                timeout: config.requestTimeout 
             });
             return response.data || 'Unknown';
         } catch (error) {

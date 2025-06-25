@@ -131,10 +131,10 @@ if [ "$OS" = "Linux" ]; then
     echo "1. 编辑 .env 文件配置参数"
     echo "2. 启动服务: sudo systemctl start subscription-api-ts"
     echo "3. 查看状态: sudo systemctl status subscription-api-ts"
-    echo "4. 访问: http://localhost:5000"
+    echo "4. 访问: http://localhost:3000"
 elif [ "$OS" = "Mac" ]; then
     echo "1. 编辑 .env 文件配置参数"
     echo "2. 启动开发服务器: npm run dev"
     echo "3. 或使用 PM2: pm2 start dist/index.js --name subscription-api-ts"
-    echo "4. 访问: http://localhost:5000"
+    echo "4. 访问: http://localhost:3000"
 fi

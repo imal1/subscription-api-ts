@@ -3,15 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import * as cron from 'node-cron';
-import dotenv from 'dotenv';
 
 import { config, validateConfig } from '@/config';
 import { logger } from '@/utils/logger';
 import { SubscriptionService } from '@/services/subscriptionService';
 import routes from '@/routes';
-
-// 加载环境变量
-dotenv.config();
 
 export class App {
     public app: Application;

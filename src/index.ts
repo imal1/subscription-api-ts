@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// 首先加载环境变量
+dotenv.config();
+
 import { App } from './app';
 import { logger } from '@/utils/logger';
 

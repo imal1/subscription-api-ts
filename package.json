@@ -14,7 +14,8 @@
     "prebuild": "npm run clean",
     "postbuild": "cp .env dist/ 2>/dev/null || true",
     "install:deps": "npm install",
-    "setup": "npm run install:deps && npm run build"
+    "setup": "npm run install:deps && npm run build",
+    "nginx:config": "bash scripts/generate-nginx-config.sh"
   },
   "keywords": [
     "subscription",

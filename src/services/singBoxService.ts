@@ -21,7 +21,7 @@ export class SingBoxService {
      */
     async checkSingBoxAvailable(): Promise<boolean> {
         try {
-            await execAsync('sing-box --version', { timeout: 5000 });
+            await execAsync('sing-box --version', { timeout: config.requestTimeout });
             return true;
         } catch (error) {
             logger.error('Sing-box不可用:', error);
@@ -34,7 +34,7 @@ export class SingBoxService {
      */
     async checkConfigExists(configName: string): Promise<boolean> {
         try {
-            const { stderr } = await execAsync(`sing-box info ${configName}`, { timeout: 10000 });
+            const { stderr } = await execAsync(`sing-box info ${configName}`, { timeout: config.requestTimeout });
             return !stderr || !stderr.includes('not found');
         } catch (error) {
             return false;
@@ -100,7 +100,7 @@ export class SingBoxService {
      */
     async getConfigInfo(configName: string): Promise<string> {
         try {
-            const { stdout } = await execAsync(`sing-box info ${configName}`, { timeout: 10000 });
+            const { stdout } = await execAsync(`sing-box info ${configName}`, { timeout: config.requestTimeout });
             return stdout || '无配置信息';
         } catch (error: any) {
             throw new Error(`获取配置信息失败: ${error.message}`);
@@ -112,7 +112,7 @@ export class SingBoxService {
      */
     async listConfigs(): Promise<string[]> {
         try {
-            const { stdout } = await execAsync('sing-box', { timeout: 10000 });
+            const { stdout } = await execAsync('sing-box', { timeout: config.requestTimeout });
             // 解析输出获取配置列表 (需要根据实际输出格式调整)
             const lines = stdout.split('\n');
             const configs: string[] = [];

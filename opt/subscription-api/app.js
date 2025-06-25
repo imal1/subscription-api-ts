@@ -15,13 +15,16 @@ const app = express();
 
 // 配置
 const CONFIG = {
-    port: 5000,
-    singBoxConfigs: ['vless-reality', 'hysteria2', 'trojan', 'tuic', 'vmess'], // 根据实际配置修改
-    subconverterUrl: 'http://localhost:25500',
-    staticDir: './data',
-    logDir: './logs',
-    backupDir: './data/backup',
-    autoUpdateCron: '0 */2 * * *' // 每2小时更新一次
+    port: parseInt(process.env.PORT || '5000'),
+    singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
+    subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
+    staticDir: process.env.STATIC_DIR || './data',
+    logDir: process.env.LOG_DIR || './logs',
+    backupDir: process.env.BACKUP_DIR || './data/backup',
+    autoUpdateCron: process.env.AUTO_UPDATE_CRON || '0 */2 * * *',
+    maxRetries: parseInt(process.env.MAX_RETRIES || '3'),
+    requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '30000'),
+    nginxPort: parseInt(process.env.NGINX_PORT || '8080')
 };
 
 // 创建必要目录
@@ -78,7 +81,7 @@ async function getSingBoxUrls() {
     for (const config of CONFIG.singBoxConfigs) {
         try {
             // 检查配置是否存在
-            const { stdout: infoOutput, stderr: infoError } = await execAsync(`sing-box info ${config}`, { timeout: 10000 });
+            const { stdout: infoOutput, stderr: infoError } = await execAsync(`sing-box info ${config}`, { timeout: CONFIG.requestTimeout });
             
             if (infoError && infoError.includes('not found')) {
                 errors.push(`配置 ${config} 不存在`);
@@ -86,7 +89,7 @@ async function getSingBoxUrls() {
             }
 
             // 获取URL
-            const { stdout, stderr } = await execAsync(`sing-box url ${config}`, { timeout: 10000 });
+            const { stdout, stderr } = await execAsync(`sing-box url ${config}`, { timeout: CONFIG.requestTimeout });
             
             if (stdout && stdout.trim()) {
                 urls.push(stdout.trim());
@@ -110,7 +113,7 @@ async function getSingBoxUrls() {
 // 检查subconverter服务
 async function checkSubconverter() {
     try {
-        const response = await axios.get(`${CONFIG.subconverterUrl}/version`, { timeout: 5000 });
+        const response = await axios.get(`${CONFIG.subconverterUrl}/version`, { timeout: parseInt(process.env.REQUEST_TIMEOUT || '30000') });
         return response.status === 200;
     } catch (error) {
         return false;
@@ -152,11 +155,11 @@ async function updateSubscription() {
         // 生成Clash配置
         let clashGenerated = false;
         try {
-            const localSubscriptionUrl = `http://localhost:8080/subscription.txt`;
+            const localSubscriptionUrl = `http://localhost:${CONFIG.nginxPort}/subscription.txt`;
             const clashUrl = `${CONFIG.subconverterUrl}/sub?target=clash&url=${encodeURIComponent(localSubscriptionUrl)}`;
             
             logger.info(`请求Clash转换: ${clashUrl}`);
-            const response = await axios.get(clashUrl, { timeout: 30000 });
+            const response = await axios.get(clashUrl, { timeout: CONFIG.requestTimeout });
 
             if (response.status === 200) {
                 const clashFile = path.join(CONFIG.staticDir, 'clash.yaml');
@@ -243,7 +246,7 @@ app.get('/api/status', async (req, res) => {
 
         // 检查sing-box是否可访问
         try {
-            await execAsync('sing-box --version', { timeout: 5000 });
+            await execAsync('sing-box --version', { timeout: parseInt(process.env.REQUEST_TIMEOUT || '30000') });
         } catch (error) {
             status.singBoxAccessible = false;
         }

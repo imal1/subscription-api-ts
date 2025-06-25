@@ -11,11 +11,16 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-# 配置
-SING_BOX_CONFIGS = ["vless-reality", "hysteria2", "trojan", "tuic", "vmess"]  # 根据您的实际配置名修改
-SUBCONVERTER_URL = "http://localhost:25500"
-STATIC_DIR = "./data"
-LOG_DIR = "./logs"
+# 配置 (从环境变量读取)
+SING_BOX_CONFIGS = os.getenv('SING_BOX_CONFIGS', 'vless-reality,hysteria2,trojan,tuic,vmess').split(',')
+SUBCONVERTER_URL = os.getenv('SUBCONVERTER_URL', 'http://localhost:25500')
+STATIC_DIR = os.getenv('STATIC_DIR', './data')
+LOG_DIR = os.getenv('LOG_DIR', './logs')
+BACKUP_DIR = os.getenv('BACKUP_DIR', './data/backup')
+MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))
+REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30000')) // 1000  # 转换为秒
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+NGINX_PORT = int(os.getenv('NGINX_PORT', '8080'))
 
 # 配置日志
 if not os.path.exists(LOG_DIR):
@@ -124,11 +129,11 @@ def update_subscription():
         # 生成Clash配置
         try:
             # 使用本地文件URL
-            local_subscription_url = f"http://localhost:8080/subscription.txt"
+            local_subscription_url = f"http://localhost:{NGINX_PORT}/subscription.txt"
             clash_url = f"{SUBCONVERTER_URL}/sub?target=clash&url={local_subscription_url}"
             
             app.logger.info(f"请求Clash转换: {clash_url}")
-            response = requests.get(clash_url, timeout=30)
+            response = requests.get(clash_url, timeout=REQUEST_TIMEOUT)
             
             if response.status_code == 200:
                 clash_file = f"{STATIC_DIR}/clash.yaml"
@@ -282,4 +287,6 @@ def get_raw_links():
         return f"获取原始链接失败: {str(e)}", 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
