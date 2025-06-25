@@ -17,7 +17,7 @@ server {
     
     # 静态文件直接服务 (开发环境路径)
     location /static/ {
-        alias ./data/;
+        alias ${DATA_DIR}/;
         expires 1h;
         add_header Cache-Control "public, no-transform";
     }
@@ -35,7 +35,7 @@ server {
     server_name localhost;
     
     location / {
-        root ./data;  # 开发环境路径
+        root ${DATA_DIR};  # 数据目录
         add_header Content-Type "text/plain; charset=utf-8";
         add_header Access-Control-Allow-Origin "*";
     }

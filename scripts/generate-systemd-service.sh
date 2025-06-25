@@ -37,11 +37,28 @@ if [ -z "$NODE_PATH" ]; then
     exit 1
 fi
 
+# 读取环境变量（如果存在）
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    # 读取 .env 文件，忽略注释和空行
+    while IFS='=' read -r key value; do
+        [[ $key =~ ^[[:space:]]*# ]] && continue
+        [[ -z $key ]] && continue
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
+        export "$key"="$value"
+    done < <(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/.env" | grep -v '^[[:space:]]*$')
+fi
+
+# 服务名称，可通过环境变量覆盖
+SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+
 echo "🔍 Node.js 路径: $NODE_PATH"
 
 # 生成服务文件
 SERVICE_TEMPLATE="$PROJECT_ROOT/config/subscription-api-ts.service.template"
-SERVICE_OUTPUT="/tmp/subscription-api-ts.service"
+SERVICE_OUTPUT="/tmp/${SERVICE_NAME}.service"
 
 if [ ! -f "$SERVICE_TEMPLATE" ]; then
     echo "❌ 服务模板文件不存在: $SERVICE_TEMPLATE"
@@ -64,5 +81,5 @@ echo ""
 echo "🚀 安装命令:"
 echo "sudo cp $SERVICE_OUTPUT /etc/systemd/system/"
 echo "sudo systemctl daemon-reload"
-echo "sudo systemctl enable subscription-api-ts"
-echo "sudo systemctl start subscription-api-ts"
+echo "sudo systemctl enable $SERVICE_NAME"
+echo "sudo systemctl start $SERVICE_NAME"

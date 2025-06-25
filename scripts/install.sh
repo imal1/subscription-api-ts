@@ -14,11 +14,35 @@
 # - 安装 systemd 服务 (Linux)
 # - 配置 Nginx (可选)
 
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 读取环境变量文件
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    echo "📋 加载环境变量..."
+    # 读取 .env 文件，忽略注释和空行
+    while IFS='=' read -r key value; do
+        # 跳过注释和空行
+        [[ $key =~ ^[[:space:]]*# ]] && continue
+        [[ -z $key ]] && continue
+        # 移除引号
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
+        # 设置环境变量
+        export "$key"="$value"
+    done < <(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/.env" | grep -v '^[[:space:]]*$')
+fi
+
+# 设置默认值
+export DATA_DIR="${DATA_DIR:-./data}"
+export LOG_DIR="${LOG_DIR:-./logs}"
+
 set -e
 
 # 设置工作目录为项目根目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 # 检测操作系统
@@ -133,25 +157,37 @@ fi
 
 # 创建必要目录
 echo "📁 创建目录..."
+echo "   数据目录: $DATA_DIR"
+echo "   日志目录: $LOG_DIR"
+
 if [ "$OS" = "Linux" ]; then
     if [[ $EUID -eq 0 ]]; then
         # root 用户直接创建目录
-        mkdir -p /var/www/subscription
-        mkdir -p /var/log/subscription
+        mkdir -p "$DATA_DIR"
+        mkdir -p "$LOG_DIR"
         # 设置目录权限给目标用户
-        chown -R $TARGET_USER:$TARGET_GROUP /var/www/subscription
-        chown -R $TARGET_USER:$TARGET_GROUP /var/log/subscription
+        chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR"
+        chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR"
     else
         # 非 root 用户使用 sudo
-        sudo mkdir -p /var/www/subscription
-        sudo mkdir -p /var/log/subscription
-        sudo chown -R $TARGET_USER:$TARGET_GROUP /var/www/subscription
-        sudo chown -R $TARGET_USER:$TARGET_GROUP /var/log/subscription
+        if [[ "$DATA_DIR" == /* ]] || [[ "$LOG_DIR" == /* ]]; then
+            # 绝对路径需要 sudo
+            sudo mkdir -p "$DATA_DIR"
+            sudo mkdir -p "$LOG_DIR"
+            sudo chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR"
+            sudo chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR"
+        else
+            # 相对路径直接创建
+            mkdir -p "$DATA_DIR"
+            mkdir -p "$LOG_DIR"
+            chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR" 2>/dev/null || true
+            chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR" 2>/dev/null || true
+        fi
     fi
 elif [ "$OS" = "Mac" ]; then
-    mkdir -p data
-    mkdir -p data/backup
-    mkdir -p logs
+    mkdir -p "$DATA_DIR"
+    mkdir -p "$DATA_DIR/backup"
+    mkdir -p "$LOG_DIR"
     mkdir -p dist
 fi
 
@@ -162,12 +198,19 @@ if [ ! -f .env ]; then
     
     # 根据操作系统调整配置文件中的路径
     if [ "$OS" = "Linux" ]; then
-        sed -i 's|STATIC_DIR=./data|STATIC_DIR=/var/www/subscription|g' .env
-        sed -i 's|LOG_DIR=./logs|LOG_DIR=/var/log/subscription|g' .env
-        sed -i 's|BACKUP_DIR=./data/backup|BACKUP_DIR=/var/www/subscription/backup|g' .env
+        # 使用配置的目录路径
+        DEFAULT_DATA_DIR="/var/www/subscription"
+        DEFAULT_LOG_DIR="/var/log/subscription"
+        
+        sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR:-$DEFAULT_DATA_DIR}|g" .env
+        sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR:-$DEFAULT_LOG_DIR}|g" .env
         echo "✅ 已配置 Linux 系统路径"
+        echo "   数据目录: ${DATA_DIR:-$DEFAULT_DATA_DIR}"
+        echo "   日志目录: ${LOG_DIR:-$DEFAULT_LOG_DIR}"
     elif [ "$OS" = "Mac" ]; then
         echo "✅ 已配置 macOS 项目本地路径"
+        echo "   数据目录: ${DATA_DIR}"
+        echo "   日志目录: ${LOG_DIR}"
     fi
     
     echo "请编辑 .env 文件配置您的参数"
@@ -197,17 +240,18 @@ if [ "$OS" = "Linux" ]; then
     fi
     
     # 安装服务文件
+    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
     if [[ $EUID -eq 0 ]]; then
-        cp /tmp/subscription-api-ts.service /etc/systemd/system/
+        cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
         systemctl daemon-reload
-        systemctl enable subscription-api-ts
+        systemctl enable "$SERVICE_NAME"
     else
-        sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/
+        sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
         sudo systemctl daemon-reload
-        sudo systemctl enable subscription-api-ts
+        sudo systemctl enable "$SERVICE_NAME"
     fi
     
-    echo "✅ 服务文件已安装到 /etc/systemd/system/subscription-api-ts.service"
+    echo "✅ 服务文件已安装到 /etc/systemd/system/${SERVICE_NAME}.service"
     echo "📁 工作目录: $PROJECT_ROOT"
     echo "👤 运行用户: $TARGET_USER"
 elif [ "$OS" = "Mac" ]; then
@@ -219,12 +263,12 @@ if command -v nginx &> /dev/null; then
     echo "🌐 配置 Nginx..."
     if [ "$OS" = "Linux" ]; then
         if [[ $EUID -eq 0 ]]; then
-            cp config/nginx.conf /etc/nginx/sites-available/subscription-api-ts
-            ln -sf /etc/nginx/sites-available/subscription-api-ts /etc/nginx/sites-enabled/
+            cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
+            ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             nginx -t && systemctl reload nginx
         else
-            sudo cp config/nginx.conf /etc/nginx/sites-available/subscription-api-ts
-            sudo ln -sf /etc/nginx/sites-available/subscription-api-ts /etc/nginx/sites-enabled/
+            sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
+            sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             sudo nginx -t && sudo systemctl reload nginx
         fi
     elif [ "$OS" = "Mac" ]; then
@@ -237,17 +281,23 @@ echo ""
 echo "下一步："
 if [ "$OS" = "Linux" ]; then
     echo "1. 编辑 .env 文件配置参数"
+    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
     if [[ $EUID -eq 0 ]]; then
-        echo "2. 启动服务: systemctl start subscription-api-ts"
-        echo "3. 查看状态: systemctl status subscription-api-ts"
+        echo "2. 启动服务: systemctl start $SERVICE_NAME"
+        echo "3. 查看状态: systemctl status $SERVICE_NAME"
     else
-        echo "2. 启动服务: sudo systemctl start subscription-api-ts"
-        echo "3. 查看状态: sudo systemctl status subscription-api-ts"
+        echo "2. 启动服务: sudo systemctl start $SERVICE_NAME"
+        echo "3. 查看状态: sudo systemctl status $SERVICE_NAME"
     fi
-    echo "4. 访问: http://localhost:3000"
+    # 从环境变量读取端口号
+    PORT="${PORT:-3000}"
+    echo "4. 访问: http://localhost:${PORT}"
 elif [ "$OS" = "Mac" ]; then
     echo "1. 编辑 .env 文件配置参数"
     echo "2. 启动开发服务器: npm run dev"
-    echo "3. 或使用 PM2: pm2 start dist/index.js --name subscription-api-ts"
-    echo "4. 访问: http://localhost:3000"
+    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+    echo "3. 或使用 PM2: pm2 start dist/index.js --name $SERVICE_NAME"
+    # 从环境变量读取端口号
+    PORT="${PORT:-3000}"
+    echo "4. 访问: http://localhost:${PORT}"
 fi

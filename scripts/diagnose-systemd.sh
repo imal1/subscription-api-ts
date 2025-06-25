@@ -3,7 +3,8 @@
 # SystemD 服务诊断脚本
 echo "=== SystemD 服务诊断 ==="
 
-SERVICE_NAME="subscription-api-ts"
+# 服务名称，可通过环境变量覆盖
+SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 
 echo "📋 系统信息:"
 echo "操作系统: $(uname -a)"
@@ -74,7 +75,9 @@ systemctl status systemd-logind --no-pager --lines=3 2>&1 || echo "systemd-login
 echo ""
 
 echo "🔍 检查项目文件:"
-PROJECT_DIR="/Users/imali/Projects/subscription-api-ts"
+# 获取脚本所在目录的上级目录作为项目根目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 if [ -d "$PROJECT_DIR" ]; then
     echo "✅ 项目目录存在: $PROJECT_DIR"
     echo "目录权限: $(ls -ld $PROJECT_DIR)"

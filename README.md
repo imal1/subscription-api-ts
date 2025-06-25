@@ -64,7 +64,7 @@ sudo systemctl enable subscription-api-ts
 ```
 ## 📖 API 文档
 ### 基础信息
-- Base URL: http://your-server:3000
+- Base URL: http://your-server:${PORT} （默认 3000，可通过 .env 配置）
 - Content-Type: application/json
 ### 端点列表
 |方法|端点|描述|
@@ -81,16 +81,16 @@ sudo systemctl enable subscription-api-ts
 ### 使用示例
 ```bash
 # 更新订阅
-curl -X POST http://localhost:3000/api/update
+curl -X POST http://localhost:${PORT}/api/update
 
 # 获取状态
-curl http://localhost:3000/api/status
+curl http://localhost:${PORT}/api/status
 
 # 获取 Clash 配置
-curl http://localhost:3000/clash.yaml
+curl http://localhost:${PORT}/clash.yaml
 
 # 健康检查
-curl http://localhost:3000/health
+curl http://localhost:${PORT}/health
 ```
 ## ⚙️ 配置说明
 主要配置文件为 .env：
@@ -180,7 +180,7 @@ docker build -t subscription-api-ts .
 # 运行容器
 docker run -d \
   --name subscription-api \
-  -p 3000:3000 \
+  -p ${PORT:-3000}:${PORT:-3000} \
   -v ./data:/app/data \
   -v ./logs:/app/logs \
   --env-file .env \

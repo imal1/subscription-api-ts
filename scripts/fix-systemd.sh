@@ -14,8 +14,23 @@ if [[ $EUID -ne 0 ]] && ! sudo -n true 2>/dev/null; then
     exit 1
 fi
 
-SERVICE_NAME="subscription-api-ts"
+# 获取项目目录并读取环境变量
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$PROJECT_DIR/.env" ]; then
+    # 读取 .env 文件，忽略注释和空行
+    while IFS='=' read -r key value; do
+        [[ $key =~ ^[[:space:]]*# ]] && continue
+        [[ -z $key ]] && continue
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
+        export "$key"="$value"
+    done < <(grep -v '^[[:space:]]*#' "$PROJECT_DIR/.env" | grep -v '^[[:space:]]*$')
+fi
+
+# 服务名称，可通过环境变量覆盖
+SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 echo "🔧 开始修复 SystemD 服务问题..."
@@ -57,11 +72,11 @@ fi
 echo "🔧 生成新的服务文件..."
 bash scripts/generate-systemd-service.sh "$PROJECT_DIR"
 
-if [ -f "/tmp/subscription-api-ts.service" ]; then
+if [ -f "/tmp/${SERVICE_NAME}.service" ]; then
     echo "✅ 服务文件生成成功"
     
     # 安装服务文件
-    sudo cp /tmp/subscription-api-ts.service "$SERVICE_FILE"
+    sudo cp "/tmp/${SERVICE_NAME}.service" "$SERVICE_FILE"
     sudo chmod 644 "$SERVICE_FILE"
     echo "✅ 服务文件已安装"
 else

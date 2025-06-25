@@ -21,8 +21,19 @@ echo "📁 项目目录: $PROJECT_DIR"
 
 if [ -f "$PROJECT_DIR/.env" ]; then
     echo "✅ 环境配置文件存在"
+    # 读取环境变量
+    while IFS='=' read -r key value; do
+        [[ $key =~ ^[[:space:]]*# ]] && continue
+        [[ -z $key ]] && continue
+        value="${value#\"}"
+        value="${value%\"}"
+        value="${value#\'}"
+        value="${value%\'}"
+        export "$key"="$value"
+    done < <(grep -v '^[[:space:]]*#' "$PROJECT_DIR/.env" | grep -v '^[[:space:]]*$')
+    
     # 读取端口配置
-    PORT=$(grep '^PORT=' "$PROJECT_DIR/.env" | cut -d'=' -f2 | tr -d '"' || echo "3000")
+    PORT="${PORT:-3000}"
     echo "🔌 配置端口: $PORT"
 else
     echo "❌ 环境配置文件不存在"
@@ -39,7 +50,8 @@ echo ""
 if [ "$OS" = "Linux" ]; then
     echo "🐧 Linux 环境 - 检查 SystemD 服务:"
     
-    SERVICE_NAME="subscription-api-ts"
+    # 服务名称，可通过环境变量覆盖
+    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
     
     # 检查systemctl是否可用
@@ -79,9 +91,9 @@ if [ "$OS" = "Linux" ]; then
         echo "🔧 生成服务文件:"
         echo "cd $PROJECT_DIR"
         echo "npm run systemd:service \$(pwd)"
-        echo "sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/"
+        echo "sudo cp /tmp/${SERVICE_NAME}.service /etc/systemd/system/"
         echo "sudo systemctl daemon-reload"
-        echo "sudo systemctl enable subscription-api-ts"
+        echo "sudo systemctl enable ${SERVICE_NAME}"
     fi
     
 elif [ "$OS" = "Mac" ]; then
@@ -109,9 +121,9 @@ elif [ "$OS" = "Mac" ]; then
     echo "🔧 macOS 服务控制命令:"
     echo "启动开发服务: npm run dev"
     echo "启动生产服务: npm start"
-    echo "使用 PM2 管理: pm2 start dist/index.js --name subscription-api-ts"
+    echo "使用 PM2 管理: pm2 start dist/index.js --name ${SERVICE_NAME}"
     echo "查看 PM2 状态: pm2 status"
-    echo "查看 PM2 日志: pm2 logs subscription-api-ts"
+    echo "查看 PM2 日志: pm2 logs ${SERVICE_NAME}"
     
 else
     echo "❌ 不支持的操作系统: $OS"

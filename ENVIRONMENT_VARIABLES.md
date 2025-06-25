@@ -7,6 +7,7 @@
 ### 🚀 服务配置
 - `PORT` - API服务监听端口 (默认: 3000)
 - `NODE_ENV` - 运行环境 (默认: development)
+- `SERVICE_NAME` - 服务名称，用于 systemd 和 PM2 (默认: subscription-api-ts)
 
 ### 🔧 Sing-box配置
 - `SING_BOX_CONFIGS` - sing-box配置名称，逗号分隔 (默认: vless-reality,hysteria2,trojan,tuic,vmess)
