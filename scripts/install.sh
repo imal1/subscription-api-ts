@@ -358,7 +358,7 @@ if [ "$OS" = "Linux" ]; then
     # 设置环境变量供服务生成脚本使用
     export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP"
     
-    # 获取项目绝对路径
+    # 获取项目绝对路径并验证
     ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
     echo "📁 项目绝对路径: $ABSOLUTE_PROJECT_ROOT"
     
@@ -372,6 +372,18 @@ if [ "$OS" = "Linux" ]; then
         echo "❌ 编译文件不存在: $ABSOLUTE_PROJECT_ROOT/dist/index.js"
         echo "   请确保项目构建成功"
         exit 1
+    fi
+    
+    # 验证环境文件
+    if [ ! -f "$ABSOLUTE_PROJECT_ROOT/.env" ]; then
+        echo "⚠️  环境文件不存在: $ABSOLUTE_PROJECT_ROOT/.env"
+        if [ -f "$ABSOLUTE_PROJECT_ROOT/.env.example" ]; then
+            echo "📋 复制示例环境文件..."
+            cp "$ABSOLUTE_PROJECT_ROOT/.env.example" "$ABSOLUTE_PROJECT_ROOT/.env"
+            echo "✅ 已创建环境文件，请根据需要修改配置"
+        else
+            echo "   请创建 .env 文件配置环境变量"
+        fi
     fi
     
     # 检查目标用户对项目目录的访问权限

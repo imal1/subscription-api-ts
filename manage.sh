@@ -53,11 +53,14 @@ show_help() {
     echo -e "  ${YELLOW}diagnose${NC}         运行系统诊断"
     echo -e "  ${YELLOW}diagnose-ts${NC}      TypeScript 编译诊断"
     echo -e "  ${YELLOW}diagnose-workdir${NC} 工作目录权限诊断"
+    echo -e "  ${YELLOW}diagnose-node${NC}    Node.js 和路径诊断"
     echo -e "  ${YELLOW}fix${NC}              自动修复常见问题"
     echo -e "  ${YELLOW}fix-ts${NC}           修复 TypeScript 问题"
     echo -e "  ${YELLOW}fix-node${NC}         修复 Node.js 路径问题"
     echo -e "  ${YELLOW}fix-systemd${NC}      快速修复 systemd 服务"
     echo -e "  ${YELLOW}fix-workdir${NC}      修复工作目录权限问题"
+    echo -e "  ${YELLOW}fix-systemd-workdir${NC} 修复 systemd 工作目录问题"
+    echo -e "  ${YELLOW}fix-fnm${NC}         专门修复 fnm 用户的 systemd 问题"
     echo ""
     echo -e "${WHITE}🌐 网络服务:${NC}"
     echo -e "  ${PURPLE}nginx-setup${NC}      配置 Nginx"
@@ -76,6 +79,8 @@ show_help() {
     echo -e "  ${CYAN}./manage.sh check${NC}           # 全面诊断服务"
     echo -e "  ${CYAN}./manage.sh fix${NC}             # 自动修复问题"
     echo -e "  ${CYAN}./manage.sh fix-workdir${NC}     # 修复工作目录问题"
+    echo -e "  ${CYAN}./manage.sh fix-systemd-workdir${NC} # 修复 systemd 工作目录问题"
+    echo -e "  ${CYAN}./manage.sh fix-fnm${NC}         # fnm 用户专用修复"
     echo ""
 }
 
@@ -353,6 +358,9 @@ main() {
         "diagnose-workdir")
             run_script "diagnose-workdir.sh" "$@"
             ;;
+        "diagnose-node")
+            run_script "diagnose-node.sh" "$@"
+            ;;
         "fix")
             run_script "fix-systemd.sh" "$@"
             ;;
@@ -367,6 +375,12 @@ main() {
             ;;
         "fix-workdir")
             run_script "fix-workdir.sh" "$@"
+            ;;
+        "fix-systemd-workdir")
+            run_script "fix-systemd-workdir.sh" "$@"
+            ;;
+        "fix-fnm")
+            run_script "fix-fnm-systemd.sh" "$@"
             ;;
             
         # 网络服务

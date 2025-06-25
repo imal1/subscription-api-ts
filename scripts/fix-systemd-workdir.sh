@@ -105,46 +105,58 @@ if [ ! -d "$WORKING_DIR" ]; then
     WORKING_DIR="$FOUND_DIR"
 fi
 
-# 检查 Node.js 路径
+# 检查 Node.js 路径并处理 fnm
 if [ ! -f "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
     print_error "Node.js 路径无效: $NODE_PATH"
     
     # 查找有效的 Node.js 路径
     print_status "查找有效的 Node.js 路径..."
     
-    POSSIBLE_NODE_PATHS=(
+    # 优先检查系统路径
+    SYSTEM_NODE_PATHS=(
         "/usr/bin/node"
         "/usr/local/bin/node"
         "/opt/node/bin/node"
-        "$(which node 2>/dev/null || true)"
     )
     
     FOUND_NODE=""
-    for path in "${POSSIBLE_NODE_PATHS[@]}"; do
+    for path in "${SYSTEM_NODE_PATHS[@]}"; do
         if [ -f "$path" ] && [ -x "$path" ]; then
             FOUND_NODE="$path"
-            print_success "找到 Node.js: $FOUND_NODE"
+            print_success "找到系统 Node.js: $FOUND_NODE"
             break
         fi
     done
     
+    # 如果没有系统 Node.js，处理当前环境的 Node.js
     if [ -z "$FOUND_NODE" ]; then
-        # 尝试从当前环境复制 Node.js
         CURRENT_NODE=$(which node 2>/dev/null || true)
         if [ -n "$CURRENT_NODE" ] && [ -f "$CURRENT_NODE" ]; then
-            print_status "复制当前 Node.js 到系统路径..."
-            TARGET_PATH="/usr/local/bin/node"
+            print_status "找到当前环境 Node.js: $CURRENT_NODE"
             
-            if [[ $EUID -eq 0 ]]; then
-                cp "$CURRENT_NODE" "$TARGET_PATH"
-                chmod +x "$TARGET_PATH"
+            # 检查是否是版本管理器路径
+            if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+                print_status "检测到版本管理器路径，复制到系统路径..."
+                TARGET_PATH="/usr/local/bin/node"
+                
+                if [[ $EUID -eq 0 ]]; then
+                    cp "$CURRENT_NODE" "$TARGET_PATH"
+                    chmod +x "$TARGET_PATH"
+                else
+                    sudo cp "$CURRENT_NODE" "$TARGET_PATH"
+                    sudo chmod +x "$TARGET_PATH"
+                fi
+                
+                if [ -f "$TARGET_PATH" ] && [ -x "$TARGET_PATH" ]; then
+                    FOUND_NODE="$TARGET_PATH"
+                    print_success "Node.js 已复制到: $FOUND_NODE"
+                else
+                    print_error "复制失败"
+                    exit 1
+                fi
             else
-                sudo cp "$CURRENT_NODE" "$TARGET_PATH"
-                sudo chmod +x "$TARGET_PATH"
+                FOUND_NODE="$CURRENT_NODE"
             fi
-            
-            FOUND_NODE="$TARGET_PATH"
-            print_success "Node.js 已复制到: $FOUND_NODE"
         else
             print_error "未找到有效的 Node.js 安装"
             exit 1

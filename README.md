@@ -465,7 +465,16 @@ bash scripts/diagnose-systemd.sh
    npm run service:fix
    ```
 
-4. **项目路径问题**
+4. **工作目录问题 (CHDIR 失败)**
+   ```bash
+   # 专门修复 systemd 工作目录问题
+   bash scripts/fix-systemd-workdir.sh
+   
+   # 或使用管理脚本
+   ./manage.sh fix-systemd-workdir
+   ```
+
+5. **项目路径问题**
    ```bash
    # 确保项目已构建
    npm run build
@@ -476,12 +485,49 @@ bash scripts/diagnose-systemd.sh
 
 #### 自动修复脚本
 
-项目提供了自动修复脚本，可以解决大部分 SystemD 相关问题：
+项目提供了多种自动修复脚本，可以解决不同类型的 SystemD 相关问题：
 
 ```bash
-# Linux 环境下运行（需要 sudo 权限）
+# 通用服务修复（需要 sudo 权限）
 sudo npm run service:fix
+
+# 专门修复 systemd 工作目录问题
+bash scripts/fix-systemd-workdir.sh
+
+# FNM 用户专用修复（推荐 fnm 用户使用）
+bash scripts/fix-fnm-systemd.sh
+
+# 使用统一管理工具
+./manage.sh fix-systemd-workdir    # 修复工作目录问题
+./manage.sh fix-fnm               # fnm 用户专用修复
+./manage.sh fix                    # 自动修复常见问题
+./manage.sh check                  # 全面诊断
 ```
+
+**FNM 用户特别说明：**
+
+如果你使用 fnm (Fast Node Manager) 管理 Node.js 版本，建议使用专门的修复脚本：
+
+```bash
+# FNM 用户专用修复
+bash scripts/fix-fnm-systemd.sh
+# 或
+./manage.sh fix-fnm
+```
+
+该脚本会：
+- 自动检测 fnm 管理的 Node.js 路径
+- 将 Node.js 复制到系统路径 (`/usr/local/bin/node`)
+- 生成适合 systemd 的服务配置
+- 自动启动和验证服务状态
+
+**工作目录修复脚本功能：**
+- 自动检测和修复 `WorkingDirectory` 路径错误
+- 验证和修复 Node.js 可执行文件路径
+- 检查和重新编译项目（如需要）
+- 创建缺失的环境文件
+- 重新生成正确的 systemd 服务文件
+- 自动重启服务并验证状态
 
 该脚本会：
 - 清理旧的服务配置
@@ -489,6 +535,35 @@ sudo npm run service:fix
 - 修复权限问题
 - 重新启动服务
 - 验证服务状态
+
+#### 常见 SystemD 错误分析
+
+**错误：`Failed at step CHDIR spawning /usr/local/bin/node: No such file or directory`**
+
+这个错误通常表示：
+1. `WorkingDirectory` 路径不存在或无效
+2. Node.js 可执行文件路径错误
+3. 服务用户没有访问工作目录的权限
+
+**FNM 用户常见问题：**
+
+如果你使用 fnm 管理 Node.js，这个错误很可能是因为 systemd 无法访问 fnm 管理的 Node.js 路径。
+
+**解决方案：**
+```bash
+# 针对 FNM 用户的专用修复
+bash scripts/fix-fnm-systemd.sh
+
+# 或手动修复
+sudo cp $(which node) /usr/local/bin/node
+sudo chmod +x /usr/local/bin/node
+
+# 然后重新生成服务文件
+bash scripts/generate-systemd-service.sh $(pwd)
+sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart subscription-api-ts
+```
 ## 🤝 贡献
 欢迎提交 Issue 和 Pull Request！
 

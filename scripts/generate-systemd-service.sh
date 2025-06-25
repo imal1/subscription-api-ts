@@ -75,8 +75,8 @@ fi
 echo "🔍 检测到的 Node.js 路径: $NODE_PATH"
 
 # 检查是否使用了版本管理器（fnm, nvm等）
-if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
-    echo "⚠️  检测到版本管理器路径，尝试查找系统 Node.js..."
+if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *".local"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
+    echo "⚠️  检测到版本管理器路径，尝试查找或创建系统 Node.js..."
     
     # 尝试常见的系统路径
     SYSTEM_PATHS=(
@@ -97,25 +97,29 @@ if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_P
     if [ -n "$FOUND_SYSTEM_NODE" ]; then
         NODE_PATH="$FOUND_SYSTEM_NODE"
     else
-        echo "⚠️  未找到系统 Node.js，将使用当前路径但可能在 systemd 中失败"
-        echo "   建议手动复制 Node.js 到系统路径："
-        echo "   sudo cp $(which node) /usr/local/bin/node"
-        echo "   sudo chmod +x /usr/local/bin/node"
+        echo "⚠️  未找到系统 Node.js，需要复制当前 Node.js"
+        echo "   当前 Node.js 路径: $NODE_PATH"
+        echo "   systemd 服务可能无法在此路径下找到 Node.js"
         
         # 询问是否自动复制
         echo ""
-        read -p "是否自动复制 Node.js 到 /usr/local/bin/node? (y/N): " -n 1 -r
+        read -p "是否自动复制 Node.js 到 /usr/local/bin/node? (Y/n): " -n 1 -r
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            echo "⚠️  继续使用版本管理器路径，服务可能启动失败"
+        else
             echo "📝 复制 Node.js 到系统路径..."
+            TARGET_PATH="/usr/local/bin/node"
             if [[ $EUID -eq 0 ]]; then
-                cp "$NODE_PATH" /usr/local/bin/node
-                chmod +x /usr/local/bin/node
-                NODE_PATH="/usr/local/bin/node"
-                echo "✅ Node.js 已复制到: $NODE_PATH"
+                if cp "$NODE_PATH" "$TARGET_PATH" && chmod +x "$TARGET_PATH"; then
+                    NODE_PATH="$TARGET_PATH"
+                    echo "✅ Node.js 已复制到: $NODE_PATH"
+                else
+                    echo "❌ 复制失败，继续使用原路径"
+                fi
             else
-                if sudo cp "$NODE_PATH" /usr/local/bin/node && sudo chmod +x /usr/local/bin/node; then
-                    NODE_PATH="/usr/local/bin/node"
+                if sudo cp "$NODE_PATH" "$TARGET_PATH" && sudo chmod +x "$TARGET_PATH"; then
+                    NODE_PATH="$TARGET_PATH"
                     echo "✅ Node.js 已复制到: $NODE_PATH"
                 else
                     echo "❌ 复制失败，继续使用原路径"
