@@ -547,7 +547,18 @@ bash scripts/fix-fnm-systemd.sh
 
 **FNM 用户常见问题：**
 
-如果你使用 fnm 管理 Node.js，这个错误很可能是因为 systemd 无法访问 fnm 管理的 Node.js 路径。
+fnm (Fast Node Manager) 是一个现代的 Node.js 版本管理器，但它会将 Node.js 安装在用户目录下（如 `~/.local/share/fnm/node-versions/`），systemd 服务运行时无法访问这些路径。
+
+**FNM 路径示例：**
+- `~/.local/share/fnm/node-versions/v18.19.0/installation/bin/node`
+- `~/.fnm/node-versions/v20.11.0/installation/bin/node`
+
+**问题原因：**
+1. systemd 服务在独立的环境中运行，没有用户的 shell 环境变量
+2. fnm 通过修改 PATH 和环境变量来工作，但这些在 systemd 中不可用
+3. 服务启动时找不到 Node.js 可执行文件，导致 `CHDIR` 或 `EXEC` 失败
+
+**解决方案：**
 
 **解决方案：**
 ```bash

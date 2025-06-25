@@ -75,7 +75,7 @@ fi
 echo "🔍 检测到的 Node.js 路径: $NODE_PATH"
 
 # 检查是否使用了版本管理器（fnm, nvm等）
-if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *".local"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
+if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *".local"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]] || [[ "$NODE_PATH" == *"node-versions"* ]]; then
     echo "⚠️  检测到版本管理器路径，尝试查找或创建系统 Node.js..."
     
     # 尝试常见的系统路径

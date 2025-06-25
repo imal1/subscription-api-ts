@@ -30,7 +30,11 @@ print_status "快速修复 systemd 服务问题..."
 # 停止服务（如果正在运行）
 if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
     print_status "停止当前服务..."
-    sudo systemctl stop "$SERVICE_NAME"
+    if [[ $EUID -eq 0 ]]; then
+        systemctl stop "$SERVICE_NAME"
+    else
+        sudo systemctl stop "$SERVICE_NAME"
+    fi
 fi
 
 # 查找项目目录
@@ -88,28 +92,47 @@ if [ -z "$FOUND_SYSTEM_NODE" ]; then
         print_status "找到当前环境 Node.js: $CURRENT_NODE"
         
         # 检查是否是 fnm 或其他版本管理器路径
-        if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+        if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]] || [[ "$CURRENT_NODE" == *"node-versions"* ]]; then
             print_warning "检测到版本管理器路径，需要复制到系统路径"
             
             # 复制到系统路径
             TARGET_PATH="/usr/local/bin/node"
             print_status "复制 Node.js 到 $TARGET_PATH..."
             
-            if sudo cp "$CURRENT_NODE" "$TARGET_PATH" && sudo chmod +x "$TARGET_PATH"; then
-                print_success "Node.js 已复制到系统路径"
-                
-                # 验证复制的文件
-                if [ -f "$TARGET_PATH" ] && [ -x "$TARGET_PATH" ]; then
-                    NODE_VERSION=$("$TARGET_PATH" --version 2>/dev/null || echo "unknown")
-                    print_success "验证成功，Node.js 版本: $NODE_VERSION"
-                    FOUND_SYSTEM_NODE="$TARGET_PATH"
+            if [[ $EUID -eq 0 ]]; then
+                if cp "$CURRENT_NODE" "$TARGET_PATH" && chmod +x "$TARGET_PATH"; then
+                    print_success "Node.js 已复制到系统路径"
+                    
+                    # 验证复制的文件
+                    if [ -f "$TARGET_PATH" ] && [ -x "$TARGET_PATH" ]; then
+                        NODE_VERSION=$("$TARGET_PATH" --version 2>/dev/null || echo "unknown")
+                        print_success "验证成功，Node.js 版本: $NODE_VERSION"
+                        FOUND_SYSTEM_NODE="$TARGET_PATH"
+                    else
+                        print_error "复制的 Node.js 文件无效"
+                        exit 1
+                    fi
                 else
-                    print_error "复制的 Node.js 文件无效"
+                    print_error "复制 Node.js 失败"
                     exit 1
                 fi
             else
-                print_error "复制 Node.js 失败"
-                exit 1
+                if sudo cp "$CURRENT_NODE" "$TARGET_PATH" && sudo chmod +x "$TARGET_PATH"; then
+                    print_success "Node.js 已复制到系统路径"
+                    
+                    # 验证复制的文件
+                    if [ -f "$TARGET_PATH" ] && [ -x "$TARGET_PATH" ]; then
+                        NODE_VERSION=$("$TARGET_PATH" --version 2>/dev/null || echo "unknown")
+                        print_success "验证成功，Node.js 版本: $NODE_VERSION"
+                        FOUND_SYSTEM_NODE="$TARGET_PATH"
+                    else
+                        print_error "复制的 Node.js 文件无效"
+                        exit 1
+                    fi
+                else
+                    print_error "复制 Node.js 失败"
+                    exit 1
+                fi
             fi
         else
             print_warning "Node.js 路径可能在 systemd 中不可用，建议复制到系统路径"
@@ -185,13 +208,23 @@ EOF
 
 # 安装服务文件
 print_status "安装服务文件..."
-sudo cp "$TEMP_SERVICE" "$SERVICE_FILE"
-sudo systemctl daemon-reload
+if [[ $EUID -eq 0 ]]; then
+    cp "$TEMP_SERVICE" "$SERVICE_FILE"
+    systemctl daemon-reload
+else
+    sudo cp "$TEMP_SERVICE" "$SERVICE_FILE"
+    sudo systemctl daemon-reload
+fi
 
 # 启动服务
 print_status "启动服务..."
-sudo systemctl enable "$SERVICE_NAME"
-sudo systemctl start "$SERVICE_NAME"
+if [[ $EUID -eq 0 ]]; then
+    systemctl enable "$SERVICE_NAME"
+    systemctl start "$SERVICE_NAME"
+else
+    sudo systemctl enable "$SERVICE_NAME"
+    sudo systemctl start "$SERVICE_NAME"
+fi
 
 # 等待服务启动
 sleep 3

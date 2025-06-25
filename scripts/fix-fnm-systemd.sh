@@ -52,7 +52,11 @@ fi
 
 print_status "第1步：停止现有服务"
 if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
-    sudo systemctl stop "$SERVICE_NAME"
+    if [[ $EUID -eq 0 ]]; then
+        systemctl stop "$SERVICE_NAME"
+    else
+        sudo systemctl stop "$SERVICE_NAME"
+    fi
     print_success "服务已停止"
 else
     print_status "服务未运行"
@@ -96,8 +100,8 @@ fi
 
 print_status "当前 Node.js 路径: $CURRENT_NODE"
 
-# 检查是否是 fnm 路径
-if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *".local/share/fnm"* ]]; then
+# 检查是否是 fnm 或其他版本管理器路径
+if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *".local/share/fnm"* ]] || [[ "$CURRENT_NODE" == *".fnm"* ]] || [[ "$CURRENT_NODE" == *"node-versions"* ]]; then
     print_warning "检测到 fnm 管理的 Node.js，systemd 服务无法直接使用此路径"
     
     # 检查系统路径中是否已有 Node.js
@@ -114,16 +118,26 @@ if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *".local/share/fnm"
         
         if [ "$CURRENT_VERSION" != "$SYSTEM_VERSION" ]; then
             print_warning "版本不匹配，将更新系统 Node.js"
-            sudo cp "$CURRENT_NODE" "$SYSTEM_NODE"
-            sudo chmod +x "$SYSTEM_NODE"
+            if [[ $EUID -eq 0 ]]; then
+                cp "$CURRENT_NODE" "$SYSTEM_NODE"
+                chmod +x "$SYSTEM_NODE"
+            else
+                sudo cp "$CURRENT_NODE" "$SYSTEM_NODE"
+                sudo chmod +x "$SYSTEM_NODE"
+            fi
             print_success "已更新系统 Node.js 到版本: $CURRENT_VERSION"
         else
             print_success "版本匹配，无需更新"
         fi
     else
         print_status "复制 Node.js 到系统路径..."
-        sudo cp "$CURRENT_NODE" "$SYSTEM_NODE"
-        sudo chmod +x "$SYSTEM_NODE"
+        if [[ $EUID -eq 0 ]]; then
+            cp "$CURRENT_NODE" "$SYSTEM_NODE"
+            chmod +x "$SYSTEM_NODE"
+        else
+            sudo cp "$CURRENT_NODE" "$SYSTEM_NODE"
+            sudo chmod +x "$SYSTEM_NODE"
+        fi
         
         if [ -f "$SYSTEM_NODE" ] && [ -x "$SYSTEM_NODE" ]; then
             VERSION=$("$SYSTEM_NODE" --version)
@@ -225,12 +239,22 @@ WantedBy=multi-user.target
 EOF
 
 print_status "第7步：安装并启动服务"
-sudo cp "$TEMP_SERVICE" "$SERVICE_FILE"
-sudo systemctl daemon-reload
-sudo systemctl enable "$SERVICE_NAME"
+if [[ $EUID -eq 0 ]]; then
+    cp "$TEMP_SERVICE" "$SERVICE_FILE"
+    systemctl daemon-reload
+    systemctl enable "$SERVICE_NAME"
+else
+    sudo cp "$TEMP_SERVICE" "$SERVICE_FILE"
+    sudo systemctl daemon-reload
+    sudo systemctl enable "$SERVICE_NAME"
+fi
 
 print_status "启动服务..."
-sudo systemctl start "$SERVICE_NAME"
+if [[ $EUID -eq 0 ]]; then
+    systemctl start "$SERVICE_NAME"
+else
+    sudo systemctl start "$SERVICE_NAME"
+fi
 
 # 等待服务启动
 sleep 3
