@@ -30,6 +30,24 @@ if [ ! -d "$INSTALL_DIR" ]; then
     exit 1
 fi
 
+# 验证安装目录的可访问性
+if [ ! -r "$INSTALL_DIR" ]; then
+    echo "❌ 安装目录无法读取: $INSTALL_DIR"
+    echo "   请检查目录权限"
+    exit 1
+fi
+
+# 检查关键文件是否存在
+if [ ! -f "$INSTALL_DIR/dist/index.js" ]; then
+    echo "❌ 未找到编译后的主文件: $INSTALL_DIR/dist/index.js"
+    echo "   请确保项目已正确编译"
+    exit 1
+fi
+
+# 获取安装目录的绝对路径
+INSTALL_DIR="$(cd "$INSTALL_DIR" && pwd)"
+echo "📁 绝对路径: $INSTALL_DIR"
+
 # 检查是否有node可执行文件路径
 NODE_PATH=$(which node)
 if [ -z "$NODE_PATH" ]; then

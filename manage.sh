@@ -52,10 +52,12 @@ show_help() {
     echo -e "${WHITE}🛠️ 诊断修复:${NC}"
     echo -e "  ${YELLOW}diagnose${NC}         运行系统诊断"
     echo -e "  ${YELLOW}diagnose-ts${NC}      TypeScript 编译诊断"
+    echo -e "  ${YELLOW}diagnose-workdir${NC} 工作目录权限诊断"
     echo -e "  ${YELLOW}fix${NC}              自动修复常见问题"
     echo -e "  ${YELLOW}fix-ts${NC}           修复 TypeScript 问题"
     echo -e "  ${YELLOW}fix-node${NC}         修复 Node.js 路径问题"
     echo -e "  ${YELLOW}fix-systemd${NC}      快速修复 systemd 服务"
+    echo -e "  ${YELLOW}fix-workdir${NC}      修复工作目录权限问题"
     echo ""
     echo -e "${WHITE}🌐 网络服务:${NC}"
     echo -e "  ${PURPLE}nginx-setup${NC}      配置 Nginx"
@@ -69,10 +71,11 @@ show_help() {
     echo -e "  ${CYAN}help${NC}             显示此帮助信息"
     echo ""
     echo -e "${WHITE}💡 示例:${NC}"
-    echo -e "  ${CYAN}./manage.sh install${NC}     # 完整安装项目"
-    echo -e "  ${CYAN}./manage.sh status${NC}      # 快速检查服务状态"
-    echo -e "  ${CYAN}./manage.sh check${NC}       # 全面诊断服务"
-    echo -e "  ${CYAN}./manage.sh fix${NC}         # 自动修复问题"
+    echo -e "  ${CYAN}./manage.sh install${NC}         # 完整安装项目"
+    echo -e "  ${CYAN}./manage.sh status${NC}          # 快速检查服务状态"
+    echo -e "  ${CYAN}./manage.sh check${NC}           # 全面诊断服务"
+    echo -e "  ${CYAN}./manage.sh fix${NC}             # 自动修复问题"
+    echo -e "  ${CYAN}./manage.sh fix-workdir${NC}     # 修复工作目录问题"
     echo ""
 }
 
@@ -347,6 +350,9 @@ main() {
         "diagnose-ts")
             run_script "diagnose-typescript.sh" "$@"
             ;;
+        "diagnose-workdir")
+            run_script "diagnose-workdir.sh" "$@"
+            ;;
         "fix")
             run_script "fix-systemd.sh" "$@"
             ;;
@@ -358,6 +364,9 @@ main() {
             ;;
         "fix-systemd")
             run_script "quick-fix-systemd.sh" "$@"
+            ;;
+        "fix-workdir")
+            run_script "fix-workdir.sh" "$@"
             ;;
             
         # 网络服务

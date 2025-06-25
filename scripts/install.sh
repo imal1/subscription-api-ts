@@ -351,11 +351,39 @@ if [ "$OS" = "Linux" ]; then
     # 设置环境变量供服务生成脚本使用
     export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP"
     
+    # 获取项目绝对路径
+    ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
+    echo "📁 项目绝对路径: $ABSOLUTE_PROJECT_ROOT"
+    
+    # 验证项目目录和关键文件
+    if [ ! -d "$ABSOLUTE_PROJECT_ROOT" ]; then
+        echo "❌ 项目目录不存在: $ABSOLUTE_PROJECT_ROOT"
+        exit 1
+    fi
+    
+    if [ ! -f "$ABSOLUTE_PROJECT_ROOT/dist/index.js" ]; then
+        echo "❌ 编译文件不存在: $ABSOLUTE_PROJECT_ROOT/dist/index.js"
+        echo "   请确保项目构建成功"
+        exit 1
+    fi
+    
+    # 检查目标用户对项目目录的访问权限
+    if ! sudo -u "$TARGET_USER" test -r "$ABSOLUTE_PROJECT_ROOT"; then
+        echo "⚠️  用户 $TARGET_USER 无法访问项目目录，调整权限..."
+        if [[ $EUID -eq 0 ]]; then
+            chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
+            chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
+        else
+            sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
+            sudo chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
+        fi
+    fi
+    
     # 使用生成脚本创建服务文件
     if [[ $EUID -eq 0 ]] && [ "$TARGET_USER" != "root" ]; then
-        sudo -u $TARGET_USER bash scripts/generate-systemd-service.sh "$PROJECT_ROOT"
+        sudo -u $TARGET_USER bash scripts/generate-systemd-service.sh "$ABSOLUTE_PROJECT_ROOT"
     else
-        bash scripts/generate-systemd-service.sh "$PROJECT_ROOT"
+        bash scripts/generate-systemd-service.sh "$ABSOLUTE_PROJECT_ROOT"
     fi
     
     # 安装服务文件

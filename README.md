@@ -10,7 +10,30 @@
 - 🌐 **REST API**: 提供完整的 REST API 接口
 - 📊 **状态监控**: 实时监控服务状态和健康检查
 - 📝 **日志系统**: 完善的日志记录和错误处理
-- 🔧 **易于部署**: 支持 systemd 服务管理
+- 🔧**常见问题解决**
+
+**1. TypeScript 编译错误**（找不到模块声明文件）：
+```bash
+# 自动诊断和修复
+./manage.sh fix-ts
+
+# 或手动清理重装
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
+**2. SystemD 服务工作目录错误**：
+```bash
+# 错误信息：Changing to the requested working directory failed
+./manage.sh diagnose-workdir    # 诊断问题
+./manage.sh fix-workdir         # 自动修复
+```
+
+**3. Node.js 路径问题**（版本管理器冲突）：
+```bash
+./manage.sh fix-node           # 修复 Node.js 路径
+```持 systemd 服务管理
 - 🐳 **容器化**: 支持 Docker 部署
 
 ## 🏗️ 技术栈
