@@ -14,6 +14,7 @@ fi
 # 手动读取环境变量
 API_PORT=$(grep '^PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
 NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3080")
+NGINX_PROXY_PORT=$(grep '^NGINX_PROXY_PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3888")
 NODE_ENV=$(grep '^NODE_ENV=' .env | cut -d'=' -f2 | tr -d '"' || echo "development")
 DATA_DIR=$(grep '^DATA_DIR=' .env | cut -d'=' -f2 | tr -d '"')
 if [ -z "$DATA_DIR" ]; then
@@ -26,6 +27,7 @@ LOG_DIR=${LOG_DIR:-./logs}
 
 echo "🔧 生成nginx配置文件..."
 echo "API端口: $API_PORT"
+echo "Nginx代理端口: $NGINX_PROXY_PORT"
 echo "Nginx端口: $NGINX_PORT"
 echo "静态文件端口: $NGINX_PORT_STATIC"
 echo "静态文件目录: $DATA_DIR"
@@ -33,16 +35,16 @@ echo "静态文件目录: $DATA_DIR"
 # 生成开发环境配置
 if [ "$NODE_ENV" = "development" ] || [ "$NODE_ENV" = "" ]; then
     echo "📝 生成开发环境nginx配置..."
-    export API_PORT NGINX_PORT NGINX_PORT_STATIC DATA_DIR
-    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PORT_STATIC} ${DATA_DIR}' < config/nginx.dev.conf.template > config/nginx.dev.conf
+    export API_PORT NGINX_PORT NGINX_PROXY_PORT NGINX_PORT_STATIC DATA_DIR
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${NGINX_PORT_STATIC} ${DATA_DIR}' < config/nginx.dev.conf.template > config/nginx.dev.conf
     echo "✅ 开发环境配置已生成: config/nginx.dev.conf"
 fi
 
 # 生成生产环境配置
 if [ "$NODE_ENV" = "production" ]; then
     echo "📝 生成生产环境nginx配置..."
-    export API_PORT NGINX_PORT DATA_DIR
-    envsubst '${API_PORT} ${NGINX_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
+    export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 生产环境配置已生成: config/nginx.conf"
 fi
 

@@ -15,6 +15,7 @@ fi
 # 设置默认值
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 NGINX_PORT="${NGINX_PORT:-3080}"
+NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
 # 检测操作系统
 OS=""
@@ -167,7 +168,7 @@ echo ""
 echo "🎉 Nginx 设置完成！"
 echo ""
 echo "📊 服务信息:"
-echo "   - 主要 API: http://localhost:3888"
+echo "   - 主要 API: http://localhost:${NGINX_PROXY_PORT}"
 echo "   - 静态文件: http://localhost:${NGINX_PORT}"
 echo "   - 配置文件: /etc/nginx/sites-available/${SERVICE_NAME}"
 echo ""

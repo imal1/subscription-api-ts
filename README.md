@@ -135,7 +135,7 @@ npm run nginx:setup
 - 生产环境：`config/nginx.conf`
 
 **端口说明:**
-- 主要API代理：3888端口 (默认)
+- 主要API代理：3888端口 (默认，可通过 NGINX_PROXY_PORT 配置)
 - 静态文件服务：3080端口 (可通过 NGINX_PORT 配置)
 
 所有端口配置都将从环境变量中读取，确保配置一致性。

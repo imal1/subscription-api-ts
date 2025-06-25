@@ -39,6 +39,7 @@ fi
 # 设置默认值
 export DATA_DIR="${DATA_DIR:-./data}"
 export LOG_DIR="${LOG_DIR:-./logs}"
+export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
 set -e
 
@@ -327,10 +328,20 @@ if [ "$OS" = "Linux" ]; then
     # 安装服务文件
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
     if [[ $EUID -eq 0 ]]; then
+        # 备份现有服务文件（如果存在）
+        if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+            echo "📁 备份现有 systemd 服务文件..."
+            cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
+        fi
         cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
         systemctl daemon-reload
         systemctl enable "$SERVICE_NAME"
     else
+        # 备份现有服务文件（如果存在）
+        if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+            echo "📁 备份现有 systemd 服务文件..."
+            sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
+        fi
         sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
         sudo systemctl daemon-reload
         sudo systemctl enable "$SERVICE_NAME"
@@ -346,8 +357,53 @@ fi
 # 安装Nginx配置
 if command -v nginx &> /dev/null; then
     echo "🌐 配置 Nginx..."
+    
+    # 生成nginx配置文件
+    echo "📄 生成 Nginx 配置文件..."
+    API_PORT="${PORT:-3000}"
+    NGINX_PORT="${NGINX_PORT:-3080}"
+    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+    
+    # 检查并安装envsubst (gettext包的一部分)
+    if ! command -v envsubst >/dev/null 2>&1; then
+        echo "🔧 安装 envsubst 工具..."
+        if [ "$OS" = "Linux" ]; then
+            if [[ $EUID -eq 0 ]]; then
+                apt-get update && apt-get install -y gettext-base
+            else
+                sudo apt-get update && sudo apt-get install -y gettext-base
+            fi
+        elif [ "$OS" = "Mac" ]; then
+            if command -v brew &> /dev/null; then
+                brew install gettext
+                # 添加到PATH
+                export PATH="/usr/local/opt/gettext/bin:$PATH"
+            fi
+        fi
+    fi
+    
+    # 使用envsubst生成配置文件
+    export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR
+    if command -v envsubst >/dev/null 2>&1; then
+        envsubst < config/nginx.conf.template > config/nginx.conf
+        echo "✅ 使用 envsubst 生成配置文件"
+    else
+        # 如果没有envsubst，使用sed替换
+        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g" config/nginx.conf.template > config/nginx.conf
+        echo "✅ 使用 sed 生成配置文件"
+    fi
+    
     if [ "$OS" = "Linux" ]; then
         if [[ $EUID -eq 0 ]]; then
+            # 备份现有配置文件（如果存在）
+            if [ -f "/etc/nginx/sites-available/${SERVICE_NAME}" ]; then
+                echo "📁 备份现有 Nginx 配置文件..."
+                cp "/etc/nginx/sites-available/${SERVICE_NAME}" "/etc/nginx/sites-available/${SERVICE_NAME}.backup.$(date +%Y%m%d_%H%M%S)"
+            fi
+            # 删除现有符号链接（如果存在）
+            if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
+                rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
+            fi
             cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
             ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             # 检查nginx配置是否正确
@@ -355,7 +411,12 @@ if command -v nginx &> /dev/null; then
                 # 检查nginx是否已经运行
                 if systemctl is-active --quiet nginx; then
                     echo "🔄 重新加载 Nginx 配置..."
-                    systemctl reload nginx
+                    if systemctl reload nginx; then
+                        echo "✅ Nginx 配置重新加载成功"
+                    else
+                        echo "⚠️  Nginx 重新加载失败，尝试重启..."
+                        systemctl restart nginx
+                    fi
                 else
                     echo "🚀 启动 Nginx 服务..."
                     systemctl start nginx
@@ -366,6 +427,15 @@ if command -v nginx &> /dev/null; then
                 echo "❌ Nginx 配置测试失败，请检查配置文件"
             fi
         else
+            # 备份现有配置文件（如果存在）
+            if [ -f "/etc/nginx/sites-available/${SERVICE_NAME}" ]; then
+                echo "📁 备份现有 Nginx 配置文件..."
+                sudo cp "/etc/nginx/sites-available/${SERVICE_NAME}" "/etc/nginx/sites-available/${SERVICE_NAME}.backup.$(date +%Y%m%d_%H%M%S)"
+            fi
+            # 删除现有符号链接（如果存在）
+            if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
+                sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
+            fi
             sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
             sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             # 检查nginx配置是否正确
@@ -373,7 +443,12 @@ if command -v nginx &> /dev/null; then
                 # 检查nginx是否已经运行
                 if sudo systemctl is-active --quiet nginx; then
                     echo "🔄 重新加载 Nginx 配置..."
-                    sudo systemctl reload nginx
+                    if sudo systemctl reload nginx; then
+                        echo "✅ Nginx 配置重新加载成功"
+                    else
+                        echo "⚠️  Nginx 重新加载失败，尝试重启..."
+                        sudo systemctl restart nginx
+                    fi
                 else
                     echo "🚀 启动 Nginx 服务..."
                     sudo systemctl start nginx
@@ -389,6 +464,7 @@ if command -v nginx &> /dev/null; then
         echo "   macOS 用户可以使用以下命令:"
         echo "   brew services start nginx"
         echo "   或直接运行: nginx"
+        echo "   Nginx 将监听端口: ${NGINX_PROXY_PORT:-3888} (API代理) 和 ${NGINX_PORT:-3080} (静态文件)"
     fi
 else
     echo "⚠️  未检测到 Nginx，跳过 Nginx 配置"
@@ -417,8 +493,9 @@ if [ "$OS" = "Linux" ]; then
     # 从环境变量读取端口号
     API_PORT="${PORT:-3000}"
     NGINX_PORT="${NGINX_PORT:-3080}"
+    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
     echo "4. 访问服务:"
-    echo "   - API 服务: http://localhost:3888 (通过 Nginx)"
+    echo "   - API 服务: http://localhost:${NGINX_PROXY_PORT} (通过 Nginx)"
     echo "   - 直接访问: http://localhost:${API_PORT}"
     echo "   - 静态文件: http://localhost:${NGINX_PORT}"
 elif [ "$OS" = "Mac" ]; then
@@ -429,7 +506,9 @@ elif [ "$OS" = "Mac" ]; then
     # 从环境变量读取端口号
     API_PORT="${PORT:-3000}"
     NGINX_PORT="${NGINX_PORT:-3080}"
+    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
     echo "4. 访问服务:"
     echo "   - API 服务: http://localhost:${API_PORT}"
+    echo "   - 通过 Nginx: http://localhost:${NGINX_PROXY_PORT} (如果配置了 Nginx)"
     echo "   - 静态文件: http://localhost:${NGINX_PORT} (如果配置了 Nginx)"
 fi

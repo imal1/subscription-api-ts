@@ -1,5 +1,5 @@
 server {
-    listen 3888;
+    listen ${NGINX_PROXY_PORT};
     server_name _;
     
     # API代理
