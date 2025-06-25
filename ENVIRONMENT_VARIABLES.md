@@ -85,3 +85,38 @@
 4. 启动服务
 
 所有配置现在都通过环境变量统一管理，确保了配置的一致性和灵活性！🎉
+
+## 🚨 故障排除
+
+### 服务管理命令
+
+项目提供了完整的服务管理和诊断工具：
+
+```bash
+# 检查服务状态（跨平台）
+npm run service:status
+
+# 修复 Linux SystemD 问题
+sudo npm run service:fix
+
+# 生成所有配置文件
+npm run config:all $(pwd)
+```
+
+### 常见问题
+
+1. **systemctl status 报错**
+   - 运行 `npm run service:status` 进行诊断
+   - 使用 `sudo npm run service:fix` 自动修复
+
+2. **端口占用问题**
+   - 修改 `.env` 文件中的 `PORT` 配置
+   - 重新生成配置: `npm run config:all $(pwd)`
+
+3. **权限问题**
+   - 确保使用正确的用户权限
+   - Linux 下使用 `sudo` 执行系统级操作
+
+4. **路径问题**
+   - 检查工作目录是否正确
+   - 重新运行安装脚本: `sudo bash scripts/install.sh`

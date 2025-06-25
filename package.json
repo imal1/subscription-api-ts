@@ -17,7 +17,9 @@
     "setup": "npm run install:deps && npm run build",
     "nginx:config": "bash scripts/generate-nginx-config.sh",
     "systemd:service": "bash scripts/generate-systemd-service.sh",
-    "config:all": "bash scripts/generate-all-configs.sh"
+    "config:all": "bash scripts/generate-all-configs.sh",
+    "service:status": "bash scripts/check-service-status.sh",
+    "service:fix": "bash scripts/fix-systemd.sh"
   },
   "keywords": [
     "subscription",

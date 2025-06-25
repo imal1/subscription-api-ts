@@ -253,6 +253,68 @@ tail -f ./logs/combined.log
 # 错误日志
 tail -f ./logs/error.log
 ```
+## 🚨 故障排除
+
+### Linux SystemD 服务问题
+
+如果在Linux环境下使用 `systemctl status` 时遇到问题，可以使用以下方法诊断和修复：
+
+#### 快速诊断
+```bash
+# 检查服务状态（跨平台）
+npm run service:status
+
+# Linux 专用诊断
+bash scripts/diagnose-systemd.sh
+```
+
+#### 常见问题及解决方案
+
+1. **服务文件不存在**
+   ```bash
+   # 重新生成服务配置
+   npm run systemd:service $(pwd)
+   sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   ```
+
+2. **权限问题**
+   ```bash
+   # 使用 sudo 执行
+   sudo systemctl status subscription-api-ts
+   sudo journalctl -u subscription-api-ts
+   ```
+
+3. **服务配置错误**
+   ```bash
+   # 一键修复（需要 sudo 权限）
+   npm run service:fix
+   ```
+
+4. **项目路径问题**
+   ```bash
+   # 确保项目已构建
+   npm run build
+   
+   # 重新安装到正确路径
+   sudo bash scripts/install.sh
+   ```
+
+#### 自动修复脚本
+
+项目提供了自动修复脚本，可以解决大部分 SystemD 相关问题：
+
+```bash
+# Linux 环境下运行（需要 sudo 权限）
+sudo npm run service:fix
+```
+
+该脚本会：
+- 清理旧的服务配置
+- 重新生成正确的服务文件
+- 修复权限问题
+- 重新启动服务
+- 验证服务状态
 ## 🤝 贡献
 欢迎提交 Issue 和 Pull Request！
 
