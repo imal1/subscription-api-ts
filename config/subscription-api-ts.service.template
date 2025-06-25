@@ -6,13 +6,13 @@ Documentation=https://github.com/imal1/subscription-api-ts
 
 [Service]
 Type=simple
-User=imal1
-Group=imal1
+User=${SERVICE_USER}
+Group=${SERVICE_GROUP}
 WorkingDirectory=${INSTALL_DIR}
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin:${INSTALL_DIR}/node_modules/.bin
 EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=/usr/bin/node ${INSTALL_DIR}/dist/index.js
+ExecStart=${NODE_PATH} ${INSTALL_DIR}/dist/index.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3
@@ -27,7 +27,6 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/www/subscription /var/log/subscription
 
 [Install]
 WantedBy=multi-user.target

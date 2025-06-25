@@ -12,7 +12,7 @@ WorkingDirectory=/opt/subscription-api-ts
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin:/opt/subscription-api-ts/node_modules/.bin
 EnvironmentFile=/opt/subscription-api-ts/.env
-ExecStart=/usr/bin/ts-node -r tsconfig-paths/register src/index.ts
+ExecStart=/usr/bin/node dist/index.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3
@@ -27,7 +27,6 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/www/subscription /var/log/subscription
 
 [Install]
 WantedBy=multi-user.target

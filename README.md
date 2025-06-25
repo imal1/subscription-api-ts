@@ -128,6 +128,29 @@ npm run nginx:config
 - 生产环境：生成 `config/nginx.conf`
 
 所有端口配置都将从环境变量中读取，确保配置一致性。
+
+### Systemd服务配置生成
+对于Linux环境，项目提供了自动生成systemd服务配置的功能：
+
+```bash
+# 生成服务配置文件
+npm run systemd:service /path/to/installation/directory
+
+# 例如，如果项目安装在当前目录
+npm run systemd:service $(pwd)
+
+# 或者如果安装在 /opt/subscription-api-ts
+npm run systemd:service /opt/subscription-api-ts
+```
+
+该命令会：
+- 自动检测Node.js路径
+- 使用当前用户作为服务运行用户
+- 根据实际安装路径生成正确的配置
+- 生成可直接使用的systemd服务文件
+
+生成的服务文件将保存在 `/tmp/subscription-api-ts.service`，可以直接复制到系统目录并启用服务。
+
 ## 📦 部署方式
 ### 方式一：systemd 服务 (推荐)
 ```bash
@@ -253,4 +276,39 @@ tail -f ./logs/error.log
 3. 创建新的 Issue
 ------
 ⭐ 如果这个项目对您有帮助，请给个星标！
+
+## 🔧 安装
+
+### 自动安装脚本
+
+项目提供了自动安装脚本，支持多种执行方式：
+
+#### Linux 环境
+
+```bash
+# 方式1: 普通用户执行（推荐）
+bash scripts/install.sh
+
+# 方式2: 使用 sudo 执行（保留用户身份）
+sudo bash scripts/install.sh
+
+# 方式3: root 用户直接执行
+# 作为 root 用户登录后执行
+bash scripts/install.sh
+```
+
+**执行方式说明：**
+
+- **普通用户执行**：脚本会自动使用 `sudo` 处理需要管理员权限的操作
+- **sudo 执行**：推荐方式，脚本会使用原用户身份配置服务，避免权限问题
+- **root 直接执行**：脚本会询问是否以 root 身份安装，或自动检测原用户
+
+#### macOS 环境
+
+```bash
+# macOS 仅支持普通用户执行
+bash scripts/install.sh
+```
+
+**注意：** macOS 环境下不支持 root 用户执行安装脚本。
 

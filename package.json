@@ -15,7 +15,9 @@
     "postbuild": "cp .env dist/ 2>/dev/null || true",
     "install:deps": "npm install",
     "setup": "npm run install:deps && npm run build",
-    "nginx:config": "bash scripts/generate-nginx-config.sh"
+    "nginx:config": "bash scripts/generate-nginx-config.sh",
+    "systemd:service": "bash scripts/generate-systemd-service.sh",
+    "config:all": "bash scripts/generate-all-configs.sh"
   },
   "keywords": [
     "subscription",
