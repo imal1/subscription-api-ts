@@ -350,14 +350,54 @@ if command -v nginx &> /dev/null; then
         if [[ $EUID -eq 0 ]]; then
             cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
             ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
-            nginx -t && systemctl reload nginx
+            # 检查nginx配置是否正确
+            if nginx -t; then
+                # 检查nginx是否已经运行
+                if systemctl is-active --quiet nginx; then
+                    echo "🔄 重新加载 Nginx 配置..."
+                    systemctl reload nginx
+                else
+                    echo "🚀 启动 Nginx 服务..."
+                    systemctl start nginx
+                    systemctl enable nginx
+                fi
+                echo "✅ Nginx 配置完成"
+            else
+                echo "❌ Nginx 配置测试失败，请检查配置文件"
+            fi
         else
             sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
             sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
-            sudo nginx -t && sudo systemctl reload nginx
+            # 检查nginx配置是否正确
+            if sudo nginx -t; then
+                # 检查nginx是否已经运行
+                if sudo systemctl is-active --quiet nginx; then
+                    echo "🔄 重新加载 Nginx 配置..."
+                    sudo systemctl reload nginx
+                else
+                    echo "🚀 启动 Nginx 服务..."
+                    sudo systemctl start nginx
+                    sudo systemctl enable nginx
+                fi
+                echo "✅ Nginx 配置完成"
+            else
+                echo "❌ Nginx 配置测试失败，请检查配置文件"
+            fi
         fi
     elif [ "$OS" = "Mac" ]; then
         echo "ℹ️  请手动配置 Nginx，配置文件位于 config/nginx.conf"
+        echo "   macOS 用户可以使用以下命令:"
+        echo "   brew services start nginx"
+        echo "   或直接运行: nginx"
+    fi
+else
+    echo "⚠️  未检测到 Nginx，跳过 Nginx 配置"
+    echo "   如需使用 Nginx，请先安装:"
+    if [ "$OS" = "Linux" ]; then
+        echo "   sudo apt-get install nginx  # Ubuntu/Debian"
+        echo "   sudo yum install nginx      # CentOS/RHEL"
+    elif [ "$OS" = "Mac" ]; then
+        echo "   brew install nginx"
     fi
 fi
 
@@ -375,14 +415,21 @@ if [ "$OS" = "Linux" ]; then
         echo "3. 查看状态: sudo systemctl status $SERVICE_NAME"
     fi
     # 从环境变量读取端口号
-    PORT="${PORT:-3000}"
-    echo "4. 访问: http://localhost:${PORT}"
+    API_PORT="${PORT:-3000}"
+    NGINX_PORT="${NGINX_PORT:-3080}"
+    echo "4. 访问服务:"
+    echo "   - API 服务: http://localhost:3888 (通过 Nginx)"
+    echo "   - 直接访问: http://localhost:${API_PORT}"
+    echo "   - 静态文件: http://localhost:${NGINX_PORT}"
 elif [ "$OS" = "Mac" ]; then
     echo "1. 编辑 .env 文件配置参数"
     echo "2. 启动开发服务器: npm run dev"
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
     echo "3. 或使用 PM2: pm2 start dist/index.js --name $SERVICE_NAME"
     # 从环境变量读取端口号
-    PORT="${PORT:-3000}"
-    echo "4. 访问: http://localhost:${PORT}"
+    API_PORT="${PORT:-3000}"
+    NGINX_PORT="${NGINX_PORT:-3080}"
+    echo "4. 访问服务:"
+    echo "   - API 服务: http://localhost:${API_PORT}"
+    echo "   - 静态文件: http://localhost:${NGINX_PORT} (如果配置了 Nginx)"
 fi

@@ -115,19 +115,34 @@ NGINX_PORT=3080
 REQUEST_TIMEOUT=30000
 ```
 
-### Nginx配置生成
-项目提供了自动生成nginx配置的功能：
+### Nginx配置生成和安装
+项目提供了自动生成和安装nginx配置的功能：
 
 ```bash
-# 根据.env文件生成nginx配置
+# 生成nginx配置文件
 npm run nginx:config
+
+# 自动安装和配置nginx (Linux)
+npm run nginx:setup
 ```
 
-该命令会根据当前的环境变量生成对应的nginx配置文件：
-- 开发环境：生成 `config/nginx.dev.conf`
-- 生产环境：生成 `config/nginx.conf`
+**配置说明:**
+- `nginx:config` - 根据.env文件生成配置文件
+- `nginx:setup` - 自动安装nginx并应用配置 (仅限Linux)
+
+生成的配置文件：
+- 开发环境：`config/nginx.dev.conf`
+- 生产环境：`config/nginx.conf`
+
+**端口说明:**
+- 主要API代理：3888端口 (默认)
+- 静态文件服务：3080端口 (可通过 NGINX_PORT 配置)
 
 所有端口配置都将从环境变量中读取，确保配置一致性。
+
+**注意事项:**
+- Linux: 脚本会自动处理nginx的安装、配置和启动
+- macOS: 需要手动配置，脚本会提供详细说明
 
 ### Systemd服务配置生成
 对于Linux环境，项目提供了自动生成systemd服务配置的功能：
