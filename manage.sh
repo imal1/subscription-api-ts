@@ -54,6 +54,7 @@ show_help() {
     echo -e "  ${YELLOW}diagnose-ts${NC}      TypeScript 编译诊断"
     echo -e "  ${YELLOW}diagnose-workdir${NC} 工作目录权限诊断"
     echo -e "  ${YELLOW}diagnose-node${NC}    Node.js 和路径诊断"
+    echo -e "  ${YELLOW}check-fnm${NC}       快速检查 fnm 问题"
     echo -e "  ${YELLOW}fix${NC}              自动修复常见问题"
     echo -e "  ${YELLOW}fix-ts${NC}           修复 TypeScript 问题"
     echo -e "  ${YELLOW}fix-node${NC}         修复 Node.js 路径问题"
@@ -360,6 +361,9 @@ main() {
             ;;
         "diagnose-node")
             run_script "diagnose-node.sh" "$@"
+            ;;
+        "check-fnm")
+            run_script "check-fnm.sh" "$@"
             ;;
         "fix")
             run_script "fix-systemd.sh" "$@"

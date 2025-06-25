@@ -562,10 +562,17 @@ fnm (Fast Node Manager) 是一个现代的 Node.js 版本管理器，但它会�
 
 **解决方案：**
 ```bash
-# 针对 FNM 用户的专用修复
+# 方法1：快速检查是否为 fnm 问题
+bash scripts/check-fnm.sh
+
+# 方法2：针对 FNM 用户的专用修复
 bash scripts/fix-fnm-systemd.sh
 
-# 或手动修复
+# 方法3：使用管理工具
+./manage.sh check-fnm        # 检查问题
+./manage.sh fix-fnm          # 修复问题
+
+# 方法4：手动修复
 sudo cp $(which node) /usr/local/bin/node
 sudo chmod +x /usr/local/bin/node
 
