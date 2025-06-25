@@ -201,7 +201,35 @@ docker run -d \
   --env-file .env \
   subscription-api-ts
 ```
-## 🛠️ 快速诊断
+## 🛠️ 服务诊断与监控
+
+### 一键服务状态检查
+
+我们提供了专门的诊断脚本来检查 subscription-api-ts 服务的完整状态：
+
+```bash
+# 🔍 全面服务状态检测（推荐）
+./scripts/check-service-status.sh
+
+# ⚡ 快速状态检查（日常监控）
+./scripts/quick-status.sh
+```
+
+**全面诊断脚本功能**：
+- ✅ **环境检查**: Node.js 版本、依赖、配置文件
+- ✅ **进程状态**: Linux systemd 服务或 macOS 进程状态  
+- ✅ **端口检查**: 应用端口、Nginx 端口、代理端口占用情况
+- ✅ **连接测试**: 健康检查接口、服务响应测试
+- ✅ **配置验证**: Nginx 配置文件、代理设置检查
+- ✅ **日志分析**: 最新服务日志和错误信息
+- ✅ **故障建议**: 根据检查结果提供具体修复建议
+
+**快速检查脚本功能**：
+- 🚀 核心状态概览（进程、端口、健康检查、编译文件）
+- 💡 简单故障排除建议
+- ⚡ 适合日常监控和快速检查
+
+### 传统诊断工具
 
 如果遇到编译或路径问题，可以使用以下命令快速诊断：
 
@@ -211,9 +239,20 @@ npm run config:check
 
 # TypeScript 编译问题诊断
 npm run ts:diagnose
+./scripts/diagnose-typescript.sh
 
-# 自动修复 TypeScript 问题
+# 自动修复 TypeScript 问题  
 npm run ts:fix
+./scripts/fix-typescript.sh
+
+# 系统服务诊断（Linux）
+./scripts/diagnose-systemd.sh
+
+# 自动修复系统服务问题
+./scripts/fix-systemd.sh
+
+# 修复 Node.js 路径问题
+./scripts/fix-node-path.sh
 
 # 验证环境变量加载
 npm run config:validate
