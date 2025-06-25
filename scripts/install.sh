@@ -130,12 +130,57 @@ if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ]; then
     chown -R $TARGET_USER:$TARGET_GROUP "$PROJECT_ROOT"
     # 使用目标用户身份安装依赖
     if [ "$TARGET_USER" != "root" ]; then
+        echo "   使用用户 $TARGET_USER 安装依赖..."
+        sudo -u $TARGET_USER npm ci --include=dev
+        # 验证关键依赖是否安装成功
+        if ! sudo -u $TARGET_USER test -f "node_modules/@types/node/index.d.ts"; then
+            echo "⚠️  重新安装 @types/node..."
+            sudo -u $TARGET_USER npm install --save-dev @types/node
+        fi
+    else
+        npm ci --include=dev
+        # 验证关键依赖是否安装成功
+        if ! test -f "node_modules/@types/node/index.d.ts"; then
+            echo "⚠️  重新安装 @types/node..."
+            npm install --save-dev @types/node
+        fi
+    fi
+else
+    npm ci --include=dev
+    # 验证关键依赖是否安装成功
+    if ! test -f "node_modules/@types/node/index.d.ts"; then
+        echo "⚠️  重新安装 @types/node..."
+        npm install --save-dev @types/node
+    fi
+fi
+
+# 验证依赖安装
+echo "🔍 验证依赖安装..."
+MISSING_DEPS=""
+REQUIRED_DEPS=(
+    "node_modules/@types/express"
+    "node_modules/@types/cors"
+    "node_modules/@types/compression"
+    "node_modules/@types/node-cron"
+    "node_modules/@types/node"
+    "node_modules/@types/fs-extra"
+    "node_modules/typescript"
+)
+
+for dep in "${REQUIRED_DEPS[@]}"; do
+    if [ ! -d "$dep" ]; then
+        MISSING_DEPS="$MISSING_DEPS $(basename $dep)"
+    fi
+done
+
+if [ -n "$MISSING_DEPS" ]; then
+    echo "❌ 缺少依赖:$MISSING_DEPS"
+    echo "🔧 重新安装缺少的依赖..."
+    if [[ $EUID -eq 0 ]] && [ "$TARGET_USER" != "root" ]; then
         sudo -u $TARGET_USER npm install
     else
         npm install
     fi
-else
-    npm install
 fi
 
 # 检查并安装TypeScript工具
@@ -218,12 +263,52 @@ fi
 
 # 构建项目
 echo "🏗️ 构建项目..."
+
+# 清理之前的构建文件
+echo "   清理旧的构建文件..."
+rm -rf dist
+
+# 验证 TypeScript 配置
+echo "   验证 TypeScript 配置..."
+if [ ! -f "tsconfig.json" ]; then
+    echo "❌ 未找到 tsconfig.json"
+    exit 1
+fi
+
+# 验证源代码目录
+if [ ! -d "src" ]; then
+    echo "❌ 未找到 src 目录"
+    exit 1
+fi
+
+# 执行构建
+echo "   执行 TypeScript 编译..."
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
-    sudo -u $TARGET_USER npm run build
+    if ! sudo -u $TARGET_USER npm run build 2>&1; then
+        echo "❌ 构建失败，尝试诊断问题..."
+        echo "🔍 运行 TypeScript 诊断..."
+        sudo -u $TARGET_USER bash scripts/diagnose-typescript.sh
+        echo "� 尝试自动修复..."
+        sudo -u $TARGET_USER bash scripts/fix-typescript.sh
+    fi
 else
-    npm run build
+    if ! npm run build 2>&1; then
+        echo "❌ 构建失败，尝试诊断问题..."
+        echo "🔍 运行 TypeScript 诊断..."
+        bash scripts/diagnose-typescript.sh
+        echo "� 尝试自动修复..."
+        bash scripts/fix-typescript.sh
+    fi
 fi
+
+# 验证构建结果
+if [ ! -f "dist/index.js" ]; then
+    echo "❌ 构建失败：未找到 dist/index.js"
+    exit 1
+fi
+
+echo "✅ 构建成功！"
 
 # 安装系统服务
 if [ "$OS" = "Linux" ]; then

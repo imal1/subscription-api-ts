@@ -16,7 +16,7 @@
 - `SUBCONVERTER_URL` - subconverter服务地址 (默认: http://localhost:25500)
 
 ### 📁 文件路径配置
-- `STATIC_DIR` - 静态文件目录 (默认: ./data)
+- `DATA_DIR` - 数据文件目录 (默认: ./data)
 - `LOG_DIR` - 日志文件目录 (默认: ./logs)
 - `BACKUP_DIR` - 备份文件目录 (默认: ./data/backup)
 

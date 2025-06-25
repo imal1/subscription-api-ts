@@ -18,7 +18,7 @@ const CONFIG = {
     port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
     subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
-    staticDir: process.env.STATIC_DIR || './data',
+    staticDir: process.env.DATA_DIR || './data',
     logDir: process.env.LOG_DIR || './logs',
     backupDir: process.env.BACKUP_DIR || './data/backup',
     autoUpdateCron: process.env.AUTO_UPDATE_CRON || '0 */2 * * *',

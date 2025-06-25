@@ -74,7 +74,7 @@ export class App {
         });
 
         // 全局错误处理
-        this.app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+        this.app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
             logger.error('未处理的错误:', {
                 error: error.message,
                 stack: error.stack,

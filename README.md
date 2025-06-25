@@ -186,6 +186,40 @@ docker run -d \
   --env-file .env \
   subscription-api-ts
 ```
+## 🛠️ 快速诊断
+
+如果遇到编译或路径问题，可以使用以下命令快速诊断：
+
+```bash
+# 检查路径配置和编译环境
+npm run config:check
+
+# TypeScript 编译问题诊断
+npm run ts:diagnose
+
+# 自动修复 TypeScript 问题
+npm run ts:fix
+
+# 验证环境变量加载
+npm run config:validate
+
+# 检查服务状态
+npm run service:status
+```
+
+### 常见问题解决
+
+**TypeScript 编译错误**（找不到模块声明文件）：
+```bash
+# 自动诊断和修复
+npm run ts:fix
+
+# 或手动清理重装
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
 ## 🔧 开发
 ### 开发环境
 ```bash
