@@ -9,7 +9,7 @@ export const config: Config = {
     logDir: process.env.LOG_DIR || './logs',
     backupDir: process.env.BACKUP_DIR || './data/backup',
     autoUpdateCron: process.env.AUTO_UPDATE_CRON || '0 */2 * * *',
-    nginxPort: parseInt(process.env.NGINX_PORT || '8080'),
+    nginxPort: parseInt(process.env.NGINX_PORT || '3080'),
     maxRetries: parseInt(process.env.MAX_RETRIES || '3'),
     requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '30000')
 };

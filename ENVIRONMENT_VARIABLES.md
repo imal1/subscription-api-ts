@@ -24,7 +24,7 @@
 - `AUTO_UPDATE_CRON` - 自动更新cron表达式 (默认: 0 */2 * * *)
 
 ### 🌐 网络配置
-- `NGINX_PORT` - Nginx服务端口 (默认: 8080)
+- `NGINX_PORT` - Nginx服务端口 (默认: 3080)
 - `MAX_RETRIES` - 最大重试次数 (默认: 3)
 - `REQUEST_TIMEOUT` - 请求超时时间，毫秒 (默认: 30000)
 
@@ -62,7 +62,7 @@
 1. **搜索硬编码值**：
    ```bash
    # 搜索可能的硬编码端口
-   grep -r "3000\|8080\|25500" src/ --exclude-dir=node_modules
+   grep -r "3000\|3080\|25500" src/ --exclude-dir=node_modules
    
    # 搜索硬编码路径
    grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules

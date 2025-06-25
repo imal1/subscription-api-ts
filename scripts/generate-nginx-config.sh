@@ -13,32 +13,36 @@ fi
 
 # 手动读取环境变量
 API_PORT=$(grep '^PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
-NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "8080")
+NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2 | tr -d '"' || echo "3080")
 NODE_ENV=$(grep '^NODE_ENV=' .env | cut -d'=' -f2 | tr -d '"' || echo "development")
-STATIC_DIR=$(grep '^STATIC_DIR=' .env | cut -d'=' -f2 | tr -d '"' || echo "./data")
+DATA_DIR=$(grep '^DATA_DIR=' .env | cut -d'=' -f2 | tr -d '"')
+if [ -z "$DATA_DIR" ]; then
+    DATA_DIR=$(grep '^STATIC_DIR=' .env | cut -d'=' -f2 | tr -d '"' || echo "./data")
+fi
 LOG_DIR=$(grep '^LOG_DIR=' .env | cut -d'=' -f2 | tr -d '"' || echo "./logs")
 NGINX_PORT_STATIC=$((NGINX_PORT + 1))
-STATIC_DIR=${STATIC_DIR:-./data}
+STATIC_DIR=${DATA_DIR:-./data}
 LOG_DIR=${LOG_DIR:-./logs}
 
 echo "🔧 生成nginx配置文件..."
 echo "API端口: $API_PORT"
 echo "Nginx端口: $NGINX_PORT"
 echo "静态文件端口: $NGINX_PORT_STATIC"
-echo "静态文件目录: $STATIC_DIR"
+echo "静态文件目录: $DATA_DIR"
 
 # 生成开发环境配置
 if [ "$NODE_ENV" = "development" ] || [ "$NODE_ENV" = "" ]; then
     echo "📝 生成开发环境nginx配置..."
-    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PORT_STATIC}' < config/nginx.dev.conf.template > config/nginx.dev.conf
+    export API_PORT NGINX_PORT NGINX_PORT_STATIC DATA_DIR
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PORT_STATIC} ${DATA_DIR}' < config/nginx.dev.conf.template > config/nginx.dev.conf
     echo "✅ 开发环境配置已生成: config/nginx.dev.conf"
 fi
 
 # 生成生产环境配置
 if [ "$NODE_ENV" = "production" ]; then
     echo "📝 生成生产环境nginx配置..."
-    export API_PORT NGINX_PORT
-    envsubst '${API_PORT} ${NGINX_PORT}' < config/nginx.conf.template > config/nginx.conf
+    export API_PORT NGINX_PORT DATA_DIR
+    envsubst '${API_PORT} ${NGINX_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 生产环境配置已生成: config/nginx.conf"
 fi
 

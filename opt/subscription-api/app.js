@@ -24,7 +24,7 @@ const CONFIG = {
     autoUpdateCron: process.env.AUTO_UPDATE_CRON || '0 */2 * * *',
     maxRetries: parseInt(process.env.MAX_RETRIES || '3'),
     requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '30000'),
-    nginxPort: parseInt(process.env.NGINX_PORT || '8080')
+    nginxPort: parseInt(process.env.NGINX_PORT || '3080')
 };
 
 // 创建必要目录

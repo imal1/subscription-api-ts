@@ -20,7 +20,7 @@ BACKUP_DIR = os.getenv('BACKUP_DIR', './data/backup')
 MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30000')) // 1000  # 转换为秒
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
-NGINX_PORT = int(os.getenv('NGINX_PORT', '8080'))
+NGINX_PORT = int(os.getenv('NGINX_PORT', '3080'))
 
 # 配置日志
 if not os.path.exists(LOG_DIR):

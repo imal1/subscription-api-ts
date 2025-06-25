@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen 3888;
     server_name your_domain_or_ip;  # 替换为您的域名或IP
     
     # API代理
@@ -31,7 +31,7 @@ server {
 
 # 内部服务，用于subconverter访问订阅文件
 server {
-    listen 8080;
+    listen 3080;
     server_name localhost;
     
     location / {

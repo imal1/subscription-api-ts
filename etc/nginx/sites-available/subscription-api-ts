@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen 3888;
     server_name your_domain_or_ip;
     
     location / {
@@ -15,7 +15,7 @@ server {
 }
 
 server {
-    listen 8080;
+    listen 3080;
     server_name localhost;
     
     location / {

@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen 3888;
     server_name _;
     
     # API代理
