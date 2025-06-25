@@ -235,8 +235,11 @@ npm run build
 # 生产模式
 npm start
 ```
-### 项目结构
-```Code
+### Project Structure
+
+For detailed project structure, see [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md).
+
+```
 src/
 ├── types/           # TypeScript 类型定义
 ├── config/          # 配置管理
