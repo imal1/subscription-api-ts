@@ -40,9 +40,14 @@ cd subscription-api-ts
 
 ### 2. 自动安装
 ```bash
+# 方法1：使用管理脚本（推荐）
+./manage.sh install
+
+# 方法2：直接使用安装脚本
 chmod +x scripts/install.sh
 ./scripts/install.sh
 ```
+
 ### 3. 配置环境
 ```bash
 # 复制配置文件
@@ -51,16 +56,71 @@ cp .env.example .env
 # 编辑配置 (修改为您的实际配置)
 nano .env
 ```
+
 ### 4. 启动服务
+
+#### 🎯 使用管理脚本（推荐）
 ```bash
+# 查看服务状态
+./manage.sh status
+
 # 启动服务
+./manage.sh start
+
+# 重启服务  
+./manage.sh restart
+
+# 停止服务
+./manage.sh stop
+
+# 全面状态检查
+./manage.sh check
+```
+
+#### 📋 传统方式
+```bash
+# Linux (systemd)
 sudo systemctl start subscription-api-ts
-
-# 检查状态
 sudo systemctl status subscription-api-ts
-
-# 设置开机启动
 sudo systemctl enable subscription-api-ts
+
+# macOS  
+npm start
+# 或使用 PM2
+pm2 start dist/index.js --name subscription-api-ts
+```
+
+## 🎮 管理脚本
+
+项目提供了统一的管理入口脚本 `manage.sh`，集成了所有常用功能：
+
+```bash
+# 查看所有可用命令
+./manage.sh help
+
+# 🚀 核心管理
+./manage.sh install      # 完整项目安装
+./manage.sh start        # 启动服务
+./manage.sh stop         # 停止服务  
+./manage.sh restart      # 重启服务
+./manage.sh status       # 快速状态检查
+./manage.sh check        # 全面状态诊断
+
+# 🔧 开发工具
+./manage.sh build        # 编译项目
+./manage.sh dev          # 开发模式
+./manage.sh test         # 运行测试
+./manage.sh clean        # 清理编译文件
+
+# 🛠️ 问题诊断
+./manage.sh diagnose     # 系统诊断
+./manage.sh fix          # 自动修复
+./manage.sh fix-ts       # 修复 TypeScript 问题
+./manage.sh fix-node     # 修复 Node.js 路径
+
+# 📋 信息查看
+./manage.sh logs         # 查看日志
+./manage.sh version      # 版本信息
 ```
 ## 📖 API 文档
 ### 基础信息

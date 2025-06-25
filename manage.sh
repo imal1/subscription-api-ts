@@ -65,6 +65,7 @@ show_help() {
     echo -e "${WHITE}📋 信息查看:${NC}"
     echo -e "  ${CYAN}logs${NC}             查看服务日志"
     echo -e "  ${CYAN}version${NC}          显示版本信息"
+    echo -e "  ${CYAN}overview${NC}         项目状态概览"
     echo -e "  ${CYAN}help${NC}             显示此帮助信息"
     echo ""
     echo -e "${WHITE}💡 示例:${NC}"
@@ -213,6 +214,81 @@ show_version() {
     echo -e "  用户: ${GREEN}$(whoami)${NC}"
 }
 
+# 项目概览
+show_project_overview() {
+    echo -e "${WHITE}📊 项目概览${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    
+    # 基本信息
+    if [ -f "package.json" ]; then
+        local name=$(grep '"name"' package.json | cut -d'"' -f4)
+        local version=$(grep '"version"' package.json | cut -d'"' -f4)
+        echo -e "${WHITE}项目:${NC} ${GREEN}$name${NC} v${version}"
+    fi
+    
+    local os=$(detect_os)
+    echo -e "${WHITE}环境:${NC} ${GREEN}$os${NC}"
+    
+    # 编译状态
+    if [ -f "dist/index.js" ]; then
+        echo -e "${WHITE}编译:${NC} ${GREEN}✅ 已编译${NC}"
+    else
+        echo -e "${WHITE}编译:${NC} ${RED}❌ 未编译${NC}"
+    fi
+    
+    # 依赖状态
+    if [ -d "node_modules" ]; then
+        echo -e "${WHITE}依赖:${NC} ${GREEN}✅ 已安装${NC}"
+    else
+        echo -e "${WHITE}依赖:${NC} ${RED}❌ 未安装${NC}"
+    fi
+    
+    # 服务状态
+    if [ "$os" = "Linux" ]; then
+        local service_name="${SERVICE_NAME:-subscription-api-ts}"
+        if systemctl is-active --quiet "$service_name" 2>/dev/null; then
+            echo -e "${WHITE}服务:${NC} ${GREEN}✅ 运行中${NC}"
+        else
+            echo -e "${WHITE}服务:${NC} ${RED}❌ 停止${NC}"
+        fi
+    elif [ "$os" = "Mac" ]; then
+        if pgrep -f "node.*dist/index.js" >/dev/null 2>&1; then
+            echo -e "${WHITE}服务:${NC} ${GREEN}✅ 运行中${NC}"
+        else
+            echo -e "${WHITE}服务:${NC} ${RED}❌ 停止${NC}"
+        fi
+    fi
+    
+    # 端口状态
+    local port="${PORT:-3000}"
+    if [ "$os" = "Linux" ]; then
+        if netstat -tuln 2>/dev/null | grep -q ":${port} "; then
+            echo -e "${WHITE}端口:${NC} ${GREEN}✅ $port 占用${NC}"
+        else
+            echo -e "${WHITE}端口:${NC} ${RED}❌ $port 空闲${NC}"
+        fi
+    elif [ "$os" = "Mac" ]; then
+        if lsof -i tcp:$port >/dev/null 2>&1; then
+            echo -e "${WHITE}端口:${NC} ${GREEN}✅ $port 占用${NC}"
+        else
+            echo -e "${WHITE}端口:${NC} ${RED}❌ $port 空闲${NC}"
+        fi
+    fi
+    
+    # 配置文件
+    if [ -f ".env" ]; then
+        echo -e "${WHITE}配置:${NC} ${GREEN}✅ .env 存在${NC}"
+    else
+        echo -e "${WHITE}配置:${NC} ${RED}❌ .env 缺失${NC}"
+    fi
+    
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${WHITE}💡 快速操作:${NC}"
+    echo -e "  ${CYAN}./manage.sh status${NC}  - 快速状态检查"
+    echo -e "  ${CYAN}./manage.sh check${NC}   - 详细诊断"
+    echo -e "  ${CYAN}./manage.sh start${NC}   - 启动服务"
+}
+
 # 主逻辑
 main() {
     # 如果没有参数，显示帮助
@@ -301,6 +377,9 @@ main() {
             ;;
         "version")
             show_version
+            ;;
+        "overview")
+            show_project_overview
             ;;
         "help"|"-h"|"--help")
             show_help
