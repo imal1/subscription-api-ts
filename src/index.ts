@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { App } from './app';
-import { logger } from '@/utils/logger';
+import { logger } from './utils/logger';
 
 async function bootstrap(): Promise<void> {
     try {

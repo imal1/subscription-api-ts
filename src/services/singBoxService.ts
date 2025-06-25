@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { SingBoxResult } from '@/types';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
+import { SingBoxResult } from '../types';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 
 const execAsync = promisify(exec);
 

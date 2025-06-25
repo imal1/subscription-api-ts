@@ -1,8 +1,8 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { UpdateResult } from '@/types';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
+import { UpdateResult } from '../types';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 import { SingBoxService } from './singBoxService';
 import { SubconverterService } from './subconverterService';
 

@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 
 export class SubconverterService {
     private static instance: SubconverterService;

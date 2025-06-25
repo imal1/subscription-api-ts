@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { SubscriptionService } from '@/services/subscriptionService';
-import { SingBoxService } from '@/services/singBoxService';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
-import { ApiResponse, ConfigUpdateRequest } from '@/types';
+import { SubscriptionService } from '../services/subscriptionService';
+import { SingBoxService } from '../services/singBoxService';
+import { config } from '../config';
+import { logger } from '../utils/logger';
+import { ApiResponse, ConfigUpdateRequest } from '../types';
 
 export class SubscriptionController {
     private subscriptionService: SubscriptionService;

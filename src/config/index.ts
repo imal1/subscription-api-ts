@@ -1,4 +1,4 @@
-import { Config } from '@/types';
+import { Config } from '../types';
 
 export const config: Config = {
     port: parseInt(process.env.PORT || '3000'),

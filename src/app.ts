@@ -4,10 +4,10 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as cron from 'node-cron';
 
-import { config, validateConfig } from '@/config';
-import { logger } from '@/utils/logger';
-import { SubscriptionService } from '@/services/subscriptionService';
-import routes from '@/routes';
+import { config, validateConfig } from './config';
+import { logger } from './utils/logger';
+import { SubscriptionService } from './services/subscriptionService';
+import routes from './routes';
 
 export class App {
     public app: Application;

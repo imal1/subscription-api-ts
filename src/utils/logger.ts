@@ -1,6 +1,6 @@
 import winston from 'winston';
 import * as path from 'path';
-import { config } from '@/config';
+import { config } from '../config';
 
 const logFormat = winston.format.combine(
     winston.format.timestamp({
