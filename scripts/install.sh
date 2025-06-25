@@ -338,14 +338,21 @@ if [ "$OS" = "Linux" ]; then
             if [[ $EUID -eq 0 ]]; then
                 cp "$CURRENT_NODE" /usr/local/bin/node
                 chmod +x /usr/local/bin/node
+                echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
             else
-                sudo cp "$CURRENT_NODE" /usr/local/bin/node
-                sudo chmod +x /usr/local/bin/node
+                if sudo cp "$CURRENT_NODE" /usr/local/bin/node && sudo chmod +x /usr/local/bin/node; then
+                    echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
+                else
+                    echo "   ❌ 复制失败，请手动执行："
+                    echo "      sudo cp $CURRENT_NODE /usr/local/bin/node"
+                    echo "      sudo chmod +x /usr/local/bin/node"
+                fi
             fi
-            echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
         else
             echo "   ✅ 系统已有 Node.js: $SYSTEM_NODE"
         fi
+    else
+        echo "   ✅ 使用系统 Node.js 路径"
     fi
     
     # 设置环境变量供服务生成脚本使用

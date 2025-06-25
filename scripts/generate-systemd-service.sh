@@ -69,21 +69,50 @@ if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_P
         "/opt/node/bin/node"
     )
     
+    FOUND_SYSTEM_NODE=""
     for path in "${SYSTEM_PATHS[@]}"; do
         if [ -f "$path" ] && [ -x "$path" ]; then
-            NODE_PATH="$path"
-            echo "✅ 使用系统 Node.js 路径: $NODE_PATH"
+            FOUND_SYSTEM_NODE="$path"
+            echo "✅ 找到系统 Node.js: $FOUND_SYSTEM_NODE"
             break
         fi
     done
     
-    # 如果还是版本管理器路径，尝试复制到系统路径
-    if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
-        echo "⚠️  仍然是版本管理器路径，建议安装系统级 Node.js"
-        echo "   或者将当前 node 复制到系统路径："
+    if [ -n "$FOUND_SYSTEM_NODE" ]; then
+        NODE_PATH="$FOUND_SYSTEM_NODE"
+    else
+        echo "⚠️  未找到系统 Node.js，将使用当前路径但可能在 systemd 中失败"
+        echo "   建议手动复制 Node.js 到系统路径："
         echo "   sudo cp $(which node) /usr/local/bin/node"
-        echo "   继续使用当前路径，但可能在 systemd 中失败"
+        echo "   sudo chmod +x /usr/local/bin/node"
+        
+        # 询问是否自动复制
+        echo ""
+        read -p "是否自动复制 Node.js 到 /usr/local/bin/node? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "📝 复制 Node.js 到系统路径..."
+            if [[ $EUID -eq 0 ]]; then
+                cp "$NODE_PATH" /usr/local/bin/node
+                chmod +x /usr/local/bin/node
+                NODE_PATH="/usr/local/bin/node"
+                echo "✅ Node.js 已复制到: $NODE_PATH"
+            else
+                if sudo cp "$NODE_PATH" /usr/local/bin/node && sudo chmod +x /usr/local/bin/node; then
+                    NODE_PATH="/usr/local/bin/node"
+                    echo "✅ Node.js 已复制到: $NODE_PATH"
+                else
+                    echo "❌ 复制失败，继续使用原路径"
+                fi
+            fi
+        fi
     fi
+fi
+
+# 最终验证 Node.js 路径
+if [ ! -f "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
+    echo "❌ Node.js 路径无效: $NODE_PATH"
+    exit 1
 fi
 
 # 读取环境变量（如果存在）
