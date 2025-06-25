@@ -74,9 +74,9 @@ fi
 # 如果使用了版本管理器，尝试使用系统路径
 echo "🔍 检测到的 Node.js 路径: $NODE_PATH"
 
-# 检查是否使用了版本管理器（fnm, nvm等）
-if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_PATH" == *".local"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]] || [[ "$NODE_PATH" == *"node-versions"* ]]; then
-    echo "⚠️  检测到版本管理器路径，尝试查找或创建系统 Node.js..."
+# 检查是否使用了用户环境路径
+if [[ "$NODE_PATH" == *".local"* ]] || [[ "$NODE_PATH" == *"/run/user/"* ]]; then
+    echo "⚠️  检测到用户环境路径，尝试查找或创建系统 Node.js..."
     
     # 尝试常见的系统路径
     SYSTEM_PATHS=(
@@ -106,7 +106,7 @@ if [[ "$NODE_PATH" == *"fnm"* ]] || [[ "$NODE_PATH" == *"nvm"* ]] || [[ "$NODE_P
         read -p "是否自动复制 Node.js 到 /usr/local/bin/node? (Y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Nn]$ ]]; then
-            echo "⚠️  继续使用版本管理器路径，服务可能启动失败"
+            echo "⚠️  继续使用用户环境路径，服务可能启动失败"
         else
             echo "📝 复制 Node.js 到系统路径..."
             TARGET_PATH="/usr/local/bin/node"

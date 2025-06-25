@@ -320,9 +320,9 @@ if [ "$OS" = "Linux" ]; then
     CURRENT_NODE=$(which node)
     echo "   当前 Node.js 路径: $CURRENT_NODE"
     
-    # 如果使用版本管理器路径，自动修复
-    if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"node-versions"* ]]; then
-        echo "⚠️  检测到版本管理器路径，自动修复..."
+    # 如果使用了版本管理器，自动修复
+    if [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+        echo "⚠️  检测到用户环境路径，自动修复..."
         
         # 检查系统路径是否已有 Node.js
         SYSTEM_NODE=""

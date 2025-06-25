@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # 快速诊断 Node.js 和 systemd 服务问题
-# 特别针对 fnm 用户
 
 set -e
 
@@ -115,17 +114,12 @@ print_header "诊断总结和建议"
 # 生成建议
 if command -v node >/dev/null 2>&1; then
     NODE_PATH=$(which node)
-    if is_version_manager_path "$NODE_PATH"; then
+    if is_user_env_path "$NODE_PATH"; then
         echo
-        print_warning "主要问题: 版本管理器路径"
+        print_warning "主要问题: 用户环境路径"
         echo "🔧 推荐解决方案:"
-        if [[ "$NODE_PATH" == *"fnm"* ]]; then
-            echo "   1. 使用专用修复脚本: bash scripts/fix-fnm-systemd.sh"
-            echo "   2. 或使用管理工具: ./manage.sh fix-fnm"
-        else
-            echo "   1. 使用通用修复: ./manage.sh fix-systemd-workdir"
-        fi
-        echo "   3. 手动复制: sudo cp \$(which node) /usr/local/bin/node"
+        echo "   1. 使用通用修复: ./manage.sh fix-systemd-workdir"
+        echo "   2. 手动复制: sudo cp \$(which node) /usr/local/bin/node"
     elif ! find_system_node >/dev/null 2>&1; then
         echo
         print_warning "主要问题: 系统路径中无 Node.js"

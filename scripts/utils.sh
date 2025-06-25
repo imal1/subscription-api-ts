@@ -3,19 +3,14 @@
 # 通用工具函数库
 # 包含 Node.js 路径检测、sudo 处理等常用功能
 
-# 检测是否是版本管理器路径（fnm, nvm 等）
-is_version_manager_path() {
+# 检测是否是用户环境路径
+is_user_env_path() {
     local node_path="$1"
-    if [[ "$node_path" == *"fnm"* ]] || \
-       [[ "$node_path" == *"nvm"* ]] || \
-       [[ "$node_path" == *".local/share/fnm"* ]] || \
-       [[ "$node_path" == *".fnm"* ]] || \
-       [[ "$node_path" == *"node-versions"* ]] || \
-       [[ "$node_path" == *".local"* ]] || \
+    if [[ "$node_path" == *".local"* ]] || \
        [[ "$node_path" == *"/run/user/"* ]]; then
-        return 0  # 是版本管理器路径
+        return 0  # 是用户环境路径
     else
-        return 1  # 不是版本管理器路径
+        return 1  # 不是用户环境路径
     fi
 }
 
@@ -137,30 +132,14 @@ get_systemd_node_path() {
     fi
 }
 
-# 检测 fnm 是否已安装
-is_fnm_installed() {
-    if command -v fnm >/dev/null 2>&1; then
-        return 0
-    elif [ -d "$HOME/.local/share/fnm" ] || [ -d "$HOME/.fnm" ]; then
-        return 0
+# 获取当前 Node.js 版本信息
+get_node_info() {
+    if command -v node >/dev/null 2>&1; then
+        local node_version=$(node --version)
+        local node_path=$(which node)
+        echo "Node.js: $node_version ($node_path)"
     else
-        return 1
-    fi
-}
-
-# 获取 fnm 版本信息
-get_fnm_info() {
-    if command -v fnm >/dev/null 2>&1; then
-        local version=$(fnm --version 2>/dev/null || echo "unknown")
-        echo "fnm 版本: $version"
-        
-        if command -v node >/dev/null 2>&1; then
-            local node_version=$(node --version)
-            local node_path=$(which node)
-            echo "当前 Node.js: $node_version ($node_path)"
-        fi
-    else
-        echo "fnm 未在 PATH 中"
+        echo "Node.js 未安装"
     fi
 }
 
@@ -210,10 +189,8 @@ diagnose_node_environment() {
     fi
     
     echo ""
-    if is_fnm_installed; then
-        echo "版本管理器信息:"
-        get_fnm_info
-    fi
+    get_node_info
+}
 }
 
 # 导出函数供其他脚本使用
@@ -224,6 +201,5 @@ export -f safe_chmod
 export -f find_system_node
 export -f copy_node_to_system
 export -f get_systemd_node_path
-export -f is_fnm_installed
-export -f get_fnm_info
+export -f get_node_info
 export -f diagnose_node_environment

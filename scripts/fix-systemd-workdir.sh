@@ -105,7 +105,7 @@ if [ ! -d "$WORKING_DIR" ]; then
     WORKING_DIR="$FOUND_DIR"
 fi
 
-# 检查 Node.js 路径并处理 fnm
+# 检查 Node.js 路径
 if [ ! -f "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
     print_error "Node.js 路径无效: $NODE_PATH"
     
@@ -134,9 +134,9 @@ if [ ! -f "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
         if [ -n "$CURRENT_NODE" ] && [ -f "$CURRENT_NODE" ]; then
             print_status "找到当前环境 Node.js: $CURRENT_NODE"
             
-            # 检查是否是版本管理器路径
-            if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]] || [[ "$CURRENT_NODE" == *"node-versions"* ]]; then
-                print_status "检测到版本管理器路径，复制到系统路径..."
+            # 检查是否是用户环境路径
+            if [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+                print_status "检测到用户环境路径，复制到系统路径..."
                 TARGET_PATH="/usr/local/bin/node"
                 
                 if [[ $EUID -eq 0 ]]; then

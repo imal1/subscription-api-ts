@@ -65,7 +65,7 @@ fi
 WORKING_DIR="$(cd "$FOUND_PROJECT" && pwd)"
 print_success "找到项目目录: $WORKING_DIR"
 
-# 查找 Node.js 并处理 fnm 安装
+# 查找 Node.js 路径
 print_status "查找和修复 Node.js 路径..."
 
 # 首先检查系统路径中是否已有可用的 Node.js
@@ -91,9 +91,9 @@ if [ -z "$FOUND_SYSTEM_NODE" ]; then
     if [ -n "$CURRENT_NODE" ] && [ -f "$CURRENT_NODE" ] && [ -x "$CURRENT_NODE" ]; then
         print_status "找到当前环境 Node.js: $CURRENT_NODE"
         
-        # 检查是否是 fnm 或其他版本管理器路径
-        if [[ "$CURRENT_NODE" == *"fnm"* ]] || [[ "$CURRENT_NODE" == *"nvm"* ]] || [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]] || [[ "$CURRENT_NODE" == *"node-versions"* ]]; then
-            print_warning "检测到版本管理器路径，需要复制到系统路径"
+        # 检查是否是用户环境路径
+        if [[ "$CURRENT_NODE" == *".local"* ]] || [[ "$CURRENT_NODE" == *"/run/user/"* ]]; then
+            print_warning "检测到用户环境路径，需要复制到系统路径"
             
             # 复制到系统路径
             TARGET_PATH="/usr/local/bin/node"

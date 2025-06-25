@@ -30,9 +30,10 @@ npm run build
 ./manage.sh fix-workdir         # 自动修复
 ```
 
-**3. Node.js 路径问题**（版本管理器冲突）：
+**3. Node.js 路径问题**：
 ```bash
-./manage.sh fix-node           # 修复 Node.js 路径
+# 修复用户环境路径问题
+./manage.sh fix-systemd-workdir
 ```持 systemd 服务管理
 - 🐳 **容器化**: 支持 Docker 部署
 
@@ -47,10 +48,30 @@ npm run build
 
 ## 📋 系统要求
 
-- Ubuntu 18.04+ / Debian 10+
-- Node.js 18+
+- Ubuntu 18.04+ / Debian 10+ / CentOS 8+
+- **Node.js 18+** （推荐使用官方安装包，避免版本管理器）
 - sing-box (已安装配置)
 - subconverter 服务
+
+### 💡 Node.js 安装建议
+
+**强烈推荐使用官方 Node.js 安装包**，以确保 systemd 服务的兼容性：
+
+**Ubuntu/Debian:**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+**CentOS/RHEL:**
+```bash
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+sudo yum install -y nodejs
+```
+
+**或访问 [nodejs.org](https://nodejs.org/) 下载官方安装包**
+
+⚠️ **注意**: 请避免使用 fnm、nvm 等版本管理器，因为它们的 Node.js 路径在 systemd 服务中可能不可用。
 
 ## 🚀 快速开始
 
@@ -139,7 +160,7 @@ pm2 start dist/index.js --name subscription-api-ts
 ./manage.sh diagnose     # 系统诊断
 ./manage.sh fix          # 自动修复
 ./manage.sh fix-ts       # 修复 TypeScript 问题
-./manage.sh fix-node     # 修复 Node.js 路径
+./manage.sh fix-systemd-workdir  # 修复系统路径问题
 
 # 📋 信息查看
 ./manage.sh logs         # 查看日志
@@ -485,7 +506,7 @@ bash scripts/diagnose-systemd.sh
 
 #### 自动修复脚本
 
-项目提供了多种自动修复脚本，可以解决不同类型的 SystemD 相关问题：
+项目提供了自动修复脚本，可以解决 SystemD 相关问题：
 
 ```bash
 # 通用服务修复（需要 sudo 权限）
@@ -494,32 +515,11 @@ sudo npm run service:fix
 # 专门修复 systemd 工作目录问题
 bash scripts/fix-systemd-workdir.sh
 
-# FNM 用户专用修复（推荐 fnm 用户使用）
-bash scripts/fix-fnm-systemd.sh
-
 # 使用统一管理工具
 ./manage.sh fix-systemd-workdir    # 修复工作目录问题
-./manage.sh fix-fnm               # fnm 用户专用修复
 ./manage.sh fix                    # 自动修复常见问题
 ./manage.sh check                  # 全面诊断
 ```
-
-**FNM 用户特别说明：**
-
-如果你使用 fnm (Fast Node Manager) 管理 Node.js 版本，建议使用专门的修复脚本：
-
-```bash
-# FNM 用户专用修复
-bash scripts/fix-fnm-systemd.sh
-# 或
-./manage.sh fix-fnm
-```
-
-该脚本会：
-- 自动检测 fnm 管理的 Node.js 路径
-- 将 Node.js 复制到系统路径 (`/usr/local/bin/node`)
-- 生成适合 systemd 的服务配置
-- 自动启动和验证服务状态
 
 **工作目录修复脚本功能：**
 - 自动检测和修复 `WorkingDirectory` 路径错误
@@ -545,43 +545,17 @@ bash scripts/fix-fnm-systemd.sh
 2. Node.js 可执行文件路径错误
 3. 服务用户没有访问工作目录的权限
 
-**FNM 用户常见问题：**
-
-fnm (Fast Node Manager) 是一个现代的 Node.js 版本管理器，但它会将 Node.js 安装在用户目录下（如 `~/.local/share/fnm/node-versions/`），systemd 服务运行时无法访问这些路径。
-
-**FNM 路径示例：**
-- `~/.local/share/fnm/node-versions/v18.19.0/installation/bin/node`
-- `~/.fnm/node-versions/v20.11.0/installation/bin/node`
-
-**问题原因：**
-1. systemd 服务在独立的环境中运行，没有用户的 shell 环境变量
-2. fnm 通过修改 PATH 和环境变量来工作，但这些在 systemd 中不可用
-3. 服务启动时找不到 Node.js 可执行文件，导致 `CHDIR` 或 `EXEC` 失败
-
-**解决方案：**
-
-**解决方案：**
-```bash
-# 方法1：快速检查是否为 fnm 问题
-bash scripts/check-fnm.sh
-
-# 方法2：针对 FNM 用户的专用修复
-bash scripts/fix-fnm-systemd.sh
-
-# 方法3：使用管理工具
-./manage.sh check-fnm        # 检查问题
-./manage.sh fix-fnm          # 修复问题
-
-# 方法4：手动修复
-sudo cp $(which node) /usr/local/bin/node
-sudo chmod +x /usr/local/bin/node
-
-# 然后重新生成服务文件
-bash scripts/generate-systemd-service.sh $(pwd)
-sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl restart subscription-api-ts
-```
+**推荐解决方案：**
+1. **使用官方 Node.js 安装包**（推荐）
+2. **使用修复脚本**：
+   ```bash
+   bash scripts/fix-systemd-workdir.sh
+   ```
+3. **手动复制到系统路径**：
+   ```bash
+   sudo cp $(which node) /usr/local/bin/node
+   sudo chmod +x /usr/local/bin/node
+   ```
 ## 🤝 贡献
 欢迎提交 Issue 和 Pull Request！
 
