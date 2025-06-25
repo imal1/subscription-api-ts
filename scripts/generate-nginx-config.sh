@@ -44,6 +44,7 @@ fi
 if [ "$NODE_ENV" = "production" ]; then
     echo "📝 生成生产环境nginx配置..."
     export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR
+    # 只替换指定的环境变量，避免nginx变量被误替换
     envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 生产环境配置已生成: config/nginx.conf"
 fi

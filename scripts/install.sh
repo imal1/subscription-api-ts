@@ -385,7 +385,8 @@ if command -v nginx &> /dev/null; then
     # 使用envsubst生成配置文件
     export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR
     if command -v envsubst >/dev/null 2>&1; then
-        envsubst < config/nginx.conf.template > config/nginx.conf
+        # 只替换指定的环境变量，避免nginx变量被误替换
+        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
         echo "✅ 使用 envsubst 生成配置文件"
     else
         # 如果没有envsubst，使用sed替换
