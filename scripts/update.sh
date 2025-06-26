@@ -5,6 +5,27 @@
 
 set -e
 
+# 检查sudo命令是否可用
+HAS_SUDO=false
+if command -v sudo >/dev/null 2>&1; then
+    HAS_SUDO=true
+fi
+
+# 定义安全的sudo函数
+safe_sudo() {
+    if [[ $EUID -eq 0 ]]; then
+        # 如果是root用户，直接执行命令
+        "$@"
+    elif [ "$HAS_SUDO" = true ]; then
+        # 如果有sudo且不是root，使用sudo
+        sudo "$@"
+    else
+        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
+        echo "   请以root用户运行此脚本，或安装sudo命令"
+        exit 1
+    fi
+}
+
 echo "🚀 开始更新 Subscription API..."
 
 # 获取脚本所在目录
@@ -39,7 +60,7 @@ npm run build
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "🔄 重启服务..."
-    sudo systemctl restart "$SERVICE_NAME"
+    safe_sudo systemctl restart "$SERVICE_NAME"
     
     # 等待服务启动
     sleep 3
@@ -55,7 +76,7 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
     fi
 else
     echo "🚀 启动服务..."
-    sudo systemctl start "$SERVICE_NAME"
+    safe_sudo systemctl start "$SERVICE_NAME"
     
     # 等待服务启动
     sleep 3
@@ -81,4 +102,12 @@ echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/diagnose/clash"
 echo "   curl http://localhost:${NGINX_PROXY_PORT}/clash.yaml"
 echo ""
 echo "📊 查看日志："
-echo "   sudo journalctl -u $SERVICE_NAME -f"
+if [[ $EUID -eq 0 ]]; then
+    echo "   journalctl -u $SERVICE_NAME -f"
+else
+    if [ "$HAS_SUDO" = true ]; then
+        echo "   sudo journalctl -u $SERVICE_NAME -f"
+    else
+        echo "   journalctl -u $SERVICE_NAME -f (需要root权限)"
+    fi
+fi

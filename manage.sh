@@ -7,6 +7,27 @@
 
 set -e
 
+# 检查sudo命令是否可用
+HAS_SUDO=false
+if command -v sudo >/dev/null 2>&1; then
+    HAS_SUDO=true
+fi
+
+# 定义安全的sudo函数
+safe_sudo() {
+    if [[ $EUID -eq 0 ]]; then
+        # 如果是root用户，直接执行命令
+        "$@"
+    elif [ "$HAS_SUDO" = true ]; then
+        # 如果有sudo且不是root，使用sudo
+        sudo "$@"
+    else
+        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
+        echo "   请以root用户运行此脚本，或安装sudo命令"
+        exit 1
+    fi
+}
+
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
@@ -115,17 +136,17 @@ manage_service() {
         case "$action" in
             "start")
                 echo -e "${GREEN}🚀 启动服务: $service_name${NC}"
-                sudo systemctl start "$service_name"
-                sudo systemctl status "$service_name" --no-pager -l
+                safe_sudo systemctl start "$service_name"
+                safe_sudo systemctl status "$service_name" --no-pager -l
                 ;;
             "stop")
                 echo -e "${YELLOW}⏹️  停止服务: $service_name${NC}"
-                sudo systemctl stop "$service_name"
+                safe_sudo systemctl stop "$service_name"
                 ;;
             "restart")
                 echo -e "${BLUE}🔄 重启服务: $service_name${NC}"
-                sudo systemctl restart "$service_name"
-                sudo systemctl status "$service_name" --no-pager -l
+                safe_sudo systemctl restart "$service_name"
+                safe_sudo systemctl status "$service_name" --no-pager -l
                 ;;
         esac
     elif [ "$os" = "Mac" ]; then
@@ -169,9 +190,17 @@ show_logs() {
     if [ "$os" = "Linux" ]; then
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
         echo -e "${CYAN}📝 查看服务日志 (最新 50 条):${NC}"
-        sudo journalctl -u "$service_name" -n 50 --no-pager
+        safe_sudo journalctl -u "$service_name" -n 50 --no-pager
         echo ""
-        echo -e "${WHITE}💡 实时查看日志: sudo journalctl -u $service_name -f${NC}"
+        if [[ $EUID -eq 0 ]]; then
+            echo -e "${WHITE}💡 实时查看日志: journalctl -u $service_name -f${NC}"
+        else
+            if [ "$HAS_SUDO" = true ]; then
+                echo -e "${WHITE}💡 实时查看日志: sudo journalctl -u $service_name -f${NC}"
+            else
+                echo -e "${WHITE}💡 实时查看日志: journalctl -u $service_name -f (需要root权限)${NC}"
+            fi
+        fi
     elif [ "$os" = "Mac" ]; then
         if [ -f "logs/combined.log" ]; then
             echo -e "${CYAN}📝 查看应用日志:${NC}"
@@ -453,11 +482,11 @@ run_update_service() {
         # 检查服务是否正在运行
         if systemctl is-active --quiet "$service_name"; then
             echo -e "${CYAN}🔄 重启服务...${NC}"
-            sudo systemctl restart "$service_name"
+            safe_sudo systemctl restart "$service_name"
             sleep 3
         else
             echo -e "${CYAN}🚀 启动服务...${NC}"
-            sudo systemctl start "$service_name"
+            safe_sudo systemctl start "$service_name"
             sleep 3
         fi
         
@@ -483,7 +512,15 @@ run_update_service() {
         echo -e "  ${CYAN}curl http://localhost:${nginx_proxy_port}/clash.yaml${NC}"
         echo ""
         echo -e "${WHITE}📊 查看日志:${NC}"
-        echo -e "  ${CYAN}sudo journalctl -u $service_name -f${NC}"
+        if [[ $EUID -eq 0 ]]; then
+            echo -e "  ${CYAN}journalctl -u $service_name -f${NC}"
+        else
+            if [ "$HAS_SUDO" = true ]; then
+                echo -e "  ${CYAN}sudo journalctl -u $service_name -f${NC}"
+            else
+                echo -e "  ${CYAN}journalctl -u $service_name -f${WHITE} (需要root权限)${NC}"
+            fi
+        fi
         
     elif [ "$os" = "Mac" ]; then
         echo -e "${CYAN}🔄 重启服务 (macOS)...${NC}"
