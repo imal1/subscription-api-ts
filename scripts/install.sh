@@ -758,6 +758,84 @@ if command -v nginx &> /dev/null; then
     fi
     
     if [ "$OS" = "Linux" ]; then
+        # 修复 Nginx 静态文件服务权限问题
+        echo "🔧 修复 Nginx 静态文件权限..."
+        
+        # 检查数据目录权限
+        if [ -d "$DATA_DIR" ]; then
+            echo "   检查数据目录: $DATA_DIR"
+            DIR_PERMS=$(ls -ld "$DATA_DIR" | cut -d' ' -f1)
+            DIR_OWNER=$(ls -ld "$DATA_DIR" | awk '{print $3":"$4}')
+            echo "   当前权限: $DIR_PERMS (所有者: $DIR_OWNER)"
+            
+            # 检查 Nginx 用户
+            NGINX_USER="www-data"
+            if ! id "$NGINX_USER" >/dev/null 2>&1; then
+                # 尝试其他常见的 Nginx 用户名
+                for user in nginx http; do
+                    if id "$user" >/dev/null 2>&1; then
+                        NGINX_USER="$user"
+                        break
+                    fi
+                done
+            fi
+            echo "   Nginx 用户: $NGINX_USER"
+            
+            # 修复权限
+            echo "   修复目录权限..."
+            safe_sudo chown -R "$NGINX_USER:$NGINX_USER" "$DATA_DIR"
+            safe_sudo chmod -R 755 "$DATA_DIR"
+            safe_sudo find "$DATA_DIR" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            
+            # 创建测试文件
+            echo "   创建测试文件..."
+            TEST_FILE="$DATA_DIR/test.html"
+            INDEX_FILE="$DATA_DIR/index.html"
+            
+            cat > /tmp/test.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nginx 测试页面</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>🎉 Nginx 静态服务正常工作！</h1>
+    <p>如果您看到这个页面，说明 Nginx 静态文件服务已经正确配置。</p>
+    <p>访问时间: <script>document.write(new Date().toLocaleString());</script></p>
+    <hr>
+    <p><a href="/subscription.txt">查看订阅文件</a></p>
+</body>
+</html>
+EOF
+            
+            # 复制测试文件
+            safe_sudo cp /tmp/test.html "$TEST_FILE"
+            safe_sudo cp /tmp/test.html "$INDEX_FILE"
+            safe_sudo chown "$NGINX_USER:$NGINX_USER" "$TEST_FILE" "$INDEX_FILE"
+            safe_sudo chmod 644 "$TEST_FILE" "$INDEX_FILE"
+            rm /tmp/test.html
+            
+            echo "   ✅ 测试文件已创建"
+            
+            # 检查 SELinux (如果适用)
+            if command -v getenforce >/dev/null 2>&1; then
+                SELINUX_STATUS=$(getenforce 2>/dev/null || echo "未知")
+                echo "   SELinux 状态: $SELINUX_STATUS"
+                
+                if [ "$SELINUX_STATUS" = "Enforcing" ]; then
+                    echo "   修复 SELinux 权限..."
+                    safe_sudo setsebool -P httpd_read_user_content 1 2>/dev/null || true
+                    safe_sudo restorecon -R "$DATA_DIR" 2>/dev/null || true
+                    echo "   ✅ SELinux 策略已更新"
+                fi
+            fi
+            
+            echo "   ✅ Nginx 静态文件权限修复完成"
+        else
+            echo "   ❌ 数据目录不存在: $DATA_DIR"
+        fi
+        
         # 删除现有符号链接（如果存在）
         if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
             safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
@@ -781,6 +859,19 @@ if command -v nginx &> /dev/null; then
                 safe_sudo systemctl start nginx
                 safe_sudo systemctl enable nginx
             fi
+            
+            # 测试静态文件访问
+            echo "🧪 测试静态文件访问..."
+            sleep 2  # 等待服务启动
+            
+            if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PORT}/" | grep -q "200"; then
+                echo "   ✅ 静态文件服务测试成功 (HTTP 200)"
+            else
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PORT}/" 2>/dev/null || echo "连接失败")
+                echo "   ⚠️  静态文件服务测试失败 (HTTP: $HTTP_CODE)"
+                echo "   💡 请检查防火墙或端口配置"
+            fi
+            
             echo "✅ Nginx 配置完成"
         else
             echo "❌ Nginx 配置测试失败，请检查配置文件"
