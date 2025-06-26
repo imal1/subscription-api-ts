@@ -89,7 +89,7 @@ def index():
         }
     })
 
-@app.route('/api/update', methods=['POST'])
+@app.route('/api/update', methods=['GET'])
 def update_subscription():
     """更新订阅"""
     try:

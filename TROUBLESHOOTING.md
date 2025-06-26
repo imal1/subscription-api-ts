@@ -246,7 +246,7 @@ curl -s http://localhost:3000/api/status | jq .
 curl -s http://localhost:3000/api/configs | jq .
 
 # 2. 订阅更新（正确方法）
-curl -X POST http://localhost:3000/api/update -v
+curl http://localhost:3000/api/update -v
 
 # 3. 文件下载
 curl -I http://localhost:3000/subscription.txt
@@ -400,7 +400,7 @@ netstat -tlnp | grep -E ":300[0-9]" >> debug-info.txt
 
 4. **测试更新订阅（正确方法）：**
    ```bash
-   curl -X POST http://localhost:3000/api/update
+   curl http://localhost:3000/api/update
    ```
 
 5. **检查生成的文件：**

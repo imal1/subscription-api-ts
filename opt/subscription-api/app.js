@@ -217,7 +217,7 @@ app.get('/', (req, res) => {
 });
 
 // 更新订阅
-app.post('/api/update', async (req, res) => {
+app.get('/api/update', async (req, res) => {
     try {
         const result = await updateSubscription();
         res.json(result);
