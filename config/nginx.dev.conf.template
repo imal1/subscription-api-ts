@@ -34,9 +34,48 @@ server {
     listen ${NGINX_PORT_STATIC};
     server_name localhost;
     
+    # 启用目录浏览（开发环境）
+    autoindex on;
+    autoindex_exact_size off;
+    autoindex_localtime on;
+    
     location / {
         root ${DATA_DIR};  # 数据目录
+        
+        # 设置默认文件
+        index subscription.txt;
+        
+        # 添加 CORS 头
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, OPTIONS";
+        add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept";
+        
+        # 处理 OPTIONS 请求
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "*";
+            add_header Access-Control-Allow-Methods "GET, OPTIONS";
+            add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept";
+            add_header Content-Length 0;
+            add_header Content-Type text/plain;
+            return 200;
+        }
+        
+        # 尝试文件，然后目录，最后返回404
+        try_files $uri $uri/ =404;
+    }
+    
+    # 特定文件类型的 MIME 设置
+    location ~ \.(txt|yaml|yml)$ {
+        root ${DATA_DIR};
         add_header Content-Type "text/plain; charset=utf-8";
         add_header Access-Control-Allow-Origin "*";
+        expires 5m;
+    }
+    
+    # 健康检查端点
+    location /health {
+        access_log off;
+        return 200 "Static server is healthy\n";
+        add_header Content-Type text/plain;
     }
 }

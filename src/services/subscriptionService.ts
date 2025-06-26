@@ -100,17 +100,27 @@ export class SubscriptionService {
                     logger.warn(`直接内容转换失败: ${contentError.message}，尝试使用URL方式`);
                     
                     // 如果直接内容转换失败，回退到 URL 方式
-                    let subscriptionUrl = localSubscriptionUrl;
+                    // 优先使用 Nginx 代理端口（通常可用）
+                    const proxyPort = process.env.NGINX_PROXY_PORT || '3888';
+                    const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+                    let subscriptionUrl = `http://${externalHost}:${proxyPort}/subscription.txt`;
+                    
                     try {
                         const axios = require('axios');
-                        await axios.get(localSubscriptionUrl, { timeout: 3000 });
-                        logger.info('使用本地订阅URL');
-                    } catch (urlError: any) {
-                        // 如果本地 URL 不可访问，尝试使用外部 URL
-                        const externalPort = process.env.NGINX_PROXY_PORT || '3888';
-                        const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-                        subscriptionUrl = `http://${externalHost}:${externalPort}/subscription.txt`;
-                        logger.info(`本地URL不可访问 (${urlError.message})，使用外部URL: ${subscriptionUrl}`);
+                        await axios.get(subscriptionUrl, { timeout: 3000 });
+                        logger.info(`使用外部代理URL: ${subscriptionUrl}`);
+                    } catch (proxyError: any) {
+                        // 如果代理端口也不行，尝试原来的静态文件端口
+                        const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
+                        try {
+                            const axios2 = require('axios');
+                            await axios2.get(localSubscriptionUrl, { timeout: 3000 });
+                            subscriptionUrl = localSubscriptionUrl;
+                            logger.info(`回退到本地静态URL: ${subscriptionUrl}`);
+                        } catch (localError: any) {
+                            logger.warn(`代理端口错误: ${proxyError.message}, 本地端口错误: ${localError.message}`);
+                            logger.info(`使用外部代理URL: ${subscriptionUrl}`);
+                        }
                     }
                     
                     clashContent = await this.subconverterService.convertToClash(subscriptionUrl);
@@ -259,10 +269,16 @@ export class SubscriptionService {
                 }
             }
 
-            // 3. 检查本地订阅 URL 访问
+            // 3. 检查订阅 URL 访问（测试多个端点）
             const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
-            diagnosis.checks.localSubscriptionUrl = localSubscriptionUrl;
+            const proxyPort = process.env.NGINX_PROXY_PORT || '3888';
+            const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+            const externalSubscriptionUrl = `http://${externalHost}:${proxyPort}/subscription.txt`;
             
+            diagnosis.checks.localSubscriptionUrl = localSubscriptionUrl;
+            diagnosis.checks.externalSubscriptionUrl = externalSubscriptionUrl;
+            
+            // 测试本地 URL
             try {
                 const axios = require('axios');
                 const response = await axios.get(localSubscriptionUrl, { timeout: 5000 });
@@ -273,21 +289,60 @@ export class SubscriptionService {
                 diagnosis.checks.localSubscriptionAccessible = false;
                 diagnosis.checks.localSubscriptionError = error.message;
             }
+            
+            // 测试外部代理 URL
+            try {
+                const axios = require('axios');
+                const response = await axios.get(externalSubscriptionUrl, { timeout: 5000 });
+                diagnosis.checks.externalSubscriptionAccessible = true;
+                diagnosis.checks.externalSubscriptionStatus = response.status;
+                diagnosis.checks.externalSubscriptionContentLength = response.data ? response.data.length : 0;
+            } catch (error: any) {
+                diagnosis.checks.externalSubscriptionAccessible = false;
+                diagnosis.checks.externalSubscriptionError = error.message;
+            }
 
             // 4. 如果 subconverter 可用，尝试转换
-            if (diagnosis.checks.subconverterHealthy && diagnosis.checks.localSubscriptionAccessible) {
+            if (diagnosis.checks.subconverterHealthy) {
+                // 优先使用外部代理 URL 进行测试
+                const testUrl = diagnosis.checks.externalSubscriptionAccessible ? 
+                    externalSubscriptionUrl : localSubscriptionUrl;
+                
                 try {
-                    const clashContent = await this.subconverterService.convertToClash(localSubscriptionUrl);
+                    const clashContent = await this.subconverterService.convertToClash(testUrl);
                     diagnosis.checks.conversionTest = {
                         success: true,
+                        testUrl: testUrl,
                         contentLength: clashContent ? clashContent.length : 0,
                         hasContent: clashContent && clashContent.trim().length > 0
                     };
                 } catch (error: any) {
                     diagnosis.checks.conversionTest = {
                         success: false,
+                        testUrl: testUrl,
                         error: error.message
                     };
+                    
+                    // 如果URL转换失败，尝试直接内容转换
+                    if (diagnosis.checks.subscriptionFileExists) {
+                        try {
+                            const rawFile = path.join(config.staticDir, 'raw_links.txt');
+                            if (await fs.pathExists(rawFile)) {
+                                const rawContent = await fs.readFile(rawFile, 'utf8');
+                                const directClashContent = await this.subconverterService.convertToClashByContent(rawContent);
+                                diagnosis.checks.directContentConversionTest = {
+                                    success: true,
+                                    contentLength: directClashContent ? directClashContent.length : 0,
+                                    hasContent: directClashContent && directClashContent.trim().length > 0
+                                };
+                            }
+                        } catch (directError: any) {
+                            diagnosis.checks.directContentConversionTest = {
+                                success: false,
+                                error: directError.message
+                            };
+                        }
+                    }
                 }
             }
 

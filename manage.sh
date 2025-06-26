@@ -73,6 +73,8 @@ show_help() {
     echo ""
     echo -e "${WHITE}🛠️ 诊断修复:${NC}"
     echo -e "  ${YELLOW}deploy${NC}           部署项目"
+    echo -e "  ${YELLOW}check${NC}            全面服务状态检测"
+    echo -e "  ${YELLOW}diagnose-nginx${NC}   诊断 Nginx 静态文件服务问题"
     echo ""
     echo -e "${WHITE}📋 信息查看:${NC}"
     echo -e "  ${CYAN}logs${NC}             查看服务日志"
@@ -573,6 +575,12 @@ main() {
             ;;
         "deploy")
             run_script "deploy.sh" "$@"
+            ;;
+        "check")
+            show_service_status
+            ;;
+        "diagnose-nginx")
+            run_script "diagnose-nginx.sh" "$@"
             ;;
         "start")
             manage_service "start"
