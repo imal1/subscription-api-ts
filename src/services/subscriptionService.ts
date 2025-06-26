@@ -61,8 +61,36 @@ export class SubscriptionService {
             // 确保目录存在
             await this.ensureDirectories();
 
-            // 创建订阅内容
-            const subscriptionContent = urls.join('\n');
+            // 过滤和验证代理URL，确保只包含有效的代理链接
+            const validProxyProtocols = ['vless://', 'vmess://', 'ss://', 'ssr://', 'trojan://', 'hysteria2://', 'tuic://', 'wireguard://'];
+            const filteredUrls = urls.filter(url => {
+                const trimmedUrl = url.trim();
+                // 检查是否是有效的代理URL
+                const isValidProxy = validProxyProtocols.some(protocol => trimmedUrl.startsWith(protocol));
+                // 排除包含描述信息的行
+                const isDescriptive = trimmedUrl.includes('-------------') || 
+                                    trimmedUrl.includes('关注(tg)') || 
+                                    trimmedUrl.includes('文档(doc)') || 
+                                    trimmedUrl.includes('推广(ads)') ||
+                                    trimmedUrl.includes('END') ||
+                                    trimmedUrl.startsWith('http://') ||
+                                    trimmedUrl.startsWith('https://') ||
+                                    trimmedUrl.length < 10;
+                
+                return isValidProxy && !isDescriptive && trimmedUrl.length > 0;
+            });
+
+            logger.info(`URL过滤结果: 原始${urls.length}个，过滤后${filteredUrls.length}个有效代理URL`);
+            
+            if (filteredUrls.length === 0) {
+                throw new Error(`没有找到有效的代理URL。原始URLs: ${urls.slice(0, 3).join(', ')}...`);
+            }
+
+            // 打印前几个URL用于调试
+            logger.info(`前3个有效代理URL: ${filteredUrls.slice(0, 3).join(', ')}`);
+
+            // 创建订阅内容 - 只包含纯净的代理URL
+            const subscriptionContent = filteredUrls.join('\n');
             const encodedContent = Buffer.from(subscriptionContent).toString('base64');
 
             // 保存文件
@@ -158,16 +186,16 @@ export class SubscriptionService {
 
             const result: UpdateResult = {
                 success: true,
-                message: `订阅更新成功，共 ${urls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
+                message: `订阅更新成功，共 ${filteredUrls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
                 timestamp: new Date().toISOString(),
-                nodesCount: urls.length,
+                nodesCount: filteredUrls.length,
                 clashGenerated,
                 backupCreated: backupFile,
                 warnings: errors.length > 0 ? errors : undefined,
                 errors: clashError ? [`Clash生成失败: ${clashError}`] : undefined
             };
 
-            logger.info(`订阅更新完成: ${urls.length} 个节点, Clash生成: ${clashGenerated}`);
+            logger.info(`订阅更新完成: ${filteredUrls.length} 个节点, Clash生成: ${clashGenerated}`);
             return result;
 
         } catch (error: any) {

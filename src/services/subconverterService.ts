@@ -98,6 +98,15 @@ export class SubconverterService {
                 params.append('config', customConfig);
             }
 
+            // 验证订阅内容
+            const lines = subscriptionContent.split('\n').filter(line => line.trim().length > 0);
+            logger.info(`准备转换的订阅内容: ${lines.length} 行`);
+            logger.info(`前3行内容预览: ${lines.slice(0, 3).join(' | ')}`);
+
+            if (lines.length === 0) {
+                throw new Error('订阅内容为空');
+            }
+
             logger.info(`通过内容请求Clash转换: ${config.subconverterUrl}/sub`);
 
             // 使用 POST 请求直接发送订阅内容
@@ -114,14 +123,23 @@ export class SubconverterService {
             );
 
             if (response.status === 200 && response.data) {
-                logger.info('Clash配置转换成功（通过内容）');
-                return response.data;
+                logger.info(`Clash配置转换成功（通过内容），长度: ${response.data.length} 字符`);
+                
+                // 检查返回内容是否是有效的YAML
+                if (response.data.includes('proxies:') || response.data.includes('proxy-groups:')) {
+                    return response.data;
+                } else {
+                    logger.warn(`转换结果可能无效，内容预览: ${response.data.substring(0, 200)}`);
+                    throw new Error('转换结果不包含有效的Clash配置');
+                }
             } else {
                 throw new Error(`转换失败: HTTP ${response.status}`);
             }
         } catch (error: any) {
             logger.error('Clash转换失败（通过内容）:', error);
             if (error.response) {
+                logger.error(`响应状态: ${error.response.status}`);
+                logger.error(`响应数据: ${error.response.data}`);
                 throw new Error(`转换失败: ${error.response.status} - ${error.response.data}`);
             } else if (error.request) {
                 throw new Error('转换请求超时或网络错误');
