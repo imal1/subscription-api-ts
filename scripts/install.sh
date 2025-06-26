@@ -37,8 +37,13 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 # 设置默认值
-export DATA_DIR="${DATA_DIR:-./data}"
-export LOG_DIR="${LOG_DIR:-./logs}"
+if [ "$OS" = "Linux" ]; then
+    export DATA_DIR="${DATA_DIR:-/var/www/subscription}"
+    export LOG_DIR="${LOG_DIR:-/var/log/subscription}"
+else
+    export DATA_DIR="${DATA_DIR:-./data}"
+    export LOG_DIR="${LOG_DIR:-./logs}"
+fi
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
 # 检查sudo命令是否可用
@@ -399,22 +404,33 @@ if [ ! -f .env ]; then
     
     # 根据操作系统调整配置文件中的路径
     if [ "$OS" = "Linux" ]; then
-        # 使用配置的目录路径
-        DEFAULT_DATA_DIR="/var/www/subscription"
-        DEFAULT_LOG_DIR="/var/log/subscription"
-        
-        sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR:-$DEFAULT_DATA_DIR}|g" .env
-        sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR:-$DEFAULT_LOG_DIR}|g" .env
+        # 使用已经设置的目录路径
+        sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
+        sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
         echo "✅ 已配置 Linux 系统路径"
-        echo "   数据目录: ${DATA_DIR:-$DEFAULT_DATA_DIR}"
-        echo "   日志目录: ${LOG_DIR:-$DEFAULT_LOG_DIR}"
+        echo "   数据目录: ${DATA_DIR}"
+        echo "   日志目录: ${LOG_DIR}"
     elif [ "$OS" = "Mac" ]; then
+        sed -i '' "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
+        sed -i '' "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
         echo "✅ 已配置 macOS 项目本地路径"
         echo "   数据目录: ${DATA_DIR}"
         echo "   日志目录: ${LOG_DIR}"
     fi
     
     echo "请编辑 .env 文件配置您的参数"
+    
+    # 确保 .env 文件的权限正确
+    if [ "$OS" = "Linux" ]; then
+        if [[ $EUID -eq 0 ]]; then
+            safe_sudo chown "$TARGET_USER:$TARGET_GROUP" .env
+            safe_sudo chmod 640 .env
+        else
+            safe_sudo chown "$TARGET_USER:$TARGET_GROUP" .env 2>/dev/null || true
+            safe_sudo chmod 640 .env 2>/dev/null || true
+        fi
+        echo "✅ .env 文件权限已设置 (所有者: $TARGET_USER:$TARGET_GROUP, 权限: 640)"
+    fi
 fi
 
 # 构建项目
@@ -601,29 +617,102 @@ if [ "$OS" = "Linux" ]; then
     
     # 安装服务文件
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
-    if [[ $EUID -eq 0 ]]; then
-        # 备份现有服务文件（如果存在）
-        if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-            echo "📁 备份现有 systemd 服务文件..."
-            safe_sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
-        fi
-        safe_sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
-        safe_sudo systemctl daemon-reload
-        safe_sudo systemctl enable "$SERVICE_NAME"
-    else
-        # 备份现有服务文件（如果存在）
-        if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-            echo "📁 备份现有 systemd 服务文件..."
-            safe_sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
-        fi
-        safe_sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
-        safe_sudo systemctl daemon-reload
-        safe_sudo systemctl enable "$SERVICE_NAME"
-    fi
+    safe_sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
+    safe_sudo systemctl daemon-reload
+    safe_sudo systemctl enable "$SERVICE_NAME"
     
     echo "✅ 服务文件已安装到 /etc/systemd/system/${SERVICE_NAME}.service"
     echo "📁 工作目录: $PROJECT_ROOT"
     echo "👤 运行用户: $TARGET_USER"
+    
+    # 验证数据目录权限
+    echo "🔍 验证数据目录权限..."
+    echo "   数据目录: $DATA_DIR"
+    if [ -d "$DATA_DIR" ]; then
+        # 测试写入权限
+        TEST_FILE="$DATA_DIR/.write_test_$$"
+        if safe_sudo_user "$TARGET_USER" touch "$TEST_FILE" 2>/dev/null; then
+            safe_sudo_user "$TARGET_USER" rm -f "$TEST_FILE" 2>/dev/null || true
+            echo "   ✅ 数据目录写入权限正常"
+        else
+            echo "   ❌ 数据目录写入权限异常，尝试修复..."
+            # 重新设置权限
+            if [[ $EUID -eq 0 ]]; then
+                safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR"
+                safe_sudo chmod -R 750 "$DATA_DIR"
+                safe_sudo find "$DATA_DIR" -type d -exec chmod 750 {} \;
+                safe_sudo find "$DATA_DIR" -type f -exec chmod 640 {} \; 2>/dev/null || true
+            else
+                safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR"
+                safe_sudo chmod -R 750 "$DATA_DIR"
+                safe_sudo find "$DATA_DIR" -type d -exec chmod 750 {} \; 2>/dev/null || true
+                safe_sudo find "$DATA_DIR" -type f -exec chmod 640 {} \; 2>/dev/null || true
+            fi
+            
+            # 再次测试
+            if safe_sudo_user "$TARGET_USER" touch "$TEST_FILE" 2>/dev/null; then
+                safe_sudo_user "$TARGET_USER" rm -f "$TEST_FILE" 2>/dev/null || true
+                echo "   ✅ 权限修复成功"
+            else
+                echo "   ❌ 权限修复失败，请检查以下问题："
+                echo "      1. 文件系统是否为只读挂载"
+                echo "      2. SELinux 是否阻止了写入"
+                echo "      3. 磁盘空间是否足够"
+                echo "      4. 目录路径是否正确"
+                ls -la "$DATA_DIR" 2>/dev/null || echo "      目录不存在或无法访问"
+            fi
+        fi
+        
+        # 显示目录详细信息
+        echo "   数据目录详情:"
+        ls -la "$DATA_DIR" 2>/dev/null || echo "      无法访问目录"
+        echo "   挂载信息:"
+        df -h "$DATA_DIR" 2>/dev/null || echo "      无法获取挂载信息"
+    else
+        echo "   ❌ 数据目录不存在: $DATA_DIR"
+    fi
+    
+    # 检查服务状态并重启/启动服务
+    echo "🔄 检查和重启服务..."
+    
+    # 准备日志提示命令
+    if [[ $EUID -eq 0 ]]; then
+        STATUS_CMD="systemctl status $SERVICE_NAME"
+        LOG_CMD="journalctl -u $SERVICE_NAME -f"
+    else
+        if [ "$HAS_SUDO" = true ]; then
+            STATUS_CMD="sudo systemctl status $SERVICE_NAME"
+            LOG_CMD="sudo journalctl -u $SERVICE_NAME -f"
+        else
+            STATUS_CMD="systemctl status $SERVICE_NAME (需要root权限)"
+            LOG_CMD="journalctl -u $SERVICE_NAME -f (需要root权限)"
+        fi
+    fi
+    
+    # 检查并启动/重启服务
+    if safe_sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+        echo "   服务正在运行，重启以加载新代码..."
+        if safe_sudo systemctl restart "$SERVICE_NAME"; then
+            echo "   ✅ 服务重启成功"
+        else
+            echo "   ❌ 服务重启失败，请检查日志:"
+            echo "      $STATUS_CMD"
+            echo "      $LOG_CMD"
+        fi
+    else
+        echo "   服务未运行，启动服务..."
+        if safe_sudo systemctl start "$SERVICE_NAME"; then
+            echo "   ✅ 服务启动成功"
+        else
+            echo "   ❌ 服务启动失败，请检查日志:"
+            echo "      $STATUS_CMD"
+            echo "      $LOG_CMD"
+        fi
+    fi
+    
+    # 显示服务状态
+    echo "📊 服务状态:"
+    safe_sudo systemctl status "$SERVICE_NAME" --no-pager -l || true
 elif [ "$OS" = "Mac" ]; then
     echo "ℹ️  macOS 用户请手动启动服务或使用 pm2"
 fi
@@ -669,60 +758,32 @@ if command -v nginx &> /dev/null; then
     fi
     
     if [ "$OS" = "Linux" ]; then
-        if [[ $EUID -eq 0 ]]; then
-            # 删除现有符号链接（如果存在）
-            if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
-                safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
-            fi
-            safe_sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
-            safe_sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
-            # 检查nginx配置是否正确
-            if safe_sudo nginx -t; then
-                # 检查nginx是否已经运行
-                if safe_sudo systemctl is-active --quiet nginx; then
-                    echo "🔄 重新加载 Nginx 配置..."
-                    if safe_sudo systemctl reload nginx; then
-                        echo "✅ Nginx 配置重新加载成功"
-                    else
-                        echo "⚠️  Nginx 重新加载失败，尝试重启..."
-                        safe_sudo systemctl restart nginx
-                    fi
+        # 删除现有符号链接（如果存在）
+        if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
+            safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
+        fi
+        safe_sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
+        safe_sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
+        
+        # 检查nginx配置是否正确
+        if safe_sudo nginx -t; then
+            # 检查nginx是否已经运行
+            if safe_sudo systemctl is-active --quiet nginx; then
+                echo "🔄 重新加载 Nginx 配置..."
+                if safe_sudo systemctl reload nginx; then
+                    echo "✅ Nginx 配置重新加载成功"
                 else
-                    echo "🚀 启动 Nginx 服务..."
-                    safe_sudo systemctl start nginx
-                    safe_sudo systemctl enable nginx
+                    echo "⚠️  Nginx 重新加载失败，尝试重启..."
+                    safe_sudo systemctl restart nginx
                 fi
-                echo "✅ Nginx 配置完成"
             else
-                echo "❌ Nginx 配置测试失败，请检查配置文件"
+                echo "🚀 启动 Nginx 服务..."
+                safe_sudo systemctl start nginx
+                safe_sudo systemctl enable nginx
             fi
+            echo "✅ Nginx 配置完成"
         else
-            # 删除现有符号链接（如果存在）
-            if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
-                safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
-            fi
-            safe_sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
-            safe_sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
-            # 检查nginx配置是否正确
-            if safe_sudo nginx -t; then
-                # 检查nginx是否已经运行
-                if safe_sudo systemctl is-active --quiet nginx; then
-                    echo "🔄 重新加载 Nginx 配置..."
-                    if safe_sudo systemctl reload nginx; then
-                        echo "✅ Nginx 配置重新加载成功"
-                    else
-                        echo "⚠️  Nginx 重新加载失败，尝试重启..."
-                        safe_sudo systemctl restart nginx
-                    fi
-                else
-                    echo "🚀 启动 Nginx 服务..."
-                    safe_sudo systemctl start nginx
-                    safe_sudo systemctl enable nginx
-                fi
-                echo "✅ Nginx 配置完成"
-            else
-                echo "❌ Nginx 配置测试失败，请检查配置文件"
-            fi
+            echo "❌ Nginx 配置测试失败，请检查配置文件"
         fi
     elif [ "$OS" = "Mac" ]; then
         echo "ℹ️  请手动配置 Nginx，配置文件位于 config/nginx.conf"
@@ -761,25 +822,32 @@ fi
 echo ""
 echo "下一步："
 if [ "$OS" = "Linux" ]; then
-    echo "1. 编辑 .env 文件配置参数"
+    echo "1. 编辑 .env 文件配置参数 (如需要)"
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+    echo "2. 服务已自动启动，管理命令:"
     if [[ $EUID -eq 0 ]]; then
-        echo "2. 启动服务: systemctl start $SERVICE_NAME"
-        echo "3. 查看状态: systemctl status $SERVICE_NAME"
+        echo "   - 查看状态: systemctl status $SERVICE_NAME"
+        echo "   - 重启服务: systemctl restart $SERVICE_NAME"
+        echo "   - 停止服务: systemctl stop $SERVICE_NAME"
+        echo "   - 查看日志: journalctl -u $SERVICE_NAME -f"
     else
         if [ "$HAS_SUDO" = true ]; then
-            echo "2. 启动服务: sudo systemctl start $SERVICE_NAME"
-            echo "3. 查看状态: sudo systemctl status $SERVICE_NAME"
+            echo "   - 查看状态: sudo systemctl status $SERVICE_NAME"
+            echo "   - 重启服务: sudo systemctl restart $SERVICE_NAME"
+            echo "   - 停止服务: sudo systemctl stop $SERVICE_NAME"  
+            echo "   - 查看日志: sudo journalctl -u $SERVICE_NAME -f"
         else
-            echo "2. 启动服务: systemctl start $SERVICE_NAME (需要root权限)"
-            echo "3. 查看状态: systemctl status $SERVICE_NAME"
+            echo "   - 查看状态: systemctl status $SERVICE_NAME (需要root权限)"
+            echo "   - 重启服务: systemctl restart $SERVICE_NAME (需要root权限)"
+            echo "   - 停止服务: systemctl stop $SERVICE_NAME (需要root权限)"
+            echo "   - 查看日志: journalctl -u $SERVICE_NAME -f (需要root权限)"
         fi
     fi
     # 从环境变量读取端口号
     API_PORT="${PORT:-3000}"
     NGINX_PORT="${NGINX_PORT:-3080}"
     NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    echo "4. 访问服务:"
+    echo "3. 访问服务:"
     echo "   - API 服务: http://localhost:${NGINX_PROXY_PORT} (通过 Nginx)"
     echo "   - 直接访问: http://localhost:${API_PORT}"
     echo "   - 静态文件: http://localhost:${NGINX_PORT}"
@@ -796,4 +864,34 @@ elif [ "$OS" = "Mac" ]; then
     echo "   - API 服务: http://localhost:${API_PORT}"
     echo "   - 通过 Nginx: http://localhost:${NGINX_PROXY_PORT} (如果配置了 Nginx)"
     echo "   - 静态文件: http://localhost:${NGINX_PORT} (如果配置了 Nginx)"
+fi
+
+echo ""
+echo "🔧 故障排除："
+echo "如果遇到权限错误 (EROFS: read-only file system)，请检查："
+if [ "$OS" = "Linux" ]; then
+    echo "1. 数据目录权限:"
+    echo "   ls -la $DATA_DIR"
+    echo "2. 文件系统挂载状态:"
+    echo "   mount | grep $(dirname $DATA_DIR)"
+    echo "3. 磁盘空间:"
+    echo "   df -h $DATA_DIR"
+    echo "4. 手动修复权限:"
+    if [[ $EUID -eq 0 ]]; then
+        echo "   chown -R $TARGET_USER:$TARGET_GROUP $DATA_DIR"
+        echo "   chmod -R 750 $DATA_DIR"
+    else
+        if [ "$HAS_SUDO" = true ]; then
+            echo "   sudo chown -R $TARGET_USER:$TARGET_GROUP $DATA_DIR"
+            echo "   sudo chmod -R 750 $DATA_DIR"
+        else
+            echo "   需要root权限执行权限修复命令"
+        fi
+    fi
+    echo "5. SELinux状态 (如果启用):"
+    echo "   sestatus"
+    echo "   ls -Z $DATA_DIR"
+else
+    echo "1. 检查目录权限: ls -la $DATA_DIR"
+    echo "2. 检查磁盘空间: df -h $DATA_DIR"
 fi
