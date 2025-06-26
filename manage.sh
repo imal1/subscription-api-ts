@@ -67,12 +67,14 @@ show_help() {
     echo ""
     echo -e "${WHITE}🔧 开发工具:${NC}"
     echo -e "  ${BLUE}build${NC}            编译 TypeScript 项目"
+    echo -e "  ${BLUE}build-frontend${NC}   构建前端 Dashboard"
     echo -e "  ${BLUE}dev${NC}              启动开发模式"
     echo -e "  ${BLUE}test${NC}             运行测试"
     echo -e "  ${BLUE}clean${NC}            清理编译文件"
     echo ""
     echo -e "${WHITE}🛠️ 诊断修复:${NC}"
     echo -e "  ${YELLOW}deploy${NC}           部署项目"
+    echo -e "  ${YELLOW}deploy-dashboard${NC} 构建并部署 Dashboard"
     echo -e "  ${YELLOW}check${NC}            全面服务状态检测"
     echo ""
     echo -e "${WHITE}📋 信息查看:${NC}"
@@ -467,6 +469,9 @@ main() {
         "deploy")
             run_script "deploy.sh" "$@"
             ;;
+        "deploy-dashboard")
+            run_script "deploy-dashboard.sh" "$@"
+            ;;
         "check")
             show_service_status
             ;;
@@ -487,6 +492,15 @@ main() {
         "build")
             echo -e "${BLUE}🏗️  编译项目...${NC}"
             npm run build
+            ;;
+        "build-frontend")
+            echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
+            if [ -f "frontend/build.sh" ]; then
+                bash frontend/build.sh
+            else
+                echo -e "${RED}❌ 前端构建脚本不存在${NC}"
+                exit 1
+            fi
             ;;
         "dev")
             echo -e "${BLUE}🚀 启动开发模式...${NC}"

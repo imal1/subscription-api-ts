@@ -138,6 +138,68 @@ pm2 start dist/index.js --name subscription-api-ts
 
 项目提供了统一的管理入口脚本 `manage.sh`，集成了所有常用功能：
 
+### 🚀 核心管理命令
+```bash
+./manage.sh install          # 完整项目安装和配置
+./manage.sh update           # 更新代码并重启服务  
+./manage.sh start            # 启动服务
+./manage.sh stop             # 停止服务
+./manage.sh restart          # 重启服务
+./manage.sh status           # 查看服务状态（快速检查）
+./manage.sh check            # 全面服务状态检测
+```
+
+### 🔧 开发工具
+```bash
+./manage.sh build           # 编译 TypeScript 项目
+./manage.sh build-frontend  # 构建前端 Dashboard
+./manage.sh dev              # 启动开发模式
+./manage.sh test             # 运行测试
+./manage.sh clean            # 清理编译文件
+```
+
+### 🛠️ 诊断修复
+```bash
+./manage.sh deploy           # 部署项目
+./manage.sh deploy-dashboard # 构建并部署 Dashboard
+```
+
+### 📋 信息查看
+```bash
+./manage.sh logs             # 查看服务日志
+./manage.sh version          # 显示版本信息
+./manage.sh overview         # 项目状态概览
+./manage.sh api-help         # API 端点使用说明
+./manage.sh help             # 显示帮助信息
+```
+
+### ✨ 全新功能: 现代化 Dashboard
+
+项目现在包含一个基于 Next.js 的现代化 Web Dashboard：
+
+```bash
+# 构建并部署 Dashboard
+./manage.sh deploy-dashboard
+
+# 仅构建前端
+./manage.sh build-frontend
+
+# 测试 Dashboard 功能
+./scripts/test-dashboard.sh
+```
+
+**Dashboard 特性:**
+- 🎨 现代化 UI 设计 (基于 shadcn/ui)
+- 📊 实时服务状态监控
+- ⚡ 快速操作面板
+- 📱 响应式设计
+- 🔧 API 接口测试工具
+- 📖 集成文档说明
+
+**访问 Dashboard:**
+- 生产环境: `http://localhost:3888/dashboard/`
+- 开发环境: 需要单独启动前端服务
+
 ```bash
 # 查看所有可用命令
 ./manage.sh help
