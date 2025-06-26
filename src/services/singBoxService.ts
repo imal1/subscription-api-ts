@@ -21,7 +21,7 @@ export class SingBoxService {
      */
     async checkSingBoxAvailable(): Promise<boolean> {
         try {
-            await execAsync('sing-box --version', { timeout: config.requestTimeout });
+            await execAsync('sing-box version', { timeout: config.requestTimeout });
             return true;
         } catch (error) {
             logger.error('Sing-box不可用:', error);
