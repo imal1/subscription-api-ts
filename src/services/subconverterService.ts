@@ -36,7 +36,8 @@ export class SubconverterService {
                 timeout: config.requestTimeout 
             });
             return response.data || 'Unknown';
-        } catch (error) {
+        } catch (error: any) {
+            logger.error('获取Subconverter版本失败:', error);
             throw new Error('获取Subconverter版本失败');
         }
     }
@@ -74,6 +75,52 @@ export class SubconverterService {
             }
         } catch (error: any) {
             logger.error('Clash转换失败:', error);
+            if (error.response) {
+                throw new Error(`转换失败: ${error.response.status} - ${error.response.data}`);
+            } else if (error.request) {
+                throw new Error('转换请求超时或网络错误');
+            } else {
+                throw new Error(`转换异常: ${error.message}`);
+            }
+        }
+    }
+
+    /**
+     * 使用订阅内容直接转换为Clash格式（通过POST请求）
+     */
+    async convertToClashByContent(subscriptionContent: string, customConfig?: string): Promise<string> {
+        try {
+            const params = new URLSearchParams({
+                target: 'clash'
+            });
+
+            if (customConfig) {
+                params.append('config', customConfig);
+            }
+
+            logger.info(`通过内容请求Clash转换: ${config.subconverterUrl}/sub`);
+
+            // 使用 POST 请求直接发送订阅内容
+            const response: AxiosResponse<string> = await axios.post(
+                `${config.subconverterUrl}/sub?${params.toString()}`,
+                subscriptionContent,
+                {
+                    headers: {
+                        'Content-Type': 'text/plain; charset=utf-8'
+                    },
+                    timeout: config.requestTimeout,
+                    responseType: 'text'
+                }
+            );
+
+            if (response.status === 200 && response.data) {
+                logger.info('Clash配置转换成功（通过内容）');
+                return response.data;
+            } else {
+                throw new Error(`转换失败: HTTP ${response.status}`);
+            }
+        } catch (error: any) {
+            logger.error('Clash转换失败（通过内容）:', error);
             if (error.response) {
                 throw new Error(`转换失败: ${error.response.status} - ${error.response.data}`);
             } else if (error.request) {

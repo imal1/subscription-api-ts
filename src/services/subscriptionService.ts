@@ -89,7 +89,32 @@ export class SubscriptionService {
                 const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
                 logger.info(`开始生成Clash配置，使用订阅URL: ${localSubscriptionUrl}`);
                 
-                const clashContent = await this.subconverterService.convertToClash(localSubscriptionUrl);
+                let clashContent: string;
+                
+                // 首先尝试直接使用订阅内容转换（避免网络访问问题）
+                try {
+                    // 使用原始的订阅内容（非base64编码）
+                    clashContent = await this.subconverterService.convertToClashByContent(subscriptionContent);
+                    logger.info('使用订阅内容直接转换成功');
+                } catch (contentError: any) {
+                    logger.warn(`直接内容转换失败: ${contentError.message}，尝试使用URL方式`);
+                    
+                    // 如果直接内容转换失败，回退到 URL 方式
+                    let subscriptionUrl = localSubscriptionUrl;
+                    try {
+                        const axios = require('axios');
+                        await axios.get(localSubscriptionUrl, { timeout: 3000 });
+                        logger.info('使用本地订阅URL');
+                    } catch (urlError: any) {
+                        // 如果本地 URL 不可访问，尝试使用外部 URL
+                        const externalPort = process.env.NGINX_PROXY_PORT || '3888';
+                        const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+                        subscriptionUrl = `http://${externalHost}:${externalPort}/subscription.txt`;
+                        logger.info(`本地URL不可访问 (${urlError.message})，使用外部URL: ${subscriptionUrl}`);
+                    }
+                    
+                    clashContent = await this.subconverterService.convertToClash(subscriptionUrl);
+                }
                 
                 if (!clashContent || clashContent.trim().length === 0) {
                     throw new Error('转换返回空内容');
