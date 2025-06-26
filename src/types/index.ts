@@ -2,6 +2,7 @@ export interface Config {
     port: number;
     singBoxConfigs: string[];
     subconverterUrl: string;
+    clashFilename: string;
     staticDir: string;
     logDir: string;
     backupDir: string;

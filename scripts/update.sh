@@ -182,9 +182,11 @@ echo "🎉 更新完成！"
 echo ""
 echo "📋 测试命令："
 NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+# 读取 CLASH_FILENAME 环境变量，默认为 clash.yaml
+CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
 echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/update"
 echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/diagnose/clash"
-echo "   curl http://localhost:${NGINX_PROXY_PORT}/clash.yaml"
+echo "   curl http://localhost:${NGINX_PROXY_PORT}/${CLASH_FILENAME}"
 echo ""
 echo "📊 查看日志："
 if [[ $EUID -eq 0 ]]; then

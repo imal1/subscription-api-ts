@@ -36,7 +36,9 @@ echo ""
 
 # 2. 检查关键文件
 echo "📄 检查关键文件..."
-files=("subscription.txt" "clash.yaml" "raw_links.txt")
+# 读取 CLASH_FILENAME 环境变量，默认为 clash.yaml
+CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
+files=("subscription.txt" "$CLASH_FILENAME" "raw_links.txt")
 for file in "${files[@]}"; do
     file_path="$DATA_DIR/$file"
     if [ -f "$file_path" ]; then

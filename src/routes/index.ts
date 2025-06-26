@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { SubscriptionController } from '../controllers/subscriptionController';
+import { config } from '../config';
 
 const router = Router();
 const subscriptionController = new SubscriptionController();
@@ -20,7 +21,7 @@ router.get('/api/diagnose/clash', subscriptionController.diagnoseClash);
 
 // 文件下载
 router.get('/subscription.txt', subscriptionController.getSubscriptionFile);
-router.get('/clash.yaml', subscriptionController.getClashFile);
+router.get(`/${config.clashFilename}`, subscriptionController.getClashFile);
 router.get('/raw.txt', subscriptionController.getRawFile);
 
 // 健康检查

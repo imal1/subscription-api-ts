@@ -32,7 +32,7 @@ export class SubscriptionController {
                     'GET /api/status': '获取状态',
                     'GET /api/diagnose/clash': '诊断Clash生成问题',
                     'GET /subscription.txt': '获取Base64编码的订阅',
-                    'GET /clash.yaml': '获取Clash配置',
+                    [`GET /${config.clashFilename}`]: '获取Clash配置',
                     'GET /raw.txt': '获取原始链接',
                     'GET /api/configs': '获取可用配置列表',
                     'POST /api/configs': '更新配置列表',
@@ -190,10 +190,10 @@ export class SubscriptionController {
      */
     getClashFile = async (req: Request, res: Response): Promise<void> => {
         try {
-            const content = await this.subscriptionService.getFileContent('clash.yaml');
+            const content = await this.subscriptionService.getFileContent(config.clashFilename);
             
             res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
-            res.setHeader('Content-Disposition', 'attachment; filename="clash.yaml"');
+            res.setHeader('Content-Disposition', `attachment; filename="${config.clashFilename}"`);
             res.send(content);
         } catch (error: any) {
             res.status(404).send(`获取Clash配置失败: ${error.message}`);

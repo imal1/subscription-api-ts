@@ -250,7 +250,7 @@ curl http://localhost:3000/api/update -v
 
 # 3. 文件下载
 curl -I http://localhost:3000/subscription.txt
-curl -I http://localhost:3000/clash.yaml
+curl -I http://localhost:3000/${CLASH_FILENAME:-clash.yaml}
 ```
 
 #### 依赖服务测试

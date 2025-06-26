@@ -897,7 +897,7 @@ fi
 echo "✅ 安装完成！"
 echo ""
 echo "📋 重要提示："
-echo "   首次使用前需要生成订阅文件（包括 clash.yaml）"
+echo "   首次使用前需要生成订阅文件（包括 Clash 配置文件）"
 echo "   请在启动服务后执行以下命令："
 echo ""
 if [ "$OS" = "Linux" ]; then

@@ -182,7 +182,7 @@ pm2 start dist/index.js --name subscription-api-ts
 |GET|`/api/configs`|获取配置列表||
 |POST|`/api/configs`|更新配置列表||
 |GET|`/subscription.txt`|获取订阅文件||
-|GET|`/clash.yaml`|获取Clash配置||
+|GET|`/{clash_filename}`|获取Clash配置|文件名可通过CLASH_FILENAME环境变量配置|
 |GET|`/raw.txt`|获取原始链接||
 
 ### ✅ 使用说明
@@ -207,8 +207,8 @@ curl http://localhost:${PORT}/api/update
 # 获取状态
 curl http://localhost:${PORT}/api/status
 
-# 获取 Clash 配置
-curl http://localhost:${PORT}/clash.yaml
+# 获取 Clash 配置（文件名可配置）
+curl http://localhost:${PORT}/${CLASH_FILENAME:-clash.yaml}
 
 # 健康检查
 curl http://localhost:${PORT}/health

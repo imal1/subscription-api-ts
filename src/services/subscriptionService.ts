@@ -170,7 +170,7 @@ export class SubscriptionService {
                     throw new Error('转换返回空内容');
                 }
                 
-                const clashFile = path.join(config.staticDir, 'clash.yaml');
+                const clashFile = path.join(config.staticDir, config.clashFilename);
                 await fs.writeFile(clashFile, clashContent, 'utf8');
                 
                 // 验证文件是否成功写入
@@ -221,7 +221,7 @@ export class SubscriptionService {
      */
     async getStatus(): Promise<any> {
         const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
-        const clashFile = path.join(config.staticDir, 'clash.yaml');
+        const clashFile = path.join(config.staticDir, config.clashFilename);
         const rawFile = path.join(config.staticDir, 'raw_links.txt');
 
         const status = {
@@ -281,7 +281,7 @@ export class SubscriptionService {
         try {
             // 1. 检查文件存在性
             const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
-            const clashFile = path.join(config.staticDir, 'clash.yaml');
+            const clashFile = path.join(config.staticDir, config.clashFilename);
             
             diagnosis.checks.subscriptionFileExists = await fs.pathExists(subscriptionFile);
             diagnosis.checks.clashFileExists = await fs.pathExists(clashFile);
