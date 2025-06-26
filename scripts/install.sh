@@ -287,19 +287,15 @@ echo "   执行 TypeScript 编译..."
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
     if ! sudo -u $TARGET_USER npm run build 2>&1; then
-        echo "❌ 构建失败，尝试诊断问题..."
-        echo "🔍 运行 TypeScript 诊断..."
-        sudo -u $TARGET_USER bash scripts/diagnose-typescript.sh
-        echo "� 尝试自动修复..."
-        sudo -u $TARGET_USER bash scripts/fix-typescript.sh
+        echo "❌ 构建失败，请检查 TypeScript 错误"
+        echo "   尝试运行: npm run build 查看详细错误信息"
+        echo "   或者检查 tsconfig.json 配置"
     fi
 else
     if ! npm run build 2>&1; then
-        echo "❌ 构建失败，尝试诊断问题..."
-        echo "🔍 运行 TypeScript 诊断..."
-        bash scripts/diagnose-typescript.sh
-        echo "� 尝试自动修复..."
-        bash scripts/fix-typescript.sh
+        echo "❌ 构建失败，请检查 TypeScript 错误"
+        echo "   尝试运行: npm run build 查看详细错误信息"
+        echo "   或者检查 tsconfig.json 配置"
     fi
 fi
 
