@@ -61,36 +61,48 @@ export class SubscriptionService {
             // 确保目录存在
             await this.ensureDirectories();
 
-            // 过滤和验证代理URL，确保只包含有效的代理链接
+            // 从原始URLs中提取纯净的代理URL
             const validProxyProtocols = ['vless://', 'vmess://', 'ss://', 'ssr://', 'trojan://', 'hysteria2://', 'tuic://', 'wireguard://'];
-            const filteredUrls = urls.filter(url => {
-                const trimmedUrl = url.trim();
-                // 检查是否是有效的代理URL
-                const isValidProxy = validProxyProtocols.some(protocol => trimmedUrl.startsWith(protocol));
-                // 排除包含描述信息的行
-                const isDescriptive = trimmedUrl.includes('-------------') || 
-                                    trimmedUrl.includes('关注(tg)') || 
-                                    trimmedUrl.includes('文档(doc)') || 
-                                    trimmedUrl.includes('推广(ads)') ||
-                                    trimmedUrl.includes('END') ||
-                                    trimmedUrl.startsWith('http://') ||
-                                    trimmedUrl.startsWith('https://') ||
-                                    trimmedUrl.length < 10;
-                
-                return isValidProxy && !isDescriptive && trimmedUrl.length > 0;
-            });
-
-            logger.info(`URL过滤结果: 原始${urls.length}个，过滤后${filteredUrls.length}个有效代理URL`);
+            const extractedUrls: string[] = [];
             
-            if (filteredUrls.length === 0) {
+            for (const rawUrl of urls) {
+                // 移除ANSI颜色代码 - 使用字符代码27 (ESC)
+                const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
+                const cleanUrl = rawUrl.replace(ansiRegex, '');
+                
+                // 将内容按行分割
+                const lines = cleanUrl.split('\n');
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    
+                    // 跳过空行
+                    if (!trimmedLine) continue;
+                    
+                    // 检查是否是有效的代理URL
+                    const isValidProxy = validProxyProtocols.some(protocol => trimmedLine.startsWith(protocol));
+                    
+                    if (isValidProxy) {
+                        // 进一步验证URL格式
+                        if (trimmedLine.includes('@') && trimmedLine.includes(':') && trimmedLine.length > 20) {
+                            extractedUrls.push(trimmedLine);
+                            logger.info(`提取到有效代理URL: ${trimmedLine.substring(0, 50)}...`);
+                        }
+                    }
+                }
+            }
+            
+            logger.info(`URL提取结果: 从${urls.length}个原始条目中提取出${extractedUrls.length}个有效代理URL`);
+            
+            if (extractedUrls.length === 0) {
                 throw new Error(`没有找到有效的代理URL。原始URLs: ${urls.slice(0, 3).join(', ')}...`);
             }
 
             // 打印前几个URL用于调试
-            logger.info(`前3个有效代理URL: ${filteredUrls.slice(0, 3).join(', ')}`);
+            logger.info(`前3个有效代理URL: ${extractedUrls.slice(0, 3).join(', ')}`);
 
             // 创建订阅内容 - 只包含纯净的代理URL
-            const subscriptionContent = filteredUrls.join('\n');
+            const subscriptionContent = extractedUrls.join('\n');
             const encodedContent = Buffer.from(subscriptionContent).toString('base64');
 
             // 保存文件
@@ -186,16 +198,16 @@ export class SubscriptionService {
 
             const result: UpdateResult = {
                 success: true,
-                message: `订阅更新成功，共 ${filteredUrls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
+                message: `订阅更新成功，共 ${extractedUrls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
                 timestamp: new Date().toISOString(),
-                nodesCount: filteredUrls.length,
+                nodesCount: extractedUrls.length,
                 clashGenerated,
                 backupCreated: backupFile,
                 warnings: errors.length > 0 ? errors : undefined,
                 errors: clashError ? [`Clash生成失败: ${clashError}`] : undefined
             };
 
-            logger.info(`订阅更新完成: ${filteredUrls.length} 个节点, Clash生成: ${clashGenerated}`);
+            logger.info(`订阅更新完成: ${extractedUrls.length} 个节点, Clash生成: ${clashGenerated}`);
             return result;
 
         } catch (error: any) {
