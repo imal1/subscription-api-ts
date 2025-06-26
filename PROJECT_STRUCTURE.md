@@ -32,17 +32,7 @@ subscription-api-ts/
 │   └── subscription-api-ts.service.template  # SystemD template
 ├── scripts/                          # Automation scripts
 │   ├── install.sh                    # Installation script
-│   ├── deploy.sh                     # Deployment script
-│   ├── diagnose-systemd.sh           # SystemD diagnostics
-│   ├── diagnose-typescript.sh        # TypeScript diagnostics
-│   ├── fix-systemd.sh                # SystemD auto-fix
-│   ├── fix-typescript.sh             # TypeScript auto-fix
-│   ├── generate-systemd-service.sh   # Generate SystemD service
-│   ├── generate-nginx-config.sh      # Generate Nginx config
-│   ├── generate-all-configs.sh       # Generate all configs
-│   ├── check-service-status.sh       # Service status check
-│   ├── validate-paths.sh             # Path validation
-│   └── test-user-detection.sh        # User detection test
+│   └── deploy.sh                     # Deployment script
 ├── etc/                              # System configuration examples
 │   ├── nginx/
 │   │   └── sites-available/

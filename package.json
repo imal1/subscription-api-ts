@@ -16,16 +16,7 @@
     "postbuild": "echo 'Build completed successfully'",
     "install:deps": "npm install",
     "setup": "npm run install:deps && npm run build",
-    "nginx:config": "bash scripts/generate-nginx-config.sh",
-    "nginx:setup": "bash scripts/setup-nginx.sh",
-    "systemd:service": "bash scripts/generate-systemd-service.sh",
-    "config:all": "bash scripts/generate-all-configs.sh",
-    "config:validate": "node -e \"require('dotenv').config(); console.log('✅ 环境变量验证通过:', JSON.stringify(process.env, null, 2))\"",
-    "config:check": "bash scripts/validate-paths.sh",
-    "ts:diagnose": "bash scripts/diagnose-typescript.sh",
-    "ts:fix": "bash scripts/fix-typescript.sh",
-    "service:status": "bash scripts/check-service-status.sh",
-    "service:fix": "bash scripts/fix-systemd.sh"
+    "config:validate": "node -e \"require('dotenv').config(); console.log('✅ 环境变量验证通过:', JSON.stringify(process.env, null, 2))\""
   },
   "keywords": [
     "subscription",

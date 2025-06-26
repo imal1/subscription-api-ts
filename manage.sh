@@ -50,21 +50,7 @@ show_help() {
     echo -e "  ${BLUE}clean${NC}            清理编译文件"
     echo ""
     echo -e "${WHITE}🛠️ 诊断修复:${NC}"
-    echo -e "  ${YELLOW}diagnose${NC}         运行系统诊断"
-    echo -e "  ${YELLOW}diagnose-ts${NC}      TypeScript 编译诊断"
-    echo -e "  ${YELLOW}diagnose-workdir${NC} 工作目录权限诊断"
-    echo -e "  ${YELLOW}diagnose-node${NC}    Node.js 和路径诊断"
-    echo -e "  ${YELLOW}fix${NC}              自动修复常见问题"
-    echo -e "  ${YELLOW}fix-ts${NC}           修复 TypeScript 问题"
-    echo -e "  ${YELLOW}fix-node${NC}         修复 Node.js 路径问题"
-    echo -e "  ${YELLOW}fix-systemd${NC}      快速修复 systemd 服务"
-    echo -e "  ${YELLOW}fix-workdir${NC}      修复工作目录权限问题"
-    echo -e "  ${YELLOW}fix-systemd-workdir${NC} 修复 systemd 工作目录问题"
-    echo ""
-    echo -e "${WHITE}🌐 网络服务:${NC}"
-    echo -e "  ${PURPLE}nginx-setup${NC}      配置 Nginx"
-    echo -e "  ${PURPLE}nginx-config${NC}     生成 Nginx 配置"
-    echo -e "  ${PURPLE}systemd-config${NC}   生成 systemd 服务配置"
+    echo -e "  ${YELLOW}deploy${NC}           部署项目"
     echo ""
     echo -e "${WHITE}📋 信息查看:${NC}"
     echo -e "  ${CYAN}logs${NC}             查看服务日志"
@@ -74,11 +60,9 @@ show_help() {
     echo ""
     echo -e "${WHITE}💡 示例:${NC}"
     echo -e "  ${CYAN}./manage.sh install${NC}         # 完整安装项目"
+    echo -e "  ${CYAN}./manage.sh deploy${NC}          # 部署项目"
     echo -e "  ${CYAN}./manage.sh status${NC}          # 快速检查服务状态"
-    echo -e "  ${CYAN}./manage.sh check${NC}           # 全面诊断服务"
-    echo -e "  ${CYAN}./manage.sh fix${NC}             # 自动修复问题"
-    echo -e "  ${CYAN}./manage.sh fix-workdir${NC}     # 修复工作目录问题"
-    echo -e "  ${CYAN}./manage.sh fix-systemd-workdir${NC} # 修复 systemd 工作目录问题"
+    echo -e "  ${CYAN}./manage.sh overview${NC}        # 查看项目概览"
     echo ""
 }
 
@@ -295,6 +279,56 @@ show_project_overview() {
     echo -e "  ${CYAN}./manage.sh start${NC}   - 启动服务"
 }
 
+# 显示服务状态
+show_service_status() {
+    local os=$(detect_os)
+    
+    if [ "$os" = "Linux" ]; then
+        local service_name="${SERVICE_NAME:-subscription-api-ts}"
+        echo -e "${CYAN}📊 检查服务状态: $service_name${NC}"
+        
+        if systemctl is-active --quiet "$service_name"; then
+            echo -e "  状态: ${GREEN}✅ 运行中${NC}"
+            echo -e "  详细状态: $(systemctl is-active "$service_name")"
+            
+            # 显示端口信息
+            local port=$(grep "PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "3000")
+            echo -e "  访问地址: ${BLUE}http://localhost:${port}${NC}"
+            
+            # 检查端口是否被监听
+            if command -v netstat >/dev/null 2>&1; then
+                if netstat -ln | grep -q ":${port} "; then
+                    echo -e "  端口 ${port}: ${GREEN}✅ 监听中${NC}"
+                else
+                    echo -e "  端口 ${port}: ${YELLOW}⚠️  未监听${NC}"
+                fi
+            fi
+        else
+            echo -e "  状态: ${RED}❌ 未运行${NC}"
+            echo -e "  建议: 运行 ${WHITE}./manage.sh start${NC} 启动服务"
+        fi
+    elif [ "$os" = "Mac" ]; then
+        echo -e "${CYAN}📊 检查服务状态 (macOS)${NC}"
+        
+        if command -v pm2 >/dev/null 2>&1; then
+            if pm2 list | grep -q "subscription-api-ts"; then
+                echo -e "  PM2 状态: ${GREEN}✅ 运行中${NC}"
+                pm2 status subscription-api-ts
+            else
+                echo -e "  PM2 状态: ${YELLOW}⚠️  未在 PM2 中运行${NC}"
+            fi
+        fi
+        
+        # 检查进程
+        if pgrep -f "node.*dist/index.js" >/dev/null; then
+            echo -e "  进程状态: ${GREEN}✅ 运行中${NC}"
+        else
+            echo -e "  进程状态: ${RED}❌ 未运行${NC}"
+            echo -e "  建议: 运行 ${WHITE}./manage.sh start${NC} 启动服务"
+        fi
+    fi
+}
+
 # 主逻辑
 main() {
     # 如果没有参数，显示帮助
@@ -311,6 +345,9 @@ main() {
         "install")
             run_script "install.sh" "$@"
             ;;
+        "deploy")
+            run_script "deploy.sh" "$@"
+            ;;
         "start")
             manage_service "start"
             ;;
@@ -321,10 +358,7 @@ main() {
             manage_service "restart"
             ;;
         "status")
-            run_script "quick-status.sh" "$@"
-            ;;
-        "check")
-            run_script "check-service-status.sh" "$@"
+            show_service_status
             ;;
             
         # 开发工具
@@ -344,49 +378,6 @@ main() {
             echo -e "${YELLOW}🧹 清理编译文件...${NC}"
             rm -rf dist
             echo -e "${GREEN}✅ 清理完成${NC}"
-            ;;
-            
-        # 诊断修复
-        "diagnose")
-            run_script "diagnose-systemd.sh" "$@"
-            ;;
-        "diagnose-ts")
-            run_script "diagnose-typescript.sh" "$@"
-            ;;
-        "diagnose-workdir")
-            run_script "diagnose-workdir.sh" "$@"
-            ;;
-        "diagnose-node")
-            run_script "diagnose-node.sh" "$@"
-            ;;
-        "fix")
-            run_script "fix-systemd.sh" "$@"
-            ;;
-        "fix-ts")
-            run_script "fix-typescript.sh" "$@"
-            ;;
-        "fix-node")
-            run_script "fix-node-path.sh" "$@"
-            ;;
-        "fix-systemd")
-            run_script "quick-fix-systemd.sh" "$@"
-            ;;
-        "fix-workdir")
-            run_script "fix-workdir.sh" "$@"
-            ;;
-        "fix-systemd-workdir")
-            run_script "fix-systemd-workdir.sh" "$@"
-            ;;
-            
-        # 网络服务
-        "nginx-setup")
-            run_script "setup-nginx.sh" "$@"
-            ;;
-        "nginx-config")
-            run_script "generate-nginx-config.sh" "$@"
-            ;;
-        "systemd-config")
-            run_script "generate-systemd-service.sh" "$@"
             ;;
             
         # 信息查看

@@ -41,7 +41,54 @@ export DATA_DIR="${DATA_DIR:-./data}"
 export LOG_DIR="${LOG_DIR:-./logs}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
-set -e
+# 检查sudo命令是否可用
+HAS_SUDO=false
+if command -v sudo >/dev/null 2>&1; then
+    HAS_SUDO=true
+fi
+
+# 定义安全的sudo函数
+safe_sudo() {
+    if [[ $EUID -eq 0 ]]; then
+        # 如果是root用户，直接执行命令
+        "$@"
+    elif [ "$HAS_SUDO" = true ]; then
+        # 如果有sudo且不是root，使用sudo
+        sudo "$@"
+    else
+        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
+        echo "   请以root用户运行此脚本，或安装sudo命令"
+        exit 1
+    fi
+}
+
+# 定义用户切换函数
+safe_sudo_user() {
+    local target_user="$1"
+    shift
+    
+    if [[ $EUID -eq 0 ]]; then
+        if [ "$target_user" = "root" ]; then
+            # root用户直接执行
+            "$@"
+        else
+            # root用户切换到目标用户
+            if command -v su >/dev/null 2>&1; then
+                su -c "$(printf '%q ' "$@")" "$target_user"
+            else
+                echo "❌ 错误：无法切换用户，缺少su命令"
+                exit 1
+            fi
+        fi
+    elif [ "$HAS_SUDO" = true ]; then
+        # 非root用户使用sudo切换
+        sudo -u "$target_user" "$@"
+    else
+        echo "❌ 错误：需要sudo命令来切换用户执行: $*"
+        echo "   请安装sudo命令或以root用户运行此脚本"
+        exit 1
+    fi
+}
 
 # 设置工作目录为项目根目录
 cd "$PROJECT_ROOT"
@@ -108,9 +155,9 @@ if ! command -v node &> /dev/null; then
             curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
             apt-get install -y nodejs
         else
-            # 非 root 用户使用 sudo
-            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -y nodejs
+            # 非 root 用户使用 safe_sudo
+            curl -fsSL https://deb.nodesource.com/setup_18.x | safe_sudo -E bash -
+            safe_sudo apt-get install -y nodejs
         fi
     elif [ "$OS" = "Mac" ]; then
         if command -v brew &> /dev/null; then
@@ -164,11 +211,11 @@ install_dependencies() {
 
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ]; then
     # root 用户执行时，确保 package.json 等文件权限正确
-    chown -R $TARGET_USER:$TARGET_GROUP "$PROJECT_ROOT"
+    safe_sudo chown -R $TARGET_USER:$TARGET_GROUP "$PROJECT_ROOT"
     # 使用目标用户身份安装依赖
     if [ "$TARGET_USER" != "root" ]; then
         echo "   使用用户 $TARGET_USER 安装依赖..."
-        if ! install_dependencies "sudo -u $TARGET_USER"; then
+        if ! install_dependencies "safe_sudo_user $TARGET_USER"; then
             echo "❌ 依赖安装失败"
             exit 1
         fi
@@ -208,7 +255,7 @@ if [ -n "$MISSING_DEPS" ]; then
     echo "❌ 缺少依赖:$MISSING_DEPS"
     echo "🔧 重新安装缺少的依赖..."
     if [[ $EUID -eq 0 ]] && [ "$TARGET_USER" != "root" ]; then
-        if ! install_dependencies "sudo -u $TARGET_USER"; then
+        if ! install_dependencies "safe_sudo_user $TARGET_USER"; then
             echo "❌ 重新安装依赖失败"
             exit 1
         fi
@@ -230,7 +277,7 @@ else
         if [[ $EUID -eq 0 ]]; then
             npm install -g typescript ts-node pm2
         else
-            sudo npm install -g typescript ts-node pm2
+            safe_sudo npm install -g typescript ts-node pm2
         fi
     elif [ "$OS" = "Mac" ]; then
         npm install -g typescript ts-node pm2
@@ -257,7 +304,7 @@ setup_directory() {
         if [[ $EUID -eq 0 ]]; then
             mkdir -p "$dir_path"
         else
-            sudo mkdir -p "$dir_path"
+            safe_sudo mkdir -p "$dir_path"
         fi
     else
         # 相对路径
@@ -266,31 +313,31 @@ setup_directory() {
     
     # 设置所有者
     if [[ $EUID -eq 0 ]]; then
-        chown -R "$user:$group" "$dir_path"
+        safe_sudo chown -R "$user:$group" "$dir_path"
     else
         if [[ "$dir_path" == /* ]]; then
-            sudo chown -R "$user:$group" "$dir_path"
+            safe_sudo chown -R "$user:$group" "$dir_path"
         else
-            chown -R "$user:$group" "$dir_path" 2>/dev/null || true
+            safe_sudo chown -R "$user:$group" "$dir_path" 2>/dev/null || true
         fi
     fi
     
     # 设置权限：用户读写执行，组读执行，其他人无权限
     if [[ $EUID -eq 0 ]]; then
-        chmod -R 750 "$dir_path"
+        safe_sudo chmod -R 750 "$dir_path"
         # 确保目录有执行权限
-        find "$dir_path" -type d -exec chmod 750 {} \;
+        safe_sudo find "$dir_path" -type d -exec chmod 750 {} \;
         # 确保文件有读写权限
-        find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+        safe_sudo find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
     else
         if [[ "$dir_path" == /* ]]; then
-            sudo chmod -R 750 "$dir_path"
-            sudo find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
-            sudo find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+            safe_sudo chmod -R 750 "$dir_path"
+            safe_sudo find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
+            safe_sudo find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
         else
-            chmod -R 750 "$dir_path" 2>/dev/null || true
-            find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
-            find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+            safe_sudo chmod -R 750 "$dir_path" 2>/dev/null || true
+            safe_sudo find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
+            safe_sudo find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
         fi
     fi
     
@@ -314,18 +361,18 @@ if [ "$OS" = "Linux" ]; then
     
     # 创建数据目录的子目录
     if [[ $EUID -eq 0 ]]; then
-        mkdir -p "$DATA_DIR/backup"
-        chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
-        chmod -R 750 "$DATA_DIR/backup"
+        safe_sudo mkdir -p "$DATA_DIR/backup"
+        safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
+        safe_sudo chmod -R 750 "$DATA_DIR/backup"
     else
         if [[ "$DATA_DIR" == /* ]]; then
-            sudo mkdir -p "$DATA_DIR/backup"
-            sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
-            sudo chmod -R 750 "$DATA_DIR/backup"
+            safe_sudo mkdir -p "$DATA_DIR/backup"
+            safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
+            safe_sudo chmod -R 750 "$DATA_DIR/backup"
         else
             mkdir -p "$DATA_DIR/backup"
-            chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup" 2>/dev/null || true
-            chmod -R 750 "$DATA_DIR/backup" 2>/dev/null || true
+            safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup" 2>/dev/null || true
+            safe_sudo chmod -R 750 "$DATA_DIR/backup" 2>/dev/null || true
         fi
     fi
     
@@ -337,8 +384,8 @@ elif [ "$OS" = "Mac" ]; then
     mkdir -p dist
     
     # 设置适当的权限
-    chmod -R 750 "$DATA_DIR" 2>/dev/null || true
-    chmod -R 750 "$LOG_DIR" 2>/dev/null || true
+    safe_sudo chmod -R 750 "$DATA_DIR" 2>/dev/null || true
+    safe_sudo chmod -R 750 "$LOG_DIR" 2>/dev/null || true
     
     echo "   ✅ macOS 目录创建完成"
     echo "   - 数据目录: $DATA_DIR"
@@ -348,7 +395,7 @@ fi
 # 复制环境配置文件
 if [ ! -f .env ]; then
     echo "⚙️ 创建环境配置文件..."
-    cp .env.example .env
+    safe_sudo cp .env.example .env
     
     # 根据操作系统调整配置文件中的路径
     if [ "$OS" = "Linux" ]; then
@@ -394,16 +441,18 @@ fi
 echo "   执行 TypeScript 编译..."
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
-    if ! sudo -u $TARGET_USER npm run build 2>&1; then
+    if ! safe_sudo_user $TARGET_USER npm run build 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
         echo "   尝试运行: npm run build 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
+        exit 1
     fi
 else
     if ! npm run build 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
         echo "   尝试运行: npm run build 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
+        exit 1
     fi
 fi
 
@@ -440,16 +489,22 @@ if [ "$OS" = "Linux" ]; then
         if [ -z "$SYSTEM_NODE" ]; then
             echo "   复制 Node.js 到系统路径..."
             if [[ $EUID -eq 0 ]]; then
-                cp "$CURRENT_NODE" /usr/local/bin/node
-                chmod +x /usr/local/bin/node
+                safe_sudo cp "$CURRENT_NODE" /usr/local/bin/node
+                safe_sudo chmod +x /usr/local/bin/node
                 echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
             else
-                if sudo cp "$CURRENT_NODE" /usr/local/bin/node && sudo chmod +x /usr/local/bin/node; then
+                if safe_sudo cp "$CURRENT_NODE" /usr/local/bin/node && safe_sudo chmod +x /usr/local/bin/node; then
                     echo "   ✅ Node.js 已复制到 /usr/local/bin/node"
                 else
                     echo "   ❌ 复制失败，请手动执行："
-                    echo "      sudo cp $CURRENT_NODE /usr/local/bin/node"
-                    echo "      sudo chmod +x /usr/local/bin/node"
+                    if [ "$HAS_SUDO" = true ]; then
+                        echo "      sudo cp $CURRENT_NODE /usr/local/bin/node"
+                        echo "      sudo chmod +x /usr/local/bin/node"
+                    else
+                        echo "      cp $CURRENT_NODE /usr/local/bin/node"
+                        echo "      chmod +x /usr/local/bin/node"
+                        echo "      (需要root权限)"
+                    fi
                 fi
             fi
         else
@@ -483,7 +538,7 @@ if [ "$OS" = "Linux" ]; then
         echo "⚠️  环境文件不存在: $ABSOLUTE_PROJECT_ROOT/.env"
         if [ -f "$ABSOLUTE_PROJECT_ROOT/.env.example" ]; then
             echo "📋 复制示例环境文件..."
-            cp "$ABSOLUTE_PROJECT_ROOT/.env.example" "$ABSOLUTE_PROJECT_ROOT/.env"
+            safe_sudo cp "$ABSOLUTE_PROJECT_ROOT/.env.example" "$ABSOLUTE_PROJECT_ROOT/.env"
             echo "✅ 已创建环境文件，请根据需要修改配置"
         else
             echo "   请创建 .env 文件配置环境变量"
@@ -491,23 +546,58 @@ if [ "$OS" = "Linux" ]; then
     fi
     
     # 检查目标用户对项目目录的访问权限
-    if ! sudo -u "$TARGET_USER" test -r "$ABSOLUTE_PROJECT_ROOT"; then
+    if ! safe_sudo_user "$TARGET_USER" test -r "$ABSOLUTE_PROJECT_ROOT"; then
         echo "⚠️  用户 $TARGET_USER 无法访问项目目录，调整权限..."
         if [[ $EUID -eq 0 ]]; then
-            chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
-            chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
+            safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
+            safe_sudo chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
         else
-            sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
-            sudo chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
+            safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$ABSOLUTE_PROJECT_ROOT"
+            safe_sudo chmod -R u+rX "$ABSOLUTE_PROJECT_ROOT"
         fi
     fi
     
-    # 使用生成脚本创建服务文件
-    if [[ $EUID -eq 0 ]] && [ "$TARGET_USER" != "root" ]; then
-        sudo -u $TARGET_USER bash scripts/generate-systemd-service.sh "$ABSOLUTE_PROJECT_ROOT"
-    else
-        bash scripts/generate-systemd-service.sh "$ABSOLUTE_PROJECT_ROOT"
+    # 生成systemd服务文件
+    echo "🔧 生成systemd服务配置..."
+    echo "📁 安装目录: $ABSOLUTE_PROJECT_ROOT"
+    echo "👤 运行用户: $TARGET_USER"
+    echo "👥 运行组: $TARGET_GROUP"
+    
+    # 检查服务模板文件
+    SERVICE_TEMPLATE="$ABSOLUTE_PROJECT_ROOT/config/subscription-api-ts.service.template"
+    if [ ! -f "$SERVICE_TEMPLATE" ]; then
+        echo "❌ 服务模板文件不存在: $SERVICE_TEMPLATE"
+        exit 1
     fi
+    
+    # 获取Node.js路径
+    NODE_PATH=$(which node)
+    if [ -z "$NODE_PATH" ]; then
+        echo "❌ 未找到 node 可执行文件"
+        exit 1
+    fi
+    echo "🔍 Node.js 路径: $NODE_PATH"
+    
+    # 生成服务文件
+    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+    SERVICE_OUTPUT="/tmp/${SERVICE_NAME}.service"
+    
+    # 检查并安装envsubst (如果需要)
+    if ! command -v envsubst >/dev/null 2>&1; then
+        echo "🔧 安装 envsubst 工具..."
+        if [[ $EUID -eq 0 ]]; then
+            safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+        else
+            safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+        fi
+    fi
+    
+    # 导出环境变量供envsubst使用
+    export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP" INSTALL_DIR="$ABSOLUTE_PROJECT_ROOT" NODE_PATH
+    
+    # 生成服务文件
+    envsubst '${SERVICE_USER} ${SERVICE_GROUP} ${INSTALL_DIR} ${NODE_PATH}' < "$SERVICE_TEMPLATE" > "$SERVICE_OUTPUT"
+    echo "✅ 服务文件已生成: $SERVICE_OUTPUT"
     
     # 安装服务文件
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
@@ -515,20 +605,20 @@ if [ "$OS" = "Linux" ]; then
         # 备份现有服务文件（如果存在）
         if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
             echo "📁 备份现有 systemd 服务文件..."
-            cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
+            safe_sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
         fi
-        cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
-        systemctl daemon-reload
-        systemctl enable "$SERVICE_NAME"
+        safe_sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
+        safe_sudo systemctl daemon-reload
+        safe_sudo systemctl enable "$SERVICE_NAME"
     else
         # 备份现有服务文件（如果存在）
         if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
             echo "📁 备份现有 systemd 服务文件..."
-            sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
+            safe_sudo cp "/etc/systemd/system/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service.backup.$(date +%Y%m%d_%H%M%S)"
         fi
-        sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
-        sudo systemctl daemon-reload
-        sudo systemctl enable "$SERVICE_NAME"
+        safe_sudo cp "/tmp/${SERVICE_NAME}.service" /etc/systemd/system/
+        safe_sudo systemctl daemon-reload
+        safe_sudo systemctl enable "$SERVICE_NAME"
     fi
     
     echo "✅ 服务文件已安装到 /etc/systemd/system/${SERVICE_NAME}.service"
@@ -555,7 +645,7 @@ if command -v nginx &> /dev/null; then
             if [[ $EUID -eq 0 ]]; then
                 apt-get update && apt-get install -y gettext-base
             else
-                sudo apt-get update && sudo apt-get install -y gettext-base
+                safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
             fi
         elif [ "$OS" = "Mac" ]; then
             if command -v brew &> /dev/null; then
@@ -582,25 +672,25 @@ if command -v nginx &> /dev/null; then
         if [[ $EUID -eq 0 ]]; then
             # 删除现有符号链接（如果存在）
             if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
-                rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
+                safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
             fi
-            cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
-            ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
+            safe_sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
+            safe_sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             # 检查nginx配置是否正确
-            if nginx -t; then
+            if safe_sudo nginx -t; then
                 # 检查nginx是否已经运行
-                if systemctl is-active --quiet nginx; then
+                if safe_sudo systemctl is-active --quiet nginx; then
                     echo "🔄 重新加载 Nginx 配置..."
-                    if systemctl reload nginx; then
+                    if safe_sudo systemctl reload nginx; then
                         echo "✅ Nginx 配置重新加载成功"
                     else
                         echo "⚠️  Nginx 重新加载失败，尝试重启..."
-                        systemctl restart nginx
+                        safe_sudo systemctl restart nginx
                     fi
                 else
                     echo "🚀 启动 Nginx 服务..."
-                    systemctl start nginx
-                    systemctl enable nginx
+                    safe_sudo systemctl start nginx
+                    safe_sudo systemctl enable nginx
                 fi
                 echo "✅ Nginx 配置完成"
             else
@@ -609,25 +699,25 @@ if command -v nginx &> /dev/null; then
         else
             # 删除现有符号链接（如果存在）
             if [ -L "/etc/nginx/sites-enabled/${SERVICE_NAME}" ]; then
-                sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
+                safe_sudo rm -f "/etc/nginx/sites-enabled/${SERVICE_NAME}"
             fi
-            sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
-            sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
+            safe_sudo cp config/nginx.conf /etc/nginx/sites-available/${SERVICE_NAME}
+            safe_sudo ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/
             # 检查nginx配置是否正确
-            if sudo nginx -t; then
+            if safe_sudo nginx -t; then
                 # 检查nginx是否已经运行
-                if sudo systemctl is-active --quiet nginx; then
+                if safe_sudo systemctl is-active --quiet nginx; then
                     echo "🔄 重新加载 Nginx 配置..."
-                    if sudo systemctl reload nginx; then
+                    if safe_sudo systemctl reload nginx; then
                         echo "✅ Nginx 配置重新加载成功"
                     else
                         echo "⚠️  Nginx 重新加载失败，尝试重启..."
-                        sudo systemctl restart nginx
+                        safe_sudo systemctl restart nginx
                     fi
                 else
                     echo "🚀 启动 Nginx 服务..."
-                    sudo systemctl start nginx
-                    sudo systemctl enable nginx
+                    safe_sudo systemctl start nginx
+                    safe_sudo systemctl enable nginx
                 fi
                 echo "✅ Nginx 配置完成"
             else
@@ -677,8 +767,13 @@ if [ "$OS" = "Linux" ]; then
         echo "2. 启动服务: systemctl start $SERVICE_NAME"
         echo "3. 查看状态: systemctl status $SERVICE_NAME"
     else
-        echo "2. 启动服务: sudo systemctl start $SERVICE_NAME"
-        echo "3. 查看状态: sudo systemctl status $SERVICE_NAME"
+        if [ "$HAS_SUDO" = true ]; then
+            echo "2. 启动服务: sudo systemctl start $SERVICE_NAME"
+            echo "3. 查看状态: sudo systemctl status $SERVICE_NAME"
+        else
+            echo "2. 启动服务: systemctl start $SERVICE_NAME (需要root权限)"
+            echo "3. 查看状态: systemctl status $SERVICE_NAME"
+        fi
     fi
     # 从环境变量读取端口号
     API_PORT="${PORT:-3000}"
