@@ -27,6 +27,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
+ReadWritePaths=/var/www/subscription /var/log/subscription
 
 [Install]
 WantedBy=multi-user.target

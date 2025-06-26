@@ -66,10 +66,22 @@ export class App {
         this.app.use('*', (req: Request, res: Response) => {
             res.status(404).json({
                 success: false,
-                error: '端点不存在',
+                error: 'API端点不存在',
+                message: `请求的端点 ${req.method} ${req.originalUrl} 不存在`,
                 path: req.originalUrl,
                 method: req.method,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                availableEndpoints: {
+                    'GET /': 'API文档',
+                    'GET /api/update': '更新订阅',
+                    'GET /api/status': '获取状态',
+                    'GET /subscription.txt': '获取Base64编码的订阅',
+                    'GET /clash.yaml': '获取Clash配置',
+                    'GET /raw.txt': '获取原始链接',
+                    'GET /api/configs': '获取可用配置列表',
+                    'POST /api/configs': '更新配置列表',
+                    'GET /health': '健康检查'
+                }
             });
         });
 

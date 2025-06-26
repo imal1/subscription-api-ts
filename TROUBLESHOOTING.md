@@ -164,7 +164,7 @@ mkdir -p data logs data/backup
 
 **错误信息：**
 ```bash
-EACCES: permission denied, mkdir '/var/log/subscription-api'
+EACCES: permission denied, mkdir '/var/log/subscription'
 EACCES: permission denied, open '/var/run/subscription-api.pid'
 ```
 
@@ -174,7 +174,7 @@ EACCES: permission denied, open '/var/run/subscription-api.pid'
 ls -la /var/log/ /var/run/
 
 # 修改权限
-sudo chown -R $USER:$USER /var/log/subscription-api
+sudo chown -R $USER:$USER /var/log/subscription
 sudo chown -R $USER:$USER /var/run/subscription-api.pid
 
 # 或使用 sudo 运行

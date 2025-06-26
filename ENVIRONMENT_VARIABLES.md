@@ -112,11 +112,10 @@ grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules
 - `src/utils/logger.ts` - 日志配置 ✅
 
 ### JavaScript文件
-- `opt/subscription-api/app.js` - JavaScript版本API ✅
-- `opt/subscription-api/gunicorn_config.py` - Gunicorn配置 ✅
+- 已移除旧版本文件
 
-### Python文件
-- `opt/subscription-api/subscription_api.py` - Python版本API ✅
+### Python文件  
+- 已移除旧版本文件
 
 ### 配置文件
 - `config/nginx.conf.template` - Nginx生产环境模板 ✅

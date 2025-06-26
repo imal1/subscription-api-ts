@@ -6,13 +6,13 @@ Documentation=https://github.com/imal1/subscription-api-ts
 
 [Service]
 Type=simple
-User=imal1
-Group=imal1
-WorkingDirectory=${INSTALL_DIR}
+User=root
+Group=root
+WorkingDirectory=/opt/subscription-api-ts
 Environment=NODE_ENV=production
-Environment=PATH=/usr/bin:/usr/local/bin:${INSTALL_DIR}/node_modules/.bin
-EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=/usr/bin/node ${INSTALL_DIR}/dist/index.js
+Environment=PATH=/usr/bin:/usr/local/bin:/opt/node/bin:/opt/subscription-api-ts/node_modules/.bin
+EnvironmentFile=/opt/subscription-api-ts/.env
+ExecStart=/usr/local/bin/node /opt/subscription-api-ts/dist/index.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3

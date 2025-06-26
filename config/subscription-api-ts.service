@@ -12,7 +12,7 @@ WorkingDirectory=/opt/subscription-api-ts
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin:/opt/subscription-api-ts/node_modules/.bin
 EnvironmentFile=/opt/subscription-api-ts/.env
-ExecStart=/usr/bin/node dist/index.js
+ExecStart=/usr/bin/node /opt/subscription-api-ts/dist/index.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3
