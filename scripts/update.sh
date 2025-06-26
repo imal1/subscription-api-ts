@@ -57,8 +57,12 @@ echo "🔧 重新生成配置文件..."
 
 # 加载环境变量
 if [ -f ".env" ]; then
-    # 导出环境变量
-    export $(grep -E '^[A-Z_]+=.*' .env | grep -v '^#' | xargs)
+    # 安全地导出环境变量，只导出有效的变量名
+    while IFS='=' read -r key value; do
+        if [[ $key =~ ^[A-Z_][A-Z0-9_]*$ ]] && [[ ! $key =~ ^# ]]; then
+            export "$key"="$value"
+        fi
+    done < <(grep -E '^[A-Z_][A-Z0-9_]*=' .env | grep -v '^#')
 fi
 
 # 设置默认值
