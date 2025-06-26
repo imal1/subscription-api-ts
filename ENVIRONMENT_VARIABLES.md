@@ -1,6 +1,19 @@
-# 环境变量配置检查清单
+# 环境变量配置指南
 
 本文档列出了项目中所有支持的环境变量，确保所有配置都能正确从 `.env` 文件读取。
+
+## 🚀 API 端点参考
+
+| 端点 | 支持方法 | 功能描述 |
+|------|----------|----------|
+| `/api/update` | **GET** | 更新订阅文件 |
+| `/api/configs` | GET, POST | 获取/更新配置列表 |
+| `/api/status` | GET | 获取服务状态 |
+| `/subscription.txt` | GET | 下载订阅文件 |
+| `/clash.yaml` | GET | 下载Clash配置 |
+| `/health` | GET | 健康检查 |
+
+⚠️ **重要**：`/api/update` 现在支持 GET 方法。详细的 API 使用说明请参考 [README.md](./README.md)
 
 ## 📋 环境变量清单
 
@@ -34,6 +47,61 @@
 ### 📝 日志配置
 - `LOG_LEVEL` - 日志级别 (默认: info)
 
+## ⚙️ 配置管理
+
+### 动态配置更新
+
+项目提供 API 接口来动态管理配置：
+
+#### 获取当前配置
+```bash
+curl http://localhost:3000/api/configs
+```
+
+#### 更新配置列表
+```bash
+curl -X POST http://localhost:3000/api/configs \
+  -H "Content-Type: application/json" \
+  -d '{"configs": ["vless-reality", "hysteria2"]}'
+```
+
+### 配置特性
+
+- **动态更新**：API 更新的配置立即生效，无需重启
+- **配置来源**：默认从环境变量 `SING_BOX_CONFIGS` 读取
+- **持久性**：服务重启后恢复到环境变量默认值
+- **格式验证**：配置名称必须是非空字符串数组
+
+### 配置文件结构
+
+```bash
+.env                    # 主配置文件
+.env.example           # 配置模板
+config/                # 配置模板目录
+├── nginx.conf.template
+└── nginx.dev.conf.template
+```
+
+## 🔍 配置验证
+
+### 自动检查
+```bash
+# 验证所有环境变量
+./manage.sh overview
+
+# 检查配置文件
+npm run build
+```
+
+### 手动检查
+```bash
+# 搜索硬编码值
+grep -r "3000\|3080\|25500" src/ --exclude-dir=node_modules
+
+# 搜索硬编码路径  
+grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules
+```
+
 ## ✅ 已修复的文件
 
 ### TypeScript文件
@@ -54,69 +122,33 @@
 - `config/nginx.conf.template` - Nginx生产环境模板 ✅
 - `config/nginx.dev.conf.template` - Nginx开发环境模板 ✅
 
-## 🔍 检查方法
+## 📖 快速开始
 
-要验证所有环境变量都被正确读取，可以：
-
-1. **搜索硬编码值**：
+1. **复制配置模板**：
    ```bash
-   # 搜索可能的硬编码端口
-   grep -r "3000\|3080\|25500" src/ --exclude-dir=node_modules
-   
-   # 搜索硬编码路径
-   grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules
+   cp .env.example .env
    ```
 
-2. **验证配置生成**：
+2. **编辑配置**：
    ```bash
-   npm run nginx:config
+   nano .env  # 根据你的环境修改配置
    ```
 
-3. **检查构建**：
+3. **验证配置**：
    ```bash
-   npm run build
+   ./manage.sh overview
    ```
 
-## 📖 使用说明
+4. **启动服务**：
+   ```bash
+   npm run dev    # 开发模式
+   npm start      # 生产模式
+   ```
 
-1. 复制 `.env.example` 到 `.env`
-2. 根据你的环境修改 `.env` 中的配置
-3. 运行 `npm run nginx:config` 生成对应的nginx配置
-4. 启动服务
+## 🔗 相关文档
 
-所有配置现在都通过环境变量统一管理，确保了配置的一致性和灵活性！🎉
+- [故障排除指南](./TROUBLESHOOTING.md) - 详细的错误诊断和解决方案
+- [项目结构说明](./PROJECT_STRUCTURE.md) - 项目文件组织
+- [README.md](./README.md) - 项目概述和安装指南
 
-## 🚨 故障排除
-
-### 服务管理命令
-
-项目提供了完整的服务管理和诊断工具：
-
-```bash
-# 检查服务状态（跨平台）
-npm run service:status
-
-# 修复 Linux SystemD 问题
-sudo npm run service:fix
-
-# 生成所有配置文件
-npm run config:all $(pwd)
-```
-
-### 常见问题
-
-1. **systemctl status 报错**
-   - 运行 `npm run service:status` 进行诊断
-   - 使用 `sudo npm run service:fix` 自动修复
-
-2. **端口占用问题**
-   - 修改 `.env` 文件中的 `PORT` 配置
-   - 重新生成配置: `npm run config:all $(pwd)`
-
-3. **权限问题**
-   - 确保使用正确的用户权限
-   - Linux 下使用 `sudo` 执行系统级操作
-
-4. **路径问题**
-   - 检查工作目录是否正确
-   - 重新运行安装脚本: `sudo bash scripts/install.sh`
+所有配置通过环境变量统一管理，确保配置的一致性和灵活性！🎉

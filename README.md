@@ -167,25 +167,42 @@ pm2 start dist/index.js --name subscription-api-ts
 ./manage.sh version      # 版本信息
 ```
 ## 📖 API 文档
+
 ### 基础信息
 - Base URL: http://your-server:${PORT} （默认 3000，可通过 .env 配置）
 - Content-Type: application/json
+
 ### 端点列表
-|方法|端点|描述|
-|--|--|--|
-|GET|`/`|API文档|
-|GET|`/health`|健康检查|
-|POST|`/api/update`|更新订阅|
-|GET|`/api/status`|获取状态|
-|GET|`/api/configs`|获取配置列表|
-|POST|`/api/configs`|更新配置列表|
-|GET|`/subscription.txt`|获取订阅文件|
-|GET|`/clash.yaml`|获取Clash配置|
-|GET|`/raw.txt`|获取原始链接|
+|方法|端点|描述|注意事项|
+|--|--|--|--|
+|GET|`/`|API文档||
+|GET|`/health`|健康检查||
+|**GET**|`/api/update`|更新订阅|✅ **支持GET方法**|
+|GET|`/api/status`|获取状态||
+|GET|`/api/configs`|获取配置列表||
+|POST|`/api/configs`|更新配置列表||
+|GET|`/subscription.txt`|获取订阅文件||
+|GET|`/clash.yaml`|获取Clash配置||
+|GET|`/raw.txt`|获取原始链接||
+
+### ✅ 使用说明
+
+**`/api/update` 端点现在支持 GET 方法！**
+
+您可以通过简单的 GET 请求来更新订阅：
+
+```bash
+# ✅ 正确用法（支持多种方式）
+curl http://localhost:3000/api/update
+curl -X GET http://localhost:3000/api/update
+wget http://localhost:3000/api/update
+# 也可以直接在浏览器中访问
+```
+
 ### 使用示例
 ```bash
-# 更新订阅
-curl -X POST http://localhost:${PORT}/api/update
+# 更新订阅（现在使用GET方法）
+curl http://localhost:${PORT}/api/update
 
 # 获取状态
 curl http://localhost:${PORT}/api/status
@@ -195,6 +212,9 @@ curl http://localhost:${PORT}/clash.yaml
 
 # 健康检查
 curl http://localhost:${PORT}/health
+
+# 测试所有端点
+./test-api-endpoints.sh
 ```
 ## ⚙️ 配置说明
 主要配置文件为 .env：

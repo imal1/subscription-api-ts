@@ -8,7 +8,7 @@ const subscriptionController = new SubscriptionController();
 router.get('/', subscriptionController.index);
 
 // 订阅管理
-router.post('/api/update', subscriptionController.updateSubscription);
+router.get('/api/update', subscriptionController.updateSubscription);
 router.get('/api/status', subscriptionController.getStatus);
 
 // 配置管理

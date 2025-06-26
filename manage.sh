@@ -56,6 +56,7 @@ show_help() {
     echo -e "  ${CYAN}logs${NC}             查看服务日志"
     echo -e "  ${CYAN}version${NC}          显示版本信息"
     echo -e "  ${CYAN}overview${NC}         项目状态概览"
+    echo -e "  ${CYAN}api-help${NC}         API 端点使用说明"
     echo -e "  ${CYAN}help${NC}             显示此帮助信息"
     echo ""
     echo -e "${WHITE}💡 示例:${NC}"
@@ -63,6 +64,7 @@ show_help() {
     echo -e "  ${CYAN}./manage.sh deploy${NC}          # 部署项目"
     echo -e "  ${CYAN}./manage.sh status${NC}          # 快速检查服务状态"
     echo -e "  ${CYAN}./manage.sh overview${NC}        # 查看项目概览"
+    echo -e "  ${CYAN}./manage.sh api-help${NC}        # 查看 API 使用说明"
     echo ""
 }
 
@@ -184,16 +186,22 @@ show_logs() {
 
 # 版本信息
 show_version() {
-    echo -e "${WHITE}📦 项目信息:${NC}"
+    echo -e "${WHITE}📦 版本信息${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
     if [ -f "package.json" ]; then
-        local version=$(grep '"version"' package.json | cut -d'"' -f4)
-        local name=$(grep '"name"' package.json | cut -d'"' -f4)
-        echo -e "  项目名称: ${GREEN}$name${NC}"
-        echo -e "  项目版本: ${GREEN}$version${NC}"
+        local name=$(jq -r '.name // "unknown"' package.json 2>/dev/null || grep '"name"' package.json | cut -d'"' -f4)
+        local version=$(jq -r '.version // "unknown"' package.json 2>/dev/null || grep '"version"' package.json | cut -d'"' -f4)
+        local description=$(jq -r '.description // ""' package.json 2>/dev/null || grep '"description"' package.json | cut -d'"' -f4)
+        
+        echo -e "${WHITE}项目名称:${NC} ${GREEN}$name${NC}"
+        echo -e "${WHITE}版本:${NC} ${GREEN}$version${NC}"
+        if [ -n "$description" ] && [ "$description" != "null" ]; then
+            echo -e "${WHITE}描述:${NC} $description"
+        fi
     fi
     
     echo ""
-    echo -e "${WHITE}🟢 运行环境:${NC}"
+    echo -e "${WHITE}运行环境:${NC}"
     if command -v node >/dev/null 2>&1; then
         echo -e "  Node.js: ${GREEN}$(node --version)${NC}"
     fi
@@ -202,6 +210,72 @@ show_version() {
     fi
     echo -e "  操作系统: ${GREEN}$(detect_os)${NC}"
     echo -e "  用户: ${GREEN}$(whoami)${NC}"
+}
+
+# 显示 API 使用帮助
+show_api_help() {
+    echo -e "${WHITE}📖 API 端点使用说明${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo ""
+    
+    # 读取端口配置
+    local port="3000"
+    if [ -f ".env" ]; then
+        port=$(grep "^PORT=" .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
+    fi
+    
+    echo -e "${WHITE}🌐 基础信息:${NC}"
+    echo -e "  Base URL: ${GREEN}http://localhost:${port}${NC}"
+    echo -e "  Content-Type: ${GREEN}application/json${NC}"
+    echo ""
+    
+    echo -e "${WHITE}📋 可用端点:${NC}"
+    echo -e "${CYAN}┌─────────┬──────────────────┬────────────────────┬────────────────────┐${NC}"
+    echo -e "${CYAN}│${WHITE} 方法    ${CYAN}│${WHITE} 端点             ${CYAN}│${WHITE} 描述               ${CYAN}│${WHITE} 注意事项           ${CYAN}│${NC}"
+    echo -e "${CYAN}├─────────┼──────────────────┼────────────────────┼────────────────────┤${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /                ${CYAN}│${WHITE} API文档            ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /health          ${CYAN}│${WHITE} 健康检查           ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /api/update      ${CYAN}│${WHITE} 更新订阅           ${CYAN}│${GREEN} ✅ 支持GET方法     ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /api/status      ${CYAN}│${WHITE} 获取状态           ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /api/configs     ${CYAN}│${WHITE} 获取配置列表       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${BLUE} POST    ${CYAN}│${WHITE} /api/configs     ${CYAN}│${WHITE} 更新配置列表       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /subscription.txt${CYAN}│${WHITE} 获取订阅文件       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /clash.yaml      ${CYAN}│${WHITE} 获取Clash配置      ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /raw.txt         ${CYAN}│${WHITE} 获取原始链接       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
+    echo -e "${CYAN}└─────────┴──────────────────┴────────────────────┴────────────────────┘${NC}"
+    echo ""
+    
+    echo -e "${GREEN}✅ 更新说明:${NC}"
+    echo -e "  ${GREEN}/api/update 端点现在支持 GET 方法！${NC}"
+    echo -e "  可以通过简单的 GET 请求更新订阅。"
+    echo ""
+    
+    echo -e "${WHITE}✅ 正确用法示例:${NC}"
+    echo -e "${GREEN}  # 更新订阅（现在支持GET方法）${NC}"
+    echo -e "  curl http://localhost:${port}/api/update"
+    echo -e "  curl -X GET http://localhost:${port}/api/update"
+    echo -e "  wget http://localhost:${port}/api/update"
+    echo -e "  # 也可以直接在浏览器中访问"
+    echo ""
+    echo -e "${GREEN}  # 获取状态${NC}"
+    echo -e "  curl http://localhost:${port}/api/status"
+    echo ""
+    echo -e "${GREEN}  # 获取配置列表${NC}"
+    echo -e "  curl http://localhost:${port}/api/configs"
+    echo ""
+    echo -e "${GREEN}  # 健康检查${NC}"
+    echo -e "  curl http://localhost:${port}/health"
+    echo ""
+    
+    echo -e "${WHITE}🎉 优势:${NC}"
+    echo -e "  ${GREEN}更简单${NC}     - 不需要指定 POST 方法"
+    echo -e "  ${GREEN}更直观${NC}     - 可以直接在浏览器中访问"
+    echo -e "  ${GREEN}更通用${NC}     - 支持 wget、curl 等多种工具"
+    echo ""
+    
+    echo -e "${WHITE}🧪 测试工具:${NC}"
+    echo -e "  运行完整的端点测试: ${CYAN}./test-api-endpoints.sh${NC}"
+    echo -e "  查看故障排除指南: ${CYAN}cat TROUBLESHOOTING.md${NC}"
 }
 
 # 项目概览
@@ -389,6 +463,9 @@ main() {
             ;;
         "overview")
             show_project_overview
+            ;;
+        "api-help")
+            show_api_help
             ;;
         "help"|"-h"|"--help")
             show_help

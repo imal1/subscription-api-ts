@@ -205,7 +205,7 @@ app.get('/', (req, res) => {
         description: 'Node.js订阅转换API服务',
         endpoints: {
             'GET /': 'API文档',
-            'POST /api/update': '更新订阅',
+            'GET /api/update': '更新订阅',
             'GET /api/status': '获取状态',
             'GET /subscription.txt': '获取Base64编码的订阅',
             'GET /clash.yaml': '获取Clash配置',

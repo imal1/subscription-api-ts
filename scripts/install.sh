@@ -751,12 +751,12 @@ echo ""
 if [ "$OS" = "Linux" ]; then
     API_PORT="${PORT:-3000}"
     NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    echo "   curl -X POST http://localhost:${NGINX_PROXY_PORT}/api/update"
+    echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/update"
     echo "   # 或者直接访问 API："
-    echo "   curl -X POST http://localhost:${API_PORT}/api/update"
+    echo "   curl http://localhost:${API_PORT}/api/update"
 elif [ "$OS" = "Mac" ]; then
     API_PORT="${PORT:-3000}"  
-    echo "   curl -X POST http://localhost:${API_PORT}/api/update"
+    echo "   curl http://localhost:${API_PORT}/api/update"
 fi
 echo ""
 echo "下一步："
