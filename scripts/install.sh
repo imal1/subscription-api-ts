@@ -126,32 +126,62 @@ fi
 
 # 安装项目依赖
 echo "📦 安装项目依赖..."
+
+# 定义安装函数
+install_dependencies() {
+    local user_prefix="$1"
+    local install_success=false
+    
+    # 首先尝试 npm ci
+    echo "   尝试使用 npm ci 安装依赖..."
+    if $user_prefix npm ci --include=dev 2>/dev/null; then
+        echo "   ✅ npm ci 安装成功"
+        install_success=true
+    else
+        echo "   ⚠️  npm ci 失败，可能是 package-lock.json 与 package.json 不同步"
+        echo "   📦 回退到 npm install..."
+        
+        # 如果 npm ci 失败，使用 npm install
+        if $user_prefix npm install --include=dev; then
+            echo "   ✅ npm install 安装成功"
+            install_success=true
+        else
+            echo "   ❌ npm install 也失败了"
+            return 1
+        fi
+    fi
+    
+    # 验证关键依赖是否安装成功
+    if [ "$install_success" = true ]; then
+        if ! $user_prefix test -f "node_modules/@types/node/index.d.ts"; then
+            echo "   ⚠️  重新安装 @types/node..."
+            $user_prefix npm install --save-dev @types/node
+        fi
+    fi
+    
+    return 0
+}
+
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ]; then
     # root 用户执行时，确保 package.json 等文件权限正确
     chown -R $TARGET_USER:$TARGET_GROUP "$PROJECT_ROOT"
     # 使用目标用户身份安装依赖
     if [ "$TARGET_USER" != "root" ]; then
         echo "   使用用户 $TARGET_USER 安装依赖..."
-        sudo -u $TARGET_USER npm ci --include=dev
-        # 验证关键依赖是否安装成功
-        if ! sudo -u $TARGET_USER test -f "node_modules/@types/node/index.d.ts"; then
-            echo "⚠️  重新安装 @types/node..."
-            sudo -u $TARGET_USER npm install --save-dev @types/node
+        if ! install_dependencies "sudo -u $TARGET_USER"; then
+            echo "❌ 依赖安装失败"
+            exit 1
         fi
     else
-        npm ci --include=dev
-        # 验证关键依赖是否安装成功
-        if ! test -f "node_modules/@types/node/index.d.ts"; then
-            echo "⚠️  重新安装 @types/node..."
-            npm install --save-dev @types/node
+        if ! install_dependencies ""; then
+            echo "❌ 依赖安装失败"
+            exit 1
         fi
     fi
 else
-    npm ci --include=dev
-    # 验证关键依赖是否安装成功
-    if ! test -f "node_modules/@types/node/index.d.ts"; then
-        echo "⚠️  重新安装 @types/node..."
-        npm install --save-dev @types/node
+    if ! install_dependencies ""; then
+        echo "❌ 依赖安装失败"
+        exit 1
     fi
 fi
 
@@ -178,9 +208,15 @@ if [ -n "$MISSING_DEPS" ]; then
     echo "❌ 缺少依赖:$MISSING_DEPS"
     echo "🔧 重新安装缺少的依赖..."
     if [[ $EUID -eq 0 ]] && [ "$TARGET_USER" != "root" ]; then
-        sudo -u $TARGET_USER npm install
+        if ! install_dependencies "sudo -u $TARGET_USER"; then
+            echo "❌ 重新安装依赖失败"
+            exit 1
+        fi
     else
-        npm install
+        if ! install_dependencies ""; then
+            echo "❌ 重新安装依赖失败"
+            exit 1
+        fi
     fi
 fi
 
