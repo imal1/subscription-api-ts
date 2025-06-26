@@ -242,35 +242,107 @@ echo "📁 创建目录..."
 echo "   数据目录: $DATA_DIR"
 echo "   日志目录: $LOG_DIR"
 
-if [ "$OS" = "Linux" ]; then
-    if [[ $EUID -eq 0 ]]; then
-        # root 用户直接创建目录
-        mkdir -p "$DATA_DIR"
-        mkdir -p "$LOG_DIR"
-        # 设置目录权限给目标用户
-        chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR"
-        chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR"
-    else
-        # 非 root 用户使用 sudo
-        if [[ "$DATA_DIR" == /* ]] || [[ "$LOG_DIR" == /* ]]; then
-            # 绝对路径需要 sudo
-            sudo mkdir -p "$DATA_DIR"
-            sudo mkdir -p "$LOG_DIR"
-            sudo chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR"
-            sudo chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR"
+# 创建目录并设置权限的函数
+setup_directory() {
+    local dir_path="$1"
+    local dir_name="$2"
+    local user="$3"
+    local group="$4"
+    
+    echo "   创建 $dir_name: $dir_path"
+    
+    # 创建目录
+    if [[ "$dir_path" == /* ]]; then
+        # 绝对路径
+        if [[ $EUID -eq 0 ]]; then
+            mkdir -p "$dir_path"
         else
-            # 相对路径直接创建
-            mkdir -p "$DATA_DIR"
-            mkdir -p "$LOG_DIR"
-            chown -R $TARGET_USER:$TARGET_GROUP "$DATA_DIR" 2>/dev/null || true
-            chown -R $TARGET_USER:$TARGET_GROUP "$LOG_DIR" 2>/dev/null || true
+            sudo mkdir -p "$dir_path"
+        fi
+    else
+        # 相对路径
+        mkdir -p "$dir_path"
+    fi
+    
+    # 设置所有者
+    if [[ $EUID -eq 0 ]]; then
+        chown -R "$user:$group" "$dir_path"
+    else
+        if [[ "$dir_path" == /* ]]; then
+            sudo chown -R "$user:$group" "$dir_path"
+        else
+            chown -R "$user:$group" "$dir_path" 2>/dev/null || true
         fi
     fi
+    
+    # 设置权限：用户读写执行，组读执行，其他人无权限
+    if [[ $EUID -eq 0 ]]; then
+        chmod -R 750 "$dir_path"
+        # 确保目录有执行权限
+        find "$dir_path" -type d -exec chmod 750 {} \;
+        # 确保文件有读写权限
+        find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+    else
+        if [[ "$dir_path" == /* ]]; then
+            sudo chmod -R 750 "$dir_path"
+            sudo find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
+            sudo find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+        else
+            chmod -R 750 "$dir_path" 2>/dev/null || true
+            find "$dir_path" -type d -exec chmod 750 {} \; 2>/dev/null || true
+            find "$dir_path" -type f -exec chmod 640 {} \; 2>/dev/null || true
+        fi
+    fi
+    
+    # 验证权限设置
+    if [ -d "$dir_path" ]; then
+        local actual_owner=$(ls -ld "$dir_path" | awk '{print $3":"$4}')
+        local actual_perms=$(ls -ld "$dir_path" | awk '{print $1}')
+        echo "   ✅ $dir_name 创建成功 (所有者: $actual_owner, 权限: $actual_perms)"
+    else
+        echo "   ❌ $dir_name 创建失败"
+        return 1
+    fi
+}
+
+if [ "$OS" = "Linux" ]; then
+    # 设置数据目录
+    setup_directory "$DATA_DIR" "数据目录" "$TARGET_USER" "$TARGET_GROUP"
+    
+    # 设置日志目录
+    setup_directory "$LOG_DIR" "日志目录" "$TARGET_USER" "$TARGET_GROUP"
+    
+    # 创建数据目录的子目录
+    if [[ $EUID -eq 0 ]]; then
+        mkdir -p "$DATA_DIR/backup"
+        chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
+        chmod -R 750 "$DATA_DIR/backup"
+    else
+        if [[ "$DATA_DIR" == /* ]]; then
+            sudo mkdir -p "$DATA_DIR/backup"
+            sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup"
+            sudo chmod -R 750 "$DATA_DIR/backup"
+        else
+            mkdir -p "$DATA_DIR/backup"
+            chown -R "$TARGET_USER:$TARGET_GROUP" "$DATA_DIR/backup" 2>/dev/null || true
+            chmod -R 750 "$DATA_DIR/backup" 2>/dev/null || true
+        fi
+    fi
+    
 elif [ "$OS" = "Mac" ]; then
+    # macOS 上设置目录权限
     mkdir -p "$DATA_DIR"
     mkdir -p "$DATA_DIR/backup"
     mkdir -p "$LOG_DIR"
     mkdir -p dist
+    
+    # 设置适当的权限
+    chmod -R 750 "$DATA_DIR" 2>/dev/null || true
+    chmod -R 750 "$LOG_DIR" 2>/dev/null || true
+    
+    echo "   ✅ macOS 目录创建完成"
+    echo "   - 数据目录: $DATA_DIR"
+    echo "   - 日志目录: $LOG_DIR"
 fi
 
 # 复制环境配置文件
@@ -581,6 +653,21 @@ else
 fi
 
 echo "✅ 安装完成！"
+echo ""
+echo "📋 重要提示："
+echo "   首次使用前需要生成订阅文件（包括 clash.yaml）"
+echo "   请在启动服务后执行以下命令："
+echo ""
+if [ "$OS" = "Linux" ]; then
+    API_PORT="${PORT:-3000}"
+    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+    echo "   curl -X POST http://localhost:${NGINX_PROXY_PORT}/api/update"
+    echo "   # 或者直接访问 API："
+    echo "   curl -X POST http://localhost:${API_PORT}/api/update"
+elif [ "$OS" = "Mac" ]; then
+    API_PORT="${PORT:-3000}"  
+    echo "   curl -X POST http://localhost:${API_PORT}/api/update"
+fi
 echo ""
 echo "下一步："
 if [ "$OS" = "Linux" ]; then
