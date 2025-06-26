@@ -37,6 +37,7 @@ show_help() {
     echo ""
     echo -e "${WHITE}🚀 核心管理命令:${NC}"
     echo -e "  ${GREEN}install${NC}          完整项目安装和配置"
+    echo -e "  ${GREEN}update${NC}           更新代码并重启服务"
     echo -e "  ${GREEN}start${NC}            启动服务"
     echo -e "  ${GREEN}stop${NC}             停止服务"
     echo -e "  ${GREEN}restart${NC}          重启服务"
@@ -403,6 +404,117 @@ show_service_status() {
     fi
 }
 
+# 更新服务
+run_update_service() {
+    local os=$(detect_os)
+    
+    echo -e "${PURPLE}🚀 开始更新 Subscription API...${NC}"
+    
+    # 获取项目根目录
+    local project_root="$SCRIPT_DIR"
+    cd "$project_root"
+    
+    # 检查是否是git仓库
+    if [ -d ".git" ]; then
+        echo -e "${CYAN}📥 拉取最新代码...${NC}"
+        if git pull origin main 2>/dev/null || git pull origin master 2>/dev/null; then
+            echo -e "${GREEN}✅ 代码更新成功${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Git pull 失败，继续使用本地代码${NC}"
+        fi
+    else
+        echo -e "${YELLOW}ℹ️  不是 Git 仓库，跳过代码拉取${NC}"
+    fi
+    
+    # 安装依赖（如果需要）
+    if [ -f "package.json" ]; then
+        echo -e "${CYAN}📦 检查依赖...${NC}"
+        if [ -f "package-lock.json" ]; then
+            npm ci --production=false
+        else
+            npm install --include=dev
+        fi
+        echo -e "${GREEN}✅ 依赖检查完成${NC}"
+    fi
+    
+    # 构建项目
+    echo -e "${CYAN}🏗️ 构建项目...${NC}"
+    if npm run build; then
+        echo -e "${GREEN}✅ 构建成功${NC}"
+    else
+        echo -e "${RED}❌ 构建失败${NC}"
+        exit 1
+    fi
+    
+    # 重启服务
+    if [ "$os" = "Linux" ]; then
+        local service_name="${SERVICE_NAME:-subscription-api-ts}"
+        
+        # 检查服务是否正在运行
+        if systemctl is-active --quiet "$service_name"; then
+            echo -e "${CYAN}🔄 重启服务...${NC}"
+            sudo systemctl restart "$service_name"
+            sleep 3
+        else
+            echo -e "${CYAN}🚀 启动服务...${NC}"
+            sudo systemctl start "$service_name"
+            sleep 3
+        fi
+        
+        # 检查服务状态
+        if systemctl is-active --quiet "$service_name"; then
+            echo -e "${GREEN}✅ 服务更新成功${NC}"
+            echo ""
+            echo -e "${WHITE}📊 服务状态:${NC}"
+            systemctl status "$service_name" --no-pager -l
+        else
+            echo -e "${RED}❌ 服务启动失败${NC}"
+            systemctl status "$service_name" --no-pager -l
+            exit 1
+        fi
+        
+        echo ""
+        echo -e "${GREEN}🎉 更新完成！${NC}"
+        echo ""
+        echo -e "${WHITE}📋 测试命令:${NC}"
+        local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
+        echo -e "  ${CYAN}curl http://localhost:${nginx_proxy_port}/api/update${NC}"
+        echo -e "  ${CYAN}curl http://localhost:${nginx_proxy_port}/api/diagnose/clash${NC}"
+        echo -e "  ${CYAN}curl http://localhost:${nginx_proxy_port}/clash.yaml${NC}"
+        echo ""
+        echo -e "${WHITE}📊 查看日志:${NC}"
+        echo -e "  ${CYAN}sudo journalctl -u $service_name -f${NC}"
+        
+    elif [ "$os" = "Mac" ]; then
+        echo -e "${CYAN}🔄 重启服务 (macOS)...${NC}"
+        
+        if command -v pm2 >/dev/null 2>&1; then
+            # 使用 PM2 重启
+            if pm2 list | grep -q "subscription-api-ts"; then
+                pm2 restart subscription-api-ts
+            else
+                pm2 start dist/index.js --name subscription-api-ts
+            fi
+            echo -e "${GREEN}✅ PM2 服务更新成功${NC}"
+            pm2 status
+        else
+            # 手动重启
+            echo -e "${YELLOW}⚠️  请手动重启服务:${NC}"
+            echo -e "  ${CYAN}npm start${NC}"
+            echo -e "  ${WHITE}或安装 PM2: ${CYAN}npm install -g pm2${NC}"
+        fi
+        
+        echo ""
+        echo -e "${GREEN}🎉 更新完成！${NC}"
+        echo ""
+        echo -e "${WHITE}📋 测试命令:${NC}"
+        local port="${PORT:-3000}"
+        echo -e "  ${CYAN}curl http://localhost:${port}/api/update${NC}"
+        echo -e "  ${CYAN}curl http://localhost:${port}/api/diagnose/clash${NC}"
+        echo -e "  ${CYAN}curl http://localhost:${port}/clash.yaml${NC}"
+    fi
+}
+
 # 主逻辑
 main() {
     # 如果没有参数，显示帮助
@@ -418,6 +530,9 @@ main() {
         # 核心管理命令
         "install")
             run_script "install.sh" "$@"
+            ;;
+        "update")
+            run_update_service
             ;;
         "deploy")
             run_script "deploy.sh" "$@"
