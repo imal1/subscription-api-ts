@@ -75,6 +75,7 @@ export class App {
                     'GET /': 'API文档',
                     'GET /api/update': '更新订阅',
                     'GET /api/status': '获取状态',
+                    'GET /api/diagnose/clash': '诊断Clash生成问题',
                     'GET /subscription.txt': '获取Base64编码的订阅',
                     'GET /clash.yaml': '获取Clash配置',
                     'GET /raw.txt': '获取原始链接',

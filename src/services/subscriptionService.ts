@@ -76,16 +76,42 @@ export class SubscriptionService {
 
             // 生成Clash配置
             let clashGenerated = false;
+            let clashError: string | null = null;
             try {
+                // 检查 subconverter 服务状态
+                const subconverterHealthy = await this.subconverterService.checkHealth();
+                logger.info(`Subconverter服务状态: ${subconverterHealthy ? '正常' : '异常'}`);
+                
+                if (!subconverterHealthy) {
+                    throw new Error('Subconverter服务不可用，请检查服务是否启动');
+                }
+                
                 const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
+                logger.info(`开始生成Clash配置，使用订阅URL: ${localSubscriptionUrl}`);
+                
                 const clashContent = await this.subconverterService.convertToClash(localSubscriptionUrl);
+                
+                if (!clashContent || clashContent.trim().length === 0) {
+                    throw new Error('转换返回空内容');
+                }
                 
                 const clashFile = path.join(config.staticDir, 'clash.yaml');
                 await fs.writeFile(clashFile, clashContent, 'utf8');
-                clashGenerated = true;
-                logger.info('Clash配置生成成功');
-            } catch (clashError: any) {
-                logger.error('生成Clash配置失败:', clashError.message);
+                
+                // 验证文件是否成功写入
+                const fileExists = await fs.pathExists(clashFile);
+                const fileStats = fileExists ? await fs.stat(clashFile) : null;
+                
+                if (fileExists && fileStats && fileStats.size > 0) {
+                    clashGenerated = true;
+                    logger.info(`Clash配置生成成功，文件大小: ${fileStats.size} 字节`);
+                } else {
+                    throw new Error('文件写入失败或文件为空');
+                }
+            } catch (error: any) {
+                clashError = error.message;
+                logger.error('生成Clash配置失败:', error.message);
+                logger.error('错误详情:', error);
             }
 
             // 创建备份
@@ -97,12 +123,13 @@ export class SubscriptionService {
 
             const result: UpdateResult = {
                 success: true,
-                message: `订阅更新成功，共 ${urls.length} 个节点`,
+                message: `订阅更新成功，共 ${urls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
                 timestamp: new Date().toISOString(),
                 nodesCount: urls.length,
                 clashGenerated,
                 backupCreated: backupFile,
-                warnings: errors.length > 0 ? errors : undefined
+                warnings: errors.length > 0 ? errors : undefined,
+                errors: clashError ? [`Clash生成失败: ${clashError}`] : undefined
             };
 
             logger.info(`订阅更新完成: ${urls.length} 个节点, Clash生成: ${clashGenerated}`);
@@ -165,5 +192,95 @@ export class SubscriptionService {
         }
 
         return await fs.readFile(filePath);
+    }
+
+    /**
+     * 诊断 Clash 配置生成问题
+     */
+    async diagnoseClashGeneration(): Promise<any> {
+        const diagnosis: any = {
+            timestamp: new Date().toISOString(),
+            checks: {}
+        };
+
+        try {
+            // 1. 检查文件存在性
+            const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
+            const clashFile = path.join(config.staticDir, 'clash.yaml');
+            
+            diagnosis.checks.subscriptionFileExists = await fs.pathExists(subscriptionFile);
+            diagnosis.checks.clashFileExists = await fs.pathExists(clashFile);
+            
+            if (diagnosis.checks.subscriptionFileExists) {
+                const stats = await fs.stat(subscriptionFile);
+                diagnosis.checks.subscriptionFileSize = stats.size;
+                diagnosis.checks.subscriptionLastModified = stats.mtime.toISOString();
+            }
+            
+            if (diagnosis.checks.clashFileExists) {
+                const stats = await fs.stat(clashFile);
+                diagnosis.checks.clashFileSize = stats.size;
+                diagnosis.checks.clashLastModified = stats.mtime.toISOString();
+            }
+
+            // 2. 检查 subconverter 服务
+            diagnosis.checks.subconverterHealthy = await this.subconverterService.checkHealth();
+            
+            if (diagnosis.checks.subconverterHealthy) {
+                try {
+                    diagnosis.checks.subconverterVersion = await this.subconverterService.getVersion();
+                } catch (error) {
+                    diagnosis.checks.subconverterVersionError = (error as Error).message;
+                }
+            }
+
+            // 3. 检查本地订阅 URL 访问
+            const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
+            diagnosis.checks.localSubscriptionUrl = localSubscriptionUrl;
+            
+            try {
+                const axios = require('axios');
+                const response = await axios.get(localSubscriptionUrl, { timeout: 5000 });
+                diagnosis.checks.localSubscriptionAccessible = true;
+                diagnosis.checks.localSubscriptionStatus = response.status;
+                diagnosis.checks.localSubscriptionContentLength = response.data ? response.data.length : 0;
+            } catch (error: any) {
+                diagnosis.checks.localSubscriptionAccessible = false;
+                diagnosis.checks.localSubscriptionError = error.message;
+            }
+
+            // 4. 如果 subconverter 可用，尝试转换
+            if (diagnosis.checks.subconverterHealthy && diagnosis.checks.localSubscriptionAccessible) {
+                try {
+                    const clashContent = await this.subconverterService.convertToClash(localSubscriptionUrl);
+                    diagnosis.checks.conversionTest = {
+                        success: true,
+                        contentLength: clashContent ? clashContent.length : 0,
+                        hasContent: clashContent && clashContent.trim().length > 0
+                    };
+                } catch (error: any) {
+                    diagnosis.checks.conversionTest = {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+
+            // 5. 检查目录权限
+            try {
+                const testFile = path.join(config.staticDir, '.test_write');
+                await fs.writeFile(testFile, 'test', 'utf8');
+                await fs.remove(testFile);
+                diagnosis.checks.directoryWritable = true;
+            } catch (error: any) {
+                diagnosis.checks.directoryWritable = false;
+                diagnosis.checks.directoryWriteError = error.message;
+            }
+
+            return diagnosis;
+        } catch (error: any) {
+            diagnosis.error = error.message;
+            return diagnosis;
+        }
     }
 }

@@ -30,6 +30,7 @@ export class SubscriptionController {
                     'GET /': 'API文档',
                     'GET /api/update': '更新订阅',
                     'GET /api/status': '获取状态',
+                    'GET /api/diagnose/clash': '诊断Clash生成问题',
                     'GET /subscription.txt': '获取Base64编码的订阅',
                     'GET /clash.yaml': '获取Clash配置',
                     'GET /raw.txt': '获取原始链接',
@@ -234,6 +235,34 @@ export class SubscriptionController {
                 error: error.message,
                 timestamp: new Date().toISOString()
             });
+        }
+    };
+
+    /**
+     * 诊断Clash配置生成问题
+     */
+    diagnoseClash = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const diagnosis = await this.subscriptionService.diagnoseClashGeneration();
+            
+            const response: ApiResponse = {
+                success: true,
+                data: diagnosis,
+                message: 'Clash诊断完成',
+                timestamp: new Date().toISOString()
+            };
+
+            res.json(response);
+        } catch (error: any) {
+            logger.error('Clash诊断API错误:', error);
+            
+            const response: ApiResponse = {
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
+
+            res.status(500).json(response);
         }
     };
 }

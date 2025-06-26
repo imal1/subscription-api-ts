@@ -15,6 +15,9 @@ router.get('/api/status', subscriptionController.getStatus);
 router.get('/api/configs', subscriptionController.getConfigs);
 router.post('/api/configs', subscriptionController.updateConfigs);
 
+// 诊断
+router.get('/api/diagnose/clash', subscriptionController.diagnoseClash);
+
 // 文件下载
 router.get('/subscription.txt', subscriptionController.getSubscriptionFile);
 router.get('/clash.yaml', subscriptionController.getClashFile);
