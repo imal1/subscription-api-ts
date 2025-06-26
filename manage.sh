@@ -468,6 +468,59 @@ run_update_service() {
         echo -e "${GREEN}✅ 依赖检查完成${NC}"
     fi
     
+    # 重新生成配置文件
+    echo -e "${CYAN}🔧 重新生成配置文件...${NC}"
+    
+    # 加载环境变量
+    if [ -f ".env" ]; then
+        # 导出环境变量
+        export $(grep -E '^[A-Z_]+=.*' .env | grep -v '^#' | xargs)
+    fi
+    
+    # 设置默认值
+    export API_PORT="${PORT:-3000}"
+    export NGINX_PORT="${NGINX_PORT:-3080}"
+    export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+    
+    # 检测操作系统并设置数据目录
+    if [ "$os" = "macOS" ]; then
+        export DATA_DIR="${STATIC_DIR:-./data}"
+        export LOG_DIR="${LOG_DIR:-./logs}"
+    else
+        export DATA_DIR="${STATIC_DIR:-/var/www/subscription}"
+        export LOG_DIR="${LOG_DIR:-/var/log/subscription}"
+    fi
+    
+    # 检查并安装envsubst (如果需要)
+    if ! command -v envsubst >/dev/null 2>&1; then
+        echo -e "${CYAN}🔧 安装 envsubst 工具...${NC}"
+        if [ "$os" = "Linux" ]; then
+            if command -v apt-get >/dev/null 2>&1; then
+                safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+            elif command -v yum >/dev/null 2>&1; then
+                safe_sudo yum install -y gettext
+            elif command -v dnf >/dev/null 2>&1; then
+                safe_sudo dnf install -y gettext
+            fi
+        elif [ "$os" = "macOS" ]; then
+            if command -v brew &> /dev/null; then
+                brew install gettext
+                export PATH="/usr/local/opt/gettext/bin:$PATH"
+            fi
+        fi
+    fi
+    
+    # 使用envsubst生成配置文件
+    if command -v envsubst >/dev/null 2>&1; then
+        # 只替换指定的环境变量，避免nginx变量被误替换
+        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
+        echo -e "${GREEN}✅ 使用 envsubst 重新生成 nginx.conf${NC}"
+    else
+        # 如果没有envsubst，使用sed替换
+        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g" config/nginx.conf.template > config/nginx.conf
+        echo -e "${GREEN}✅ 使用 sed 重新生成 nginx.conf${NC}"
+    fi
+
     # 构建项目
     echo -e "${CYAN}🏗️ 构建项目...${NC}"
     if npm run build; then
@@ -480,6 +533,28 @@ run_update_service() {
     # 重启服务
     if [ "$os" = "Linux" ]; then
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
+        
+        # 更新nginx配置
+        if command -v nginx >/dev/null 2>&1; then
+            echo -e "${CYAN}🔧 更新 Nginx 配置...${NC}"
+            
+            # 复制配置文件到nginx目录
+            safe_sudo cp config/nginx.conf /etc/nginx/sites-available/$service_name
+            
+            # 创建软链接
+            if [ ! -L "/etc/nginx/sites-enabled/$service_name" ]; then
+                safe_sudo ln -sf /etc/nginx/sites-available/$service_name /etc/nginx/sites-enabled/
+            fi
+            
+            # 测试nginx配置
+            if safe_sudo nginx -t; then
+                echo -e "${CYAN}🔄 重新加载 Nginx 配置...${NC}"
+                safe_sudo systemctl reload nginx || safe_sudo systemctl restart nginx
+                echo -e "${GREEN}✅ Nginx 配置更新成功${NC}"
+            else
+                echo -e "${RED}❌ Nginx 配置测试失败${NC}"
+            fi
+        fi
         
         # 检查服务是否正在运行
         if systemctl is-active --quiet "$service_name"; then

@@ -52,12 +52,93 @@ if [ -f "package.json" ]; then
     fi
 fi
 
+# 重新生成配置文件
+echo "🔧 重新生成配置文件..."
+
+# 加载环境变量
+if [ -f ".env" ]; then
+    # 导出环境变量
+    export $(grep -E '^[A-Z_]+=.*' .env | grep -v '^#' | xargs)
+fi
+
+# 设置默认值
+export API_PORT="${PORT:-3000}"
+export NGINX_PORT="${NGINX_PORT:-3080}"
+export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+
+# 检测操作系统并设置数据目录
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    export DATA_DIR="${STATIC_DIR:-./data}"
+    export LOG_DIR="${LOG_DIR:-./logs}"
+else
+    # Linux
+    export DATA_DIR="${STATIC_DIR:-/var/www/subscription}"
+    export LOG_DIR="${LOG_DIR:-/var/log/subscription}"
+fi
+
+# 检查并安装envsubst (如果需要)
+if ! command -v envsubst >/dev/null 2>&1; then
+    echo "🔧 安装 envsubst 工具..."
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt-get >/dev/null 2>&1; then
+            safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+        elif command -v yum >/dev/null 2>&1; then
+            safe_sudo yum install -y gettext
+        elif command -v dnf >/dev/null 2>&1; then
+            safe_sudo dnf install -y gettext
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew &> /dev/null; then
+            brew install gettext
+            export PATH="/usr/local/opt/gettext/bin:$PATH"
+        fi
+    fi
+fi
+
+# 使用envsubst生成配置文件
+if command -v envsubst >/dev/null 2>&1; then
+    # 只替换指定的环境变量，避免nginx变量被误替换
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
+    echo "✅ 使用 envsubst 重新生成 nginx.conf"
+else
+    # 如果没有envsubst，使用sed替换
+    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g" config/nginx.conf.template > config/nginx.conf
+    echo "✅ 使用 sed 重新生成 nginx.conf"
+fi
+
 # 构建项目
 echo "🏗️ 构建项目..."
 npm run build
 
 # 检查服务是否正在运行
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+
+# 检测操作系统
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux系统 - 更新nginx配置
+    if command -v nginx >/dev/null 2>&1; then
+        echo "🔧 更新 Nginx 配置..."
+        
+        # 复制配置文件到nginx目录
+        safe_sudo cp config/nginx.conf /etc/nginx/sites-available/$SERVICE_NAME
+        
+        # 创建软链接
+        if [ ! -L "/etc/nginx/sites-enabled/$SERVICE_NAME" ]; then
+            safe_sudo ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
+        fi
+        
+        # 测试nginx配置
+        if safe_sudo nginx -t; then
+            echo "🔄 重新加载 Nginx 配置..."
+            safe_sudo systemctl reload nginx || safe_sudo systemctl restart nginx
+            echo "✅ Nginx 配置更新成功"
+        else
+            echo "❌ Nginx 配置测试失败"
+        fi
+    fi
+fi
+
 if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "🔄 重启服务..."
     safe_sudo systemctl restart "$SERVICE_NAME"
