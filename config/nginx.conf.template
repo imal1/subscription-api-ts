@@ -4,7 +4,7 @@ server {
     
     # Dashboard 静态文件服务
     location /dashboard/ {
-        alias ${PROJECT_ROOT}/frontend/dist/;
+        alias ${ABSOLUTE_PROJECT_ROOT}/frontend/dist/;
         try_files $uri $uri/ /dashboard/index.html;
         expires 1h;
         add_header Cache-Control "public, no-transform";
