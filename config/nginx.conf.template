@@ -2,10 +2,15 @@ server {
     listen ${NGINX_PROXY_PORT};
     server_name _;
     
+    # 启用错误日志
+    error_log /var/log/nginx/subscription-error.log debug;
+    access_log /var/log/nginx/subscription-access.log;
+    
     # Dashboard 静态文件服务
     location /dashboard/ {
         alias ${ABSOLUTE_PROJECT_ROOT}/frontend/dist/;
-        try_files $uri $uri/ /dashboard/index.html;
+        index index.html;
+        try_files $uri $uri/ @dashboard;
         expires 1h;
         add_header Cache-Control "public, no-transform";
         
@@ -14,6 +19,11 @@ server {
             expires 1y;
             add_header Cache-Control "public, immutable";
         }
+    }
+    
+    # Dashboard fallback for SPA routing
+    location @dashboard {
+        rewrite ^/dashboard/(.*)$ /dashboard/index.html last;
     }
     
     # 根路径重定向到 dashboard

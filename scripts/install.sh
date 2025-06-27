@@ -480,6 +480,71 @@ fi
 
 echo "✅ 构建成功！"
 
+# 构建前端项目
+echo "🎨 构建前端项目..."
+if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+    echo "   检查前端依赖..."
+    cd frontend
+    
+    # 安装前端依赖
+    if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
+        echo "   使用用户 $TARGET_USER 安装前端依赖..."
+        if ! safe_sudo_user $TARGET_USER npm ci 2>/dev/null; then
+            echo "   回退到 npm install..."
+            safe_sudo_user $TARGET_USER npm install
+        fi
+        echo "   构建前端项目..."
+        safe_sudo_user $TARGET_USER npm run build
+    else
+        if ! npm ci 2>/dev/null; then
+            echo "   回退到 npm install..."
+            npm install
+        fi
+        echo "   构建前端项目..."
+        npm run build
+    fi
+    
+    # 验证构建结果
+    if [ -f "dist/index.html" ]; then
+        echo "   ✅ 前端构建成功"
+        
+        # 设置前端文件权限（Linux）
+        if [ "$OS" = "Linux" ]; then
+            echo "   设置前端文件权限..."
+            # 确保nginx用户可以访问
+            NGINX_USER="www-data"
+            if ! id "$NGINX_USER" >/dev/null 2>&1; then
+                for user in nginx http; do
+                    if id "$user" >/dev/null 2>&1; then
+                        NGINX_USER="$user"
+                        break
+                    fi
+                done
+            fi
+            
+            # 设置适当的权限
+            if [[ $EUID -eq 0 ]]; then
+                safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/
+                safe_sudo chmod -R 755 dist/
+                safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
+            else
+                safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/ 2>/dev/null || true
+                safe_sudo chmod -R 755 dist/ 2>/dev/null || true
+                safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
+            fi
+            echo "   ✅ 前端文件权限设置完成"
+        fi
+    else
+        echo "   ❌ 前端构建失败：未找到 dist/index.html"
+        echo "   尝试手动构建："
+        echo "   cd frontend && npm run build"
+    fi
+    
+    cd ..
+else
+    echo "   ⚠️  未找到前端项目，跳过前端构建"
+fi
+
 # 安装系统服务
 if [ "$OS" = "Linux" ]; then
     echo "🔧 安装 systemd 服务..."
@@ -989,6 +1054,37 @@ if [ "$OS" = "Linux" ]; then
     echo "5. SELinux状态 (如果启用):"
     echo "   sestatus"
     echo "   ls -Z $DATA_DIR"
+    echo ""
+    echo "🚨 如果Dashboard返回500错误，请检查："
+    echo "1. 检查前端构建是否成功:"
+    echo "   ls -la $ABSOLUTE_PROJECT_ROOT/frontend/dist/"
+    echo "2. 检查Nginx错误日志:"
+    echo "   tail -f /var/log/nginx/subscription-error.log"
+    echo "3. 检查前端文件权限:"
+    echo "   ls -la $ABSOLUTE_PROJECT_ROOT/frontend/dist/"
+    echo "4. 手动重新构建前端:"
+    echo "   cd $ABSOLUTE_PROJECT_ROOT/frontend"
+    echo "   npm run build"
+    echo "5. 重新启动Nginx:"
+    if [[ $EUID -eq 0 ]]; then
+        echo "   systemctl restart nginx"
+    else
+        if [ "$HAS_SUDO" = true ]; then
+            echo "   sudo systemctl restart nginx"
+        else
+            echo "   需要root权限重启nginx"
+        fi
+    fi
+    echo "6. 测试nginx配置:"
+    if [[ $EUID -eq 0 ]]; then
+        echo "   nginx -t"
+    else
+        if [ "$HAS_SUDO" = true ]; then
+            echo "   sudo nginx -t"
+        else
+            echo "   需要root权限测试nginx配置"
+        fi
+    fi
 else
     echo "1. 检查目录权限: ls -la $DATA_DIR"
     echo "2. 检查磁盘空间: df -h $DATA_DIR"
