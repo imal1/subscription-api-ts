@@ -483,24 +483,18 @@ echo "✅ 构建成功！"
 # 构建前端项目
 echo "🎨 构建前端项目..."
 if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
-    echo "   检查前端依赖..."
     cd frontend
     
     # 安装前端依赖
     if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
-        echo "   使用用户 $TARGET_USER 安装前端依赖..."
         if ! safe_sudo_user $TARGET_USER npm ci 2>/dev/null; then
-            echo "   回退到 npm install..."
             safe_sudo_user $TARGET_USER npm install
         fi
-        echo "   构建前端项目..."
         safe_sudo_user $TARGET_USER npm run build
     else
         if ! npm ci 2>/dev/null; then
-            echo "   回退到 npm install..."
             npm install
         fi
-        echo "   构建前端项目..."
         npm run build
     fi
     
@@ -510,8 +504,6 @@ if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
         
         # 设置前端文件权限（Linux）
         if [ "$OS" = "Linux" ]; then
-            echo "   设置前端文件权限..."
-            # 确保nginx用户可以访问
             NGINX_USER="www-data"
             if ! id "$NGINX_USER" >/dev/null 2>&1; then
                 for user in nginx http; do
@@ -532,12 +524,9 @@ if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
                 safe_sudo chmod -R 755 dist/ 2>/dev/null || true
                 safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
             fi
-            echo "   ✅ 前端文件权限设置完成"
         fi
     else
-        echo "   ❌ 前端构建失败：未找到 dist/index.html"
-        echo "   尝试手动构建："
-        echo "   cd frontend && npm run build"
+        echo "   ❌ 前端构建失败"
     fi
     
     cd ..
@@ -794,7 +783,6 @@ if command -v nginx &> /dev/null; then
     
     # 获取项目绝对路径（用于nginx配置）
     ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
-    echo "📁 Nginx配置使用项目路径: $ABSOLUTE_PROJECT_ROOT"
     
     # 设置默认的 Clash 文件名
     CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
@@ -830,20 +818,14 @@ if command -v nginx &> /dev/null; then
     fi
     
     if [ "$OS" = "Linux" ]; then
-        # 修复 Nginx 静态文件服务权限问题
-        echo "🔧 修复 Nginx 静态文件权限..."
+        # 修复 Nginx 静态文件服务权限
+        echo "🔧 配置 Nginx 权限..."
         
         # 检查数据目录权限
         if [ -d "$DATA_DIR" ]; then
-            echo "   检查数据目录: $DATA_DIR"
-            DIR_PERMS=$(ls -ld "$DATA_DIR" | cut -d' ' -f1)
-            DIR_OWNER=$(ls -ld "$DATA_DIR" | awk '{print $3":"$4}')
-            echo "   当前权限: $DIR_PERMS (所有者: $DIR_OWNER)"
-            
             # 检查 Nginx 用户
             NGINX_USER="www-data"
             if ! id "$NGINX_USER" >/dev/null 2>&1; then
-                # 尝试其他常见的 Nginx 用户名
                 for user in nginx http; do
                     if id "$user" >/dev/null 2>&1; then
                         NGINX_USER="$user"
@@ -851,19 +833,13 @@ if command -v nginx &> /dev/null; then
                     fi
                 done
             fi
-            echo "   Nginx 用户: $NGINX_USER"
             
             # 修复权限
-            echo "   修复目录权限..."
             safe_sudo chown -R "$NGINX_USER:$NGINX_USER" "$DATA_DIR"
             safe_sudo chmod -R 755 "$DATA_DIR"
             safe_sudo find "$DATA_DIR" -type f -exec chmod 644 {} \; 2>/dev/null || true
             
             # 创建测试文件
-            echo "   创建测试文件..."
-            TEST_FILE="$DATA_DIR/test.html"
-            INDEX_FILE="$DATA_DIR/index.html"
-            
             cat > /tmp/test.html << 'EOF'
 <!DOCTYPE html>
 <html>
@@ -882,30 +858,20 @@ if command -v nginx &> /dev/null; then
 EOF
             
             # 复制测试文件
-            safe_sudo cp /tmp/test.html "$TEST_FILE"
-            safe_sudo cp /tmp/test.html "$INDEX_FILE"
-            safe_sudo chown "$NGINX_USER:$NGINX_USER" "$TEST_FILE" "$INDEX_FILE"
-            safe_sudo chmod 644 "$TEST_FILE" "$INDEX_FILE"
+            safe_sudo cp /tmp/test.html "$DATA_DIR/test.html"
+            safe_sudo cp /tmp/test.html "$DATA_DIR/index.html"
+            safe_sudo chown "$NGINX_USER:$NGINX_USER" "$DATA_DIR/test.html" "$DATA_DIR/index.html"
+            safe_sudo chmod 644 "$DATA_DIR/test.html" "$DATA_DIR/index.html"
             rm /tmp/test.html
-            
-            echo "   ✅ 测试文件已创建"
             
             # 检查 SELinux (如果适用)
             if command -v getenforce >/dev/null 2>&1; then
                 SELINUX_STATUS=$(getenforce 2>/dev/null || echo "未知")
-                echo "   SELinux 状态: $SELINUX_STATUS"
-                
                 if [ "$SELINUX_STATUS" = "Enforcing" ]; then
-                    echo "   修复 SELinux 权限..."
                     safe_sudo setsebool -P httpd_read_user_content 1 2>/dev/null || true
                     safe_sudo restorecon -R "$DATA_DIR" 2>/dev/null || true
-                    echo "   ✅ SELinux 策略已更新"
                 fi
             fi
-            
-            echo "   ✅ Nginx 静态文件权限修复完成"
-        else
-            echo "   ❌ 数据目录不存在: $DATA_DIR"
         fi
         
         # 删除现有符号链接（如果存在）
@@ -919,172 +885,79 @@ EOF
         if safe_sudo nginx -t; then
             # 检查nginx是否已经运行
             if safe_sudo systemctl is-active --quiet nginx; then
-                echo "🔄 重新加载 Nginx 配置..."
-                if safe_sudo systemctl reload nginx; then
-                    echo "✅ Nginx 配置重新加载成功"
-                else
-                    echo "⚠️  Nginx 重新加载失败，尝试重启..."
-                    safe_sudo systemctl restart nginx
-                fi
+                safe_sudo systemctl reload nginx || safe_sudo systemctl restart nginx
             else
-                echo "🚀 启动 Nginx 服务..."
                 safe_sudo systemctl start nginx
                 safe_sudo systemctl enable nginx
             fi
             
             # 测试静态文件访问
-            echo "🧪 测试静态文件访问..."
-            sleep 2  # 等待服务启动
-            
+            sleep 2
             if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PORT}/" | grep -q "200"; then
-                echo "   ✅ 静态文件服务测试成功 (HTTP 200)"
+                echo "   ✅ Nginx 配置完成"
             else
-                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PORT}/" 2>/dev/null || echo "连接失败")
-                echo "   ⚠️  静态文件服务测试失败 (HTTP: $HTTP_CODE)"
-                echo "   💡 请检查防火墙或端口配置"
+                echo "   ⚠️  Nginx 启动成功，但静态文件服务可能需要检查"
             fi
-            
-            echo "✅ Nginx 配置完成"
         else
             echo "❌ Nginx 配置测试失败，请检查配置文件"
         fi
     elif [ "$OS" = "Mac" ]; then
-        echo "ℹ️  请手动配置 Nginx，配置文件位于 config/nginx.conf"
-        echo "   macOS 用户可以使用以下命令:"
-        echo "   brew services start nginx"
-        echo "   或直接运行: nginx"
-        echo "   Nginx 将监听端口: ${NGINX_PROXY_PORT:-3888} (API代理) 和 ${NGINX_PORT:-3080} (静态文件)"
+        echo "ℹ️  配置文件已生成: config/nginx.conf"
+        echo "   可使用: brew services start nginx"
     fi
 else
-    echo "⚠️  未检测到 Nginx，跳过 Nginx 配置"
-    echo "   如需使用 Nginx，请先安装:"
-    if [ "$OS" = "Linux" ]; then
-        echo "   sudo apt-get install nginx  # Ubuntu/Debian"
-        echo "   sudo yum install nginx      # CentOS/RHEL"
-    elif [ "$OS" = "Mac" ]; then
-        echo "   brew install nginx"
-    fi
+    echo "⚠️  未检测到 Nginx，如需使用请先安装"
 fi
 
 echo "✅ 安装完成！"
 echo ""
-echo "📋 重要提示："
-echo "   首次使用前需要生成订阅文件（包括 Clash 配置文件）"
-echo "   请在启动服务后执行以下命令："
-echo ""
+echo "� 快速开始："
 if [ "$OS" = "Linux" ]; then
-    API_PORT="${PORT:-3000}"
     NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/update"
-    echo "   # 或者直接访问 API："
-    echo "   curl http://localhost:${API_PORT}/api/update"
-elif [ "$OS" = "Mac" ]; then
-    API_PORT="${PORT:-3000}"  
-    echo "   curl http://localhost:${API_PORT}/api/update"
-fi
-echo ""
-echo "下一步："
-if [ "$OS" = "Linux" ]; then
-    echo "1. 编辑 .env 文件配置参数 (如需要)"
+    echo "1. 生成订阅文件: curl http://localhost:${NGINX_PROXY_PORT}/api/update"
+    echo "2. 访问控制面板: http://localhost:${NGINX_PROXY_PORT}/dashboard/"
+    
     SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
-    echo "2. 服务已自动启动，管理命令:"
+    echo ""
+    echo "📊 服务管理："
     if [[ $EUID -eq 0 ]]; then
-        echo "   - 查看状态: systemctl status $SERVICE_NAME"
-        echo "   - 重启服务: systemctl restart $SERVICE_NAME"
-        echo "   - 停止服务: systemctl stop $SERVICE_NAME"
-        echo "   - 查看日志: journalctl -u $SERVICE_NAME -f"
+        echo "   查看状态: systemctl status $SERVICE_NAME"
+        echo "   查看日志: journalctl -u $SERVICE_NAME -f"
     else
         if [ "$HAS_SUDO" = true ]; then
-            echo "   - 查看状态: sudo systemctl status $SERVICE_NAME"
-            echo "   - 重启服务: sudo systemctl restart $SERVICE_NAME"
-            echo "   - 停止服务: sudo systemctl stop $SERVICE_NAME"  
-            echo "   - 查看日志: sudo journalctl -u $SERVICE_NAME -f"
-        else
-            echo "   - 查看状态: systemctl status $SERVICE_NAME (需要root权限)"
-            echo "   - 重启服务: systemctl restart $SERVICE_NAME (需要root权限)"
-            echo "   - 停止服务: systemctl stop $SERVICE_NAME (需要root权限)"
-            echo "   - 查看日志: journalctl -u $SERVICE_NAME -f (需要root权限)"
+            echo "   查看状态: sudo systemctl status $SERVICE_NAME"
+            echo "   查看日志: sudo journalctl -u $SERVICE_NAME -f"
         fi
     fi
-    # 从环境变量读取端口号
-    API_PORT="${PORT:-3000}"
-    NGINX_PORT="${NGINX_PORT:-3080}"
-    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    echo "3. 访问服务:"
-    echo "   - API 服务: http://localhost:${NGINX_PROXY_PORT} (通过 Nginx)"
-    echo "   - 直接访问: http://localhost:${API_PORT}"
-    echo "   - 静态文件: http://localhost:${NGINX_PORT}"
 elif [ "$OS" = "Mac" ]; then
-    echo "1. 编辑 .env 文件配置参数"
-    echo "2. 启动开发服务器: npm run dev"
-    SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
-    echo "3. 或使用 PM2: pm2 start dist/index.js --name $SERVICE_NAME"
-    # 从环境变量读取端口号
     API_PORT="${PORT:-3000}"
-    NGINX_PORT="${NGINX_PORT:-3080}"
-    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    echo "4. 访问服务:"
-    echo "   - API 服务: http://localhost:${API_PORT}"
-    echo "   - 通过 Nginx: http://localhost:${NGINX_PROXY_PORT} (如果配置了 Nginx)"
-    echo "   - 静态文件: http://localhost:${NGINX_PORT} (如果配置了 Nginx)"
+    echo "1. 启动服务: npm run dev"
+    echo "2. 生成订阅: curl http://localhost:${API_PORT}/api/update"
+    echo "3. 访问控制面板: http://localhost:${API_PORT}/dashboard/"
 fi
 
 echo ""
 echo "🔧 故障排除："
-echo "如果遇到权限错误 (EROFS: read-only file system)，请检查："
+echo "如遇到问题，请检查："
 if [ "$OS" = "Linux" ]; then
-    echo "1. 数据目录权限:"
-    echo "   ls -la $DATA_DIR"
-    echo "2. 文件系统挂载状态:"
-    echo "   mount | grep $(dirname $DATA_DIR)"
-    echo "3. 磁盘空间:"
-    echo "   df -h $DATA_DIR"
-    echo "4. 手动修复权限:"
+    echo "1. 日志信息:"
     if [[ $EUID -eq 0 ]]; then
-        echo "   chown -R $TARGET_USER:$TARGET_GROUP $DATA_DIR"
-        echo "   chmod -R 750 $DATA_DIR"
+        echo "   journalctl -u $SERVICE_NAME -f"
     else
         if [ "$HAS_SUDO" = true ]; then
-            echo "   sudo chown -R $TARGET_USER:$TARGET_GROUP $DATA_DIR"
-            echo "   sudo chmod -R 750 $DATA_DIR"
-        else
-            echo "   需要root权限执行权限修复命令"
+            echo "   sudo journalctl -u $SERVICE_NAME -f"
         fi
     fi
-    echo "5. SELinux状态 (如果启用):"
-    echo "   sestatus"
-    echo "   ls -Z $DATA_DIR"
-    echo ""
-    echo "🚨 如果Dashboard返回500错误，请检查："
-    echo "1. 检查前端构建是否成功:"
+    echo "2. Dashboard 无法访问:"
     echo "   ls -la $ABSOLUTE_PROJECT_ROOT/frontend/dist/"
-    echo "2. 检查Nginx错误日志:"
-    echo "   tail -f /var/log/nginx/subscription-error.log"
-    echo "3. 检查前端文件权限:"
-    echo "   ls -la $ABSOLUTE_PROJECT_ROOT/frontend/dist/"
-    echo "4. 手动重新构建前端:"
-    echo "   cd $ABSOLUTE_PROJECT_ROOT/frontend"
-    echo "   npm run build"
-    echo "5. 重新启动Nginx:"
     if [[ $EUID -eq 0 ]]; then
         echo "   systemctl restart nginx"
     else
         if [ "$HAS_SUDO" = true ]; then
             echo "   sudo systemctl restart nginx"
-        else
-            echo "   需要root权限重启nginx"
         fi
     fi
-    echo "6. 测试nginx配置:"
-    if [[ $EUID -eq 0 ]]; then
-        echo "   nginx -t"
-    else
-        if [ "$HAS_SUDO" = true ]; then
-            echo "   sudo nginx -t"
-        else
-            echo "   需要root权限测试nginx配置"
-        fi
-    fi
+    echo "3. 运行修复脚本: bash scripts/fix-dashboard.sh"
 else
     echo "1. 检查目录权限: ls -la $DATA_DIR"
     echo "2. 检查磁盘空间: df -h $DATA_DIR"
