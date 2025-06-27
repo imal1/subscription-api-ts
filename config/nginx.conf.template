@@ -13,12 +13,14 @@ server {
         try_files $uri $uri/ @dashboard;
         expires 1h;
         add_header Cache-Control "public, no-transform";
-        
-        # 处理 SPA 路由
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
+    }
+    
+    # Next.js 静态资源 (_next目录)
+    location /_next/ {
+        alias ${ABSOLUTE_PROJECT_ROOT}/frontend/dist/_next/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
     }
     
     # Dashboard fallback for SPA routing
