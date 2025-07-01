@@ -433,12 +433,13 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# 构建项目
+# 构建项目（包含前端）
 echo "🏗️ 构建项目..."
 
 # 清理之前的构建文件
 echo "   清理旧的构建文件..."
 rm -rf dist
+rm -rf frontend/dist 2>/dev/null || true
 
 # 验证 TypeScript 配置
 echo "   验证 TypeScript 配置..."
@@ -453,20 +454,20 @@ if [ ! -d "src" ]; then
     exit 1
 fi
 
-# 执行构建
-echo "   执行 TypeScript 编译..."
+# 执行构建（monorepo方式）
+echo "   执行 TypeScript 编译和前端构建..."
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
-    if ! safe_sudo_user $TARGET_USER npm run build 2>&1; then
+    if ! safe_sudo_user $TARGET_USER npm run build:all 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: npm run build 查看详细错误信息"
+        echo "   尝试运行: npm run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
 else
-    if ! npm run build 2>&1; then
+    if ! npm run build:all 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: npm run build 查看详细错误信息"
+        echo "   尝试运行: npm run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
@@ -474,64 +475,41 @@ fi
 
 # 验证构建结果
 if [ ! -f "dist/index.js" ]; then
-    echo "❌ 构建失败：未找到 dist/index.js"
+    echo "❌ 后端构建失败：未找到 dist/index.js"
+    exit 1
+fi
+
+if [ -d "frontend" ] && [ ! -f "frontend/dist/index.html" ]; then
+    echo "❌ 前端构建失败：未找到 frontend/dist/index.html"
     exit 1
 fi
 
 echo "✅ 构建成功！"
 
-# 构建前端项目
-echo "🎨 构建前端项目..."
-if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
-    cd frontend
-    
-    # 安装前端依赖
-    if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
-        if ! safe_sudo_user $TARGET_USER npm ci 2>/dev/null; then
-            safe_sudo_user $TARGET_USER npm install
-        fi
-        safe_sudo_user $TARGET_USER npm run build
-    else
-        if ! npm ci 2>/dev/null; then
-            npm install
-        fi
-        npm run build
+# 设置前端文件权限（Linux）
+if [ "$OS" = "Linux" ] && [ -d "frontend/dist" ]; then
+    echo "🔧 设置前端文件权限..."
+    NGINX_USER="www-data"
+    if ! id "$NGINX_USER" >/dev/null 2>&1; then
+        for user in nginx http; do
+            if id "$user" >/dev/null 2>&1; then
+                NGINX_USER="$user"
+                break
+            fi
+        done
     fi
     
-    # 验证构建结果
-    if [ -f "dist/index.html" ]; then
-        echo "   ✅ 前端构建成功"
-        
-        # 设置前端文件权限（Linux）
-        if [ "$OS" = "Linux" ]; then
-            NGINX_USER="www-data"
-            if ! id "$NGINX_USER" >/dev/null 2>&1; then
-                for user in nginx http; do
-                    if id "$user" >/dev/null 2>&1; then
-                        NGINX_USER="$user"
-                        break
-                    fi
-                done
-            fi
-            
-            # 设置适当的权限
-            if [[ $EUID -eq 0 ]]; then
-                safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/
-                safe_sudo chmod -R 755 dist/
-                safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
-            else
-                safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/ 2>/dev/null || true
-                safe_sudo chmod -R 755 dist/ 2>/dev/null || true
-                safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
-            fi
-        fi
+    # 设置适当的权限
+    if [[ $EUID -eq 0 ]]; then
+        safe_sudo chown -R "$NGINX_USER:$NGINX_USER" frontend/dist/
+        safe_sudo chmod -R 755 frontend/dist/
+        safe_sudo find frontend/dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
     else
-        echo "   ❌ 前端构建失败"
+        safe_sudo chown -R "$NGINX_USER:$NGINX_USER" frontend/dist/ 2>/dev/null || true
+        safe_sudo chmod -R 755 frontend/dist/ 2>/dev/null || true
+        safe_sudo find frontend/dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
     fi
-    
-    cd ..
-else
-    echo "   ⚠️  未找到前端项目，跳过前端构建"
+    echo "   ✅ 前端文件权限设置完成"
 fi
 
 # 安装系统服务

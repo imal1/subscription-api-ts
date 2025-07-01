@@ -42,11 +42,11 @@ else
     echo "ℹ️  不是 Git 仓库，跳过代码拉取"
 fi
 
-# 安装依赖（如果需要）
+# 安装依赖（monorepo方式）
 if [ -f "package.json" ]; then
-    echo "📦 检查依赖..."
+    echo "📦 安装 monorepo 依赖..."
     if [ -f "package-lock.json" ]; then
-        npm ci --production=false
+        npm ci --include=dev
     else
         npm install --include=dev
     fi
@@ -117,57 +117,27 @@ fi
 
 # 构建项目
 echo "🏗️ 构建项目..."
-npm run build
+npm run build:all
 
-# 构建前端项目
-echo "🎨 构建前端项目..."
-if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
-    echo "   检查前端依赖..."
-    cd frontend
-    
-    # 安装前端依赖
-    if [ -f "package-lock.json" ]; then
-        npm ci 2>/dev/null || npm install
-    else
-        npm install
-    fi
-    
-    # 构建前端
-    echo "   构建前端项目..."
-    npm run build
-    
-    # 验证构建结果
-    if [ -f "dist/index.html" ]; then
-        echo "   ✅ 前端构建成功"
-        
-        # 设置前端文件权限（Linux）
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            echo "   设置前端文件权限..."
-            # 确保nginx用户可以访问
-            NGINX_USER="www-data"
-            if ! id "$NGINX_USER" >/dev/null 2>&1; then
-                for user in nginx http; do
-                    if id "$user" >/dev/null 2>&1; then
-                        NGINX_USER="$user"
-                        break
-                    fi
-                done
+# 设置前端文件权限（Linux）
+if [[ "$OSTYPE" == "linux-gnu"* ]] && [ -d "frontend/dist" ]; then
+    echo "🔧 设置前端文件权限..."
+    # 确保nginx用户可以访问
+    NGINX_USER="www-data"
+    if ! id "$NGINX_USER" >/dev/null 2>&1; then
+        for user in nginx http; do
+            if id "$user" >/dev/null 2>&1; then
+                NGINX_USER="$user"
+                break
             fi
-            
-            # 设置适当的权限
-            safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/ 2>/dev/null || true
-            safe_sudo chmod -R 755 dist/ 2>/dev/null || true
-            safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
-            echo "   ✅ 前端文件权限设置完成"
-        fi
-    else
-        echo "   ❌ 前端构建失败：未找到 dist/index.html"
-        echo "   ⚠️  Dashboard 可能无法正常工作"
+        done
     fi
     
-    cd ..
-else
-    echo "   ⚠️  未找到前端项目，跳过前端构建"
+    # 设置适当的权限
+    safe_sudo chown -R "$NGINX_USER:$NGINX_USER" frontend/dist/ 2>/dev/null || true
+    safe_sudo chmod -R 755 frontend/dist/ 2>/dev/null || true
+    safe_sudo find frontend/dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
+    echo "   ✅ 前端文件权限设置完成"
 fi
 
 # 检查服务是否正在运行
