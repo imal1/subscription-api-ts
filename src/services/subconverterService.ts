@@ -138,29 +138,24 @@ export class SubconverterService {
         // 将内容进行base64编码
         const base64Content = Buffer.from(subscriptionContent).toString('base64');
         
-        const params = new URLSearchParams({
+        // 使用最简单的参数组合
+        const params: any = {
             target: 'clash',
-            insert: 'false',
-            config: customConfig || '',
-            emoji: 'true',
-            list: 'false',
-            sort: 'false',
             data: base64Content
-        });
+        };
 
-        // 移除空值参数（除了data）
-        Array.from(params.entries()).forEach(([key, value]) => {
-            if (!value && key !== 'data') {
-                params.delete(key);
-            }
-        });
+        // 只有在提供了自定义配置时才添加config参数
+        if (customConfig) {
+            params.config = customConfig;
+        }
 
         logger.info(`Data参数方式请求Clash转换: ${config.subconverterUrl}/sub`);
+        logger.info(`请求参数: target=${params.target}, data长度=${base64Content.length}, config=${params.config || '默认'}`);
 
         const response: AxiosResponse<string> = await axios.get(
             `${config.subconverterUrl}/sub`,
             {
-                params: Object.fromEntries(params),
+                params,
                 headers: {
                     'User-Agent': 'Subscription-API-TS/1.0'
                 },
@@ -176,26 +171,24 @@ export class SubconverterService {
      * 使用POST请求转换
      */
     private async convertByPost(subscriptionContent: string, customConfig?: string): Promise<string> {
-        const params = new URLSearchParams({
-            target: 'clash',
-            insert: 'false',
-            config: customConfig || '',
-            emoji: 'true',
-            list: 'false',
-            sort: 'false'
-        });
+        // 使用最简单的参数组合
+        const params: any = {
+            target: 'clash'
+        };
 
-        // 移除空值参数
-        Array.from(params.entries()).forEach(([key, value]) => {
-            if (!value) {
-                params.delete(key);
-            }
-        });
+        // 只有在提供了自定义配置时才添加config参数
+        if (customConfig) {
+            params.config = customConfig;
+        }
 
-        logger.info(`POST方式请求Clash转换: ${config.subconverterUrl}/sub`);
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${config.subconverterUrl}/sub${queryString ? '?' + queryString : ''}`;
+
+        logger.info(`POST方式请求Clash转换: ${url}`);
+        logger.info(`请求体长度: ${subscriptionContent.length} 字符`);
 
         const response: AxiosResponse<string> = await axios.post(
-            `${config.subconverterUrl}/sub?${params.toString()}`,
+            url,
             subscriptionContent,
             {
                 headers: {
@@ -266,5 +259,72 @@ export class SubconverterService {
             logger.error(`${target}转换失败:`, error);
             throw new Error(`转换为${target}格式失败: ${error.message}`);
         }
+    }
+
+    /**
+     * 测试 subconverter 的不同调用方式
+     */
+    async testSubconverterMethods(testContent: string): Promise<any> {
+        const results = {
+            data_get: null,
+            post_body: null,
+            url_get: null,
+            simple_get: null
+        };
+
+        const base64Content = Buffer.from(testContent).toString('base64');
+
+        // 方法1: data参数 GET 请求
+        try {
+            logger.info('测试方法1: data参数 GET 请求');
+            const response = await axios.get(`${config.subconverterUrl}/sub`, {
+                params: { target: 'clash', data: base64Content },
+                timeout: 5000,
+                responseType: 'text'
+            });
+            results.data_get = { status: response.status, dataLength: response.data.length, preview: response.data.substring(0, 100) };
+        } catch (error: any) {
+            results.data_get = { error: error.response?.status || error.message };
+        }
+
+        // 方法2: POST 请求
+        try {
+            logger.info('测试方法2: POST 请求');
+            const response = await axios.post(`${config.subconverterUrl}/sub?target=clash`, testContent, {
+                headers: { 'Content-Type': 'text/plain' },
+                timeout: 5000,
+                responseType: 'text'
+            });
+            results.post_body = { status: response.status, dataLength: response.data.length, preview: response.data.substring(0, 100) };
+        } catch (error: any) {
+            results.post_body = { error: error.response?.status || error.message };
+        }
+
+        // 方法3: url参数 GET 请求（如果有在线链接的话）
+        try {
+            logger.info('测试方法3: url参数 GET 请求');
+            const response = await axios.get(`${config.subconverterUrl}/sub`, {
+                params: { target: 'clash', url: 'http://example.com/test' },
+                timeout: 5000,
+                responseType: 'text'
+            });
+            results.url_get = { status: response.status, dataLength: response.data.length, preview: response.data.substring(0, 100) };
+        } catch (error: any) {
+            results.url_get = { error: error.response?.status || error.message };
+        }
+
+        // 方法4: 简单的 GET 请求，不带任何参数
+        try {
+            logger.info('测试方法4: 简单的 GET 请求');
+            const response = await axios.get(`${config.subconverterUrl}/sub`, {
+                timeout: 5000,
+                responseType: 'text'
+            });
+            results.simple_get = { status: response.status, dataLength: response.data.length, preview: response.data.substring(0, 100) };
+        } catch (error: any) {
+            results.simple_get = { error: error.response?.status || error.message };
+        }
+
+        return results;
     }
 }

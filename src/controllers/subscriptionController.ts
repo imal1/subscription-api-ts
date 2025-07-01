@@ -434,9 +434,17 @@ export class SubscriptionController {
         try {
             const status = await this.subscriptionService.checkSubconverterService();
             
+            // 进行额外的 API 调用方式测试
+            const testContent = 'trojan://password@server.com:443?security=tls&type=tcp#test';
+            const subconverterService = new (await import('../services/subconverterService')).SubconverterService();
+            const apiTests = await subconverterService.testSubconverterMethods(testContent);
+            
             const response: ApiResponse = {
                 success: status.healthy,
-                data: status,
+                data: {
+                    basicStatus: status,
+                    apiTests: apiTests
+                },
                 message: status.healthy ? 'Subconverter服务正常' : 'Subconverter服务异常',
                 timestamp: new Date().toISOString()
             };
