@@ -18,6 +18,7 @@ router.post('/api/configs', subscriptionController.updateConfigs);
 
 // 诊断
 router.get('/api/diagnose/clash', subscriptionController.diagnoseClash);
+router.get('/api/test/protocols', subscriptionController.testProtocolConversion);
 
 // 文件下载
 router.get('/subscription.txt', subscriptionController.getSubscriptionFile);

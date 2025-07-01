@@ -152,11 +152,41 @@ export class SubscriptionService {
                         const proxyCount = proxyMatches ? proxyMatches.length : 0;
                         logger.info(`使用订阅内容直接转换成功，生成 ${proxyCount} 个代理节点`);
                         
+                        // 详细分析转换结果
+                        const lines = clashContent.split('\n');
+                        const outputProtocols: { [key: string]: number } = {};
+                        
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('type:')) {
+                                const type = trimmedLine.replace('type:', '').trim();
+                                outputProtocols[type] = (outputProtocols[type] || 0) + 1;
+                            }
+                        }
+                        
+                        logger.info(`Clash输出协议分布: ${JSON.stringify(outputProtocols, null, 2)}`);
+                        
                         // 检查是否所有协议都被转换
                         const totalInputNodes = Object.values(protocolStats).reduce((sum, count) => sum + count, 0);
                         if (proxyCount < totalInputNodes) {
                             logger.warn(`转换节点数量不匹配: 输入 ${totalInputNodes} 个，输出 ${proxyCount} 个`);
-                            logger.warn(`可能某些协议不被支持或转换失败`);
+                            logger.warn(`输入协议: ${JSON.stringify(protocolStats)}`);
+                            logger.warn(`输出协议: ${JSON.stringify(outputProtocols)}`);
+                            
+                            // 检查哪些协议可能被忽略
+                            for (const [inputProtocol, inputCount] of Object.entries(protocolStats)) {
+                                const found = Object.keys(outputProtocols).some(outputType => 
+                                    outputType.toLowerCase().includes(inputProtocol.toLowerCase()) ||
+                                    inputProtocol.toLowerCase().includes(outputType.toLowerCase())
+                                );
+                                
+                                if (!found) {
+                                    logger.error(`协议 ${inputProtocol} (${inputCount}个) 可能未被转换或不受支持`);
+                                }
+                            }
+                            
+                            // 输出部分转换内容用于调试
+                            logger.warn(`Clash配置预览 (前1000字符): ${clashContent.substring(0, 1000)}`);
                         }
                     } else {
                         throw new Error('转换结果不包含有效的代理配置');
@@ -452,5 +482,12 @@ export class SubscriptionService {
             diagnosis.error = error.message;
             return diagnosis;
         }
+    }
+
+    /**
+     * 测试单个节点或多个节点的转换
+     */
+    async testSingleNodeConversion(nodeContent: string): Promise<string> {
+        return await this.subconverterService.convertToClashByContent(nodeContent);
     }
 }
