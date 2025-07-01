@@ -94,26 +94,10 @@ export class SubconverterService {
     }
 
     /**
-     * 使用订阅内容直接转换为Clash格式（通过POST请求）
+     * 使用订阅内容直接转换为Clash格式
      */
     async convertToClashByContent(subscriptionContent: string, customConfig?: string): Promise<string> {
         try {
-            const params = new URLSearchParams({
-                target: 'clash',
-                insert: 'false', // 不插入默认策略组
-                config: customConfig || '', // 使用自定义配置
-                emoji: 'true', // 启用emoji
-                list: 'false', // 不返回节点列表
-                sort: 'false' // 不排序节点
-            });
-
-            // 移除空值参数
-            Array.from(params.entries()).forEach(([key, value]) => {
-                if (!value) {
-                    params.delete(key);
-                }
-            });
-
             // 验证订阅内容
             const lines = subscriptionContent.split('\n').filter(line => line.trim().length > 0);
             logger.info(`准备转换的订阅内容: ${lines.length} 行`);
@@ -123,40 +107,16 @@ export class SubconverterService {
                 throw new Error('订阅内容为空');
             }
 
-            logger.info(`通过内容请求Clash转换: ${config.subconverterUrl}/sub`);
-
-            // 使用 POST 请求直接发送订阅内容
-            const response: AxiosResponse<string> = await axios.post(
-                `${config.subconverterUrl}/sub?${params.toString()}`,
-                subscriptionContent,
-                {
-                    headers: {
-                        'Content-Type': 'text/plain; charset=utf-8',
-                        'User-Agent': 'Subscription-API-TS/1.0'
-                    },
-                    timeout: config.requestTimeout,
-                    responseType: 'text'
-                }
-            );
-
-            if (response.status === 200 && response.data) {
-                logger.info(`Clash配置转换成功（通过内容），长度: ${response.data.length} 字符`);
+            // 方法1: 尝试使用data参数的GET请求（推荐方式）
+            try {
+                return await this.convertByDataParam(subscriptionContent, customConfig);
+            } catch (dataError: any) {
+                logger.warn(`Data参数方式转换失败: ${dataError.message}，尝试POST方式`);
                 
-                // 检查返回内容是否是有效的YAML
-                if (response.data.includes('proxies:') || response.data.includes('proxy-groups:')) {
-                    // 分析转换结果
-                    const proxyMatches = response.data.match(/- name:/g);
-                    const proxyCount = proxyMatches ? proxyMatches.length : 0;
-                    logger.info(`转换结果包含 ${proxyCount} 个代理节点`);
-                    
-                    return response.data;
-                } else {
-                    logger.warn(`转换结果可能无效，内容预览: ${response.data.substring(0, 200)}`);
-                    throw new Error('转换结果不包含有效的Clash配置');
-                }
-            } else {
-                throw new Error(`转换失败: HTTP ${response.status}`);
+                // 方法2: 使用POST请求
+                return await this.convertByPost(subscriptionContent, customConfig);
             }
+
         } catch (error: any) {
             logger.error('Clash转换失败（通过内容）:', error);
             if (error.response) {
@@ -168,6 +128,109 @@ export class SubconverterService {
             } else {
                 throw new Error(`转换异常: ${error.message}`);
             }
+        }
+    }
+
+    /**
+     * 使用data参数的GET请求转换
+     */
+    private async convertByDataParam(subscriptionContent: string, customConfig?: string): Promise<string> {
+        // 将内容进行base64编码
+        const base64Content = Buffer.from(subscriptionContent).toString('base64');
+        
+        const params = new URLSearchParams({
+            target: 'clash',
+            insert: 'false',
+            config: customConfig || '',
+            emoji: 'true',
+            list: 'false',
+            sort: 'false',
+            data: base64Content
+        });
+
+        // 移除空值参数（除了data）
+        Array.from(params.entries()).forEach(([key, value]) => {
+            if (!value && key !== 'data') {
+                params.delete(key);
+            }
+        });
+
+        logger.info(`Data参数方式请求Clash转换: ${config.subconverterUrl}/sub`);
+
+        const response: AxiosResponse<string> = await axios.get(
+            `${config.subconverterUrl}/sub`,
+            {
+                params: Object.fromEntries(params),
+                headers: {
+                    'User-Agent': 'Subscription-API-TS/1.0'
+                },
+                timeout: config.requestTimeout,
+                responseType: 'text'
+            }
+        );
+
+        return this.validateClashResponse(response);
+    }
+
+    /**
+     * 使用POST请求转换
+     */
+    private async convertByPost(subscriptionContent: string, customConfig?: string): Promise<string> {
+        const params = new URLSearchParams({
+            target: 'clash',
+            insert: 'false',
+            config: customConfig || '',
+            emoji: 'true',
+            list: 'false',
+            sort: 'false'
+        });
+
+        // 移除空值参数
+        Array.from(params.entries()).forEach(([key, value]) => {
+            if (!value) {
+                params.delete(key);
+            }
+        });
+
+        logger.info(`POST方式请求Clash转换: ${config.subconverterUrl}/sub`);
+
+        const response: AxiosResponse<string> = await axios.post(
+            `${config.subconverterUrl}/sub?${params.toString()}`,
+            subscriptionContent,
+            {
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8',
+                    'User-Agent': 'Subscription-API-TS/1.0'
+                },
+                timeout: config.requestTimeout,
+                responseType: 'text'
+            }
+        );
+
+        return this.validateClashResponse(response);
+    }
+
+    /**
+     * 验证Clash转换响应
+     */
+    private validateClashResponse(response: AxiosResponse<string>): string {
+        if (response.status === 200 && response.data) {
+            logger.info(`Clash配置转换成功，长度: ${response.data.length} 字符`);
+            
+            // 检查返回内容是否是有效的YAML
+            if (response.data.includes('proxies:') || response.data.includes('proxy-groups:')) {
+                // 分析转换结果
+                const proxyMatches = response.data.match(/- name:/g);
+                const proxyCount = proxyMatches ? proxyMatches.length : 0;
+                logger.info(`转换结果包含 ${proxyCount} 个代理节点`);
+                
+                return response.data;
+            } else {
+                logger.warn(`转换结果可能无效，内容预览: ${response.data.substring(0, 200)}`);
+                throw new Error('转换结果不包含有效的Clash配置');
+            }
+        } else {
+            throw new Error(`转换失败: HTTP ${response.status}`);
         }
     }
 
