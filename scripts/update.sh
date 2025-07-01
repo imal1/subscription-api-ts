@@ -69,6 +69,7 @@ fi
 export API_PORT="${PORT:-3000}"
 export NGINX_PORT="${NGINX_PORT:-3080}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+export CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
 
 # 检测操作系统并设置数据目录
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -80,6 +81,9 @@ else
     export DATA_DIR="${STATIC_DIR:-/var/www/subscription}"
     export LOG_DIR="${LOG_DIR:-/var/log/subscription}"
 fi
+
+# 获取项目绝对路径（用于nginx配置）
+export ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
 
 # 检查并安装envsubst (如果需要)
 if ! command -v envsubst >/dev/null 2>&1; then
@@ -103,17 +107,68 @@ fi
 # 使用envsubst生成配置文件
 if command -v envsubst >/dev/null 2>&1; then
     # 只替换指定的环境变量，避免nginx变量被误替换
-    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR}' < config/nginx.conf.template > config/nginx.conf
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT} ${CLASH_FILENAME}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 envsubst 重新生成 nginx.conf"
 else
     # 如果没有envsubst，使用sed替换
-    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g" config/nginx.conf.template > config/nginx.conf
+    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g; s/\${CLASH_FILENAME}/${CLASH_FILENAME}/g" config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 sed 重新生成 nginx.conf"
 fi
 
 # 构建项目
 echo "🏗️ 构建项目..."
 npm run build
+
+# 构建前端项目
+echo "🎨 构建前端项目..."
+if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+    echo "   检查前端依赖..."
+    cd frontend
+    
+    # 安装前端依赖
+    if [ -f "package-lock.json" ]; then
+        npm ci 2>/dev/null || npm install
+    else
+        npm install
+    fi
+    
+    # 构建前端
+    echo "   构建前端项目..."
+    npm run build
+    
+    # 验证构建结果
+    if [ -f "dist/index.html" ]; then
+        echo "   ✅ 前端构建成功"
+        
+        # 设置前端文件权限（Linux）
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            echo "   设置前端文件权限..."
+            # 确保nginx用户可以访问
+            NGINX_USER="www-data"
+            if ! id "$NGINX_USER" >/dev/null 2>&1; then
+                for user in nginx http; do
+                    if id "$user" >/dev/null 2>&1; then
+                        NGINX_USER="$user"
+                        break
+                    fi
+                done
+            fi
+            
+            # 设置适当的权限
+            safe_sudo chown -R "$NGINX_USER:$NGINX_USER" dist/ 2>/dev/null || true
+            safe_sudo chmod -R 755 dist/ 2>/dev/null || true
+            safe_sudo find dist/ -type f -exec chmod 644 {} \; 2>/dev/null || true
+            echo "   ✅ 前端文件权限设置完成"
+        fi
+    else
+        echo "   ❌ 前端构建失败：未找到 dist/index.html"
+        echo "   ⚠️  Dashboard 可能无法正常工作"
+    fi
+    
+    cd ..
+else
+    echo "   ⚠️  未找到前端项目，跳过前端构建"
+fi
 
 # 检查服务是否正在运行
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
@@ -184,9 +239,10 @@ echo "📋 测试命令："
 NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 # 读取 CLASH_FILENAME 环境变量，默认为 clash.yaml
 CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
-echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/update"
-echo "   curl http://localhost:${NGINX_PROXY_PORT}/api/diagnose/clash"
-echo "   curl http://localhost:${NGINX_PROXY_PORT}/${CLASH_FILENAME}"
+echo "   API更新: curl http://localhost:${NGINX_PROXY_PORT}/api/update"
+echo "   Clash诊断: curl http://localhost:${NGINX_PROXY_PORT}/api/diagnose/clash"
+echo "   Clash配置: curl http://localhost:${NGINX_PROXY_PORT}/${CLASH_FILENAME}"
+echo "   Dashboard: http://localhost:${NGINX_PROXY_PORT}/dashboard/"
 echo ""
 echo "📊 查看日志："
 if [[ $EUID -eq 0 ]]; then

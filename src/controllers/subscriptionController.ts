@@ -15,34 +15,43 @@ export class SubscriptionController {
     }
 
     /**
-     * 首页 - API文档
+     * 首页 - 重定向到 Dashboard
      */
     index = (req: Request, res: Response): void => {
-        const response: ApiResponse = {
-            success: true,
-            data: {
-                name: 'Subscription API',
-                version: '1.0.0',
-                description: 'TypeScript订阅转换API服务',
-                author: 'imal1',
-                timestamp: new Date().toISOString(),
-                endpoints: {
-                    'GET /': 'API文档',
-                    'GET /api/update': '更新订阅',
-                    'GET /api/status': '获取状态',
-                    'GET /api/diagnose/clash': '诊断Clash生成问题',
-                    'GET /subscription.txt': '获取Base64编码的订阅',
-                    [`GET /${config.clashFilename}`]: '获取Clash配置',
-                    'GET /raw.txt': '获取原始链接',
-                    'GET /api/configs': '获取可用配置列表',
-                    'POST /api/configs': '更新配置列表',
-                    'GET /health': '健康检查'
-                }
-            },
-            timestamp: new Date().toISOString()
-        };
-
-        res.json(response);
+        // 检查请求头，如果是API请求则返回JSON，否则重定向到dashboard
+        const acceptHeader = req.headers.accept || '';
+        const isApiRequest = acceptHeader.includes('application/json') || req.query.format === 'json';
+        
+        if (isApiRequest) {
+            // API 请求，返回 JSON 格式的信息
+            const response: ApiResponse = {
+                success: true,
+                data: {
+                    name: 'Subscription API',
+                    version: '1.0.0',
+                    description: 'TypeScript订阅转换API服务',
+                    author: 'imal1',
+                    timestamp: new Date().toISOString(),
+                    dashboard: '/dashboard/',
+                    endpoints: {
+                        'GET /api/update': '更新订阅',
+                        'GET /api/status': '获取状态',
+                        'GET /api/diagnose/clash': '诊断Clash生成问题',
+                        'GET /subscription.txt': '获取Base64编码的订阅',
+                        [`GET /${config.clashFilename}`]: '获取Clash配置',
+                        'GET /raw.txt': '获取原始链接',
+                        'GET /api/configs': '获取可用配置列表',
+                        'POST /api/configs': '更新配置列表',
+                        'GET /health': '健康检查'
+                    }
+                },
+                timestamp: new Date().toISOString()
+            };
+            res.json(response);
+        } else {
+            // 浏览器请求，重定向到 dashboard
+            res.redirect('/dashboard/');
+        }
     };
 
     /**
