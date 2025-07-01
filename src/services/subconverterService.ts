@@ -265,7 +265,12 @@ export class SubconverterService {
      * 测试 subconverter 的不同调用方式
      */
     async testSubconverterMethods(testContent: string): Promise<any> {
-        const results = {
+        const results: {
+            data_get: { status?: number; dataLength?: number; preview?: string; error?: any } | null;
+            post_body: { status?: number; dataLength?: number; preview?: string; error?: any } | null;
+            url_get: { status?: number; dataLength?: number; preview?: string; error?: any } | null;
+            simple_get: { status?: number; dataLength?: number; preview?: string; error?: any } | null;
+        } = {
             data_get: null,
             post_body: null,
             url_get: null,

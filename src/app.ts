@@ -86,8 +86,8 @@ export class App {
             });
         });
 
-        // 全局错误处理
-        this.app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
+        // 全局错误处理 - Express 5.x 兼容
+        this.app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
             logger.error('未处理的错误:', {
                 error: error.message,
                 stack: error.stack,
@@ -95,6 +95,11 @@ export class App {
                 method: req.method,
                 ip: req.ip
             });
+
+            // Express 5.x 改进的错误处理
+            if (res.headersSent) {
+                return next(error);
+            }
 
             res.status(500).json({
                 success: false,
@@ -118,8 +123,7 @@ export class App {
                     logger.error('定时更新失败:', error);
                 }
             }, {
-                timezone: "Asia/Shanghai",
-                scheduled: true
+                timezone: "Asia/Shanghai"
             });
             
             logger.info(`定时任务已启动，计划: ${config.autoUpdateCron} (Asia/Shanghai)`);

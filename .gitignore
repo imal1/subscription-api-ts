@@ -56,3 +56,13 @@ temp/
 # Build output
 build/
 out/
+
+# Next.js build output
+.next/
+frontend/.next/
+frontend/out/
+frontend/dist/
+
+# Next.js cache
+.next/cache
+frontend/.next/cache

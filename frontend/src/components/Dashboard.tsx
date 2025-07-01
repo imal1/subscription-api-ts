@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { apiService, ApiStatus, UpdateResult } from '@/lib/api';
@@ -44,6 +44,9 @@ const Dashboard = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
+  
+  // React 19.x useTransition for better UX
+  const [isPending, startTransition] = useTransition();
 
   const fetchStatus = async () => {
     try {
@@ -58,17 +61,27 @@ const Dashboard = () => {
   };
 
   const handleUpdate = async () => {
-    setUpdating(true);
-    setUpdateResult(null);
+    // React 19.x useTransition for non-blocking updates
+    startTransition(() => {
+      setUpdating(true);
+      setUpdateResult(null);
+    });
+    
     try {
       const result = await apiService.updateSubscription();
-      setUpdateResult(result);
+      startTransition(() => {
+        setUpdateResult(result);
+      });
       // 更新完成后重新获取状态
       await fetchStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败');
+      startTransition(() => {
+        setError(err instanceof Error ? err.message : '更新失败');
+      });
     } finally {
-      setUpdating(false);
+      startTransition(() => {
+        setUpdating(false);
+      });
     }
   };
 
