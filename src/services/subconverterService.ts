@@ -49,12 +49,20 @@ export class SubconverterService {
         try {
             const params = new URLSearchParams({
                 target: 'clash',
-                url: subscriptionUrl
+                url: subscriptionUrl,
+                insert: 'false', // 不插入默认策略组
+                config: customConfig || '', // 使用自定义配置
+                emoji: 'true', // 启用emoji
+                list: 'false', // 不返回节点列表
+                sort: 'false' // 不排序节点
             });
 
-            if (customConfig) {
-                params.append('config', customConfig);
-            }
+            // 移除空值参数
+            Array.from(params.entries()).forEach(([key, value]) => {
+                if (!value) {
+                    params.delete(key);
+                }
+            });
 
             logger.info(`请求Clash转换: ${config.subconverterUrl}/sub?${params.toString()}`);
 
@@ -91,12 +99,20 @@ export class SubconverterService {
     async convertToClashByContent(subscriptionContent: string, customConfig?: string): Promise<string> {
         try {
             const params = new URLSearchParams({
-                target: 'clash'
+                target: 'clash',
+                insert: 'false', // 不插入默认策略组
+                config: customConfig || '', // 使用自定义配置
+                emoji: 'true', // 启用emoji
+                list: 'false', // 不返回节点列表
+                sort: 'false' // 不排序节点
             });
 
-            if (customConfig) {
-                params.append('config', customConfig);
-            }
+            // 移除空值参数
+            Array.from(params.entries()).forEach(([key, value]) => {
+                if (!value) {
+                    params.delete(key);
+                }
+            });
 
             // 验证订阅内容
             const lines = subscriptionContent.split('\n').filter(line => line.trim().length > 0);
@@ -115,7 +131,8 @@ export class SubconverterService {
                 subscriptionContent,
                 {
                     headers: {
-                        'Content-Type': 'text/plain; charset=utf-8'
+                        'Content-Type': 'text/plain; charset=utf-8',
+                        'User-Agent': 'Subscription-API-TS/1.0'
                     },
                     timeout: config.requestTimeout,
                     responseType: 'text'
@@ -127,6 +144,11 @@ export class SubconverterService {
                 
                 // 检查返回内容是否是有效的YAML
                 if (response.data.includes('proxies:') || response.data.includes('proxy-groups:')) {
+                    // 分析转换结果
+                    const proxyMatches = response.data.match(/- name:/g);
+                    const proxyCount = proxyMatches ? proxyMatches.length : 0;
+                    logger.info(`转换结果包含 ${proxyCount} 个代理节点`);
+                    
                     return response.data;
                 } else {
                     logger.warn(`转换结果可能无效，内容预览: ${response.data.substring(0, 200)}`);

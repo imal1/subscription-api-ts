@@ -64,6 +64,7 @@ export class SubscriptionService {
             // 从原始URLs中提取纯净的代理URL
             const validProxyProtocols = ['vless://', 'vmess://', 'ss://', 'ssr://', 'trojan://', 'hysteria2://', 'tuic://', 'wireguard://'];
             const extractedUrls: string[] = [];
+            const protocolStats: { [key: string]: number } = {};
             
             for (const rawUrl of urls) {
                 // 移除ANSI颜色代码 - 使用字符代码27 (ESC)
@@ -80,19 +81,25 @@ export class SubscriptionService {
                     if (!trimmedLine) continue;
                     
                     // 检查是否是有效的代理URL
-                    const isValidProxy = validProxyProtocols.some(protocol => trimmedLine.startsWith(protocol));
+                    const matchedProtocol = validProxyProtocols.find(protocol => trimmedLine.startsWith(protocol));
                     
-                    if (isValidProxy) {
+                    if (matchedProtocol) {
                         // 进一步验证URL格式
                         if (trimmedLine.includes('@') && trimmedLine.includes(':') && trimmedLine.length > 20) {
                             extractedUrls.push(trimmedLine);
-                            logger.info(`提取到有效代理URL: ${trimmedLine.substring(0, 50)}...`);
+                            
+                            // 统计协议类型
+                            const protocolName = matchedProtocol.replace('://', '');
+                            protocolStats[protocolName] = (protocolStats[protocolName] || 0) + 1;
+                            
+                            logger.info(`提取到有效代理URL [${protocolName}]: ${trimmedLine.substring(0, 50)}...`);
                         }
                     }
                 }
             }
             
             logger.info(`URL提取结果: 从${urls.length}个原始条目中提取出${extractedUrls.length}个有效代理URL`);
+            logger.info(`协议分布统计: ${JSON.stringify(protocolStats, null, 2)}`);
             
             if (extractedUrls.length === 0) {
                 throw new Error(`没有找到有效的代理URL。原始URLs: ${urls.slice(0, 3).join(', ')}...`);
@@ -134,10 +141,29 @@ export class SubscriptionService {
                 // 首先尝试直接使用订阅内容转换（避免网络访问问题）
                 try {
                     // 使用原始的订阅内容（非base64编码）
+                    logger.info(`开始直接内容转换，内容长度: ${subscriptionContent.length} 字符`);
+                    logger.info(`内容协议统计: ${JSON.stringify(protocolStats, null, 2)}`);
+                    
                     clashContent = await this.subconverterService.convertToClashByContent(subscriptionContent);
-                    logger.info('使用订阅内容直接转换成功');
+                    
+                    // 验证转换结果
+                    if (clashContent && clashContent.includes('proxies:')) {
+                        const proxyMatches = clashContent.match(/- name:/g);
+                        const proxyCount = proxyMatches ? proxyMatches.length : 0;
+                        logger.info(`使用订阅内容直接转换成功，生成 ${proxyCount} 个代理节点`);
+                        
+                        // 检查是否所有协议都被转换
+                        const totalInputNodes = Object.values(protocolStats).reduce((sum, count) => sum + count, 0);
+                        if (proxyCount < totalInputNodes) {
+                            logger.warn(`转换节点数量不匹配: 输入 ${totalInputNodes} 个，输出 ${proxyCount} 个`);
+                            logger.warn(`可能某些协议不被支持或转换失败`);
+                        }
+                    } else {
+                        throw new Error('转换结果不包含有效的代理配置');
+                    }
                 } catch (contentError: any) {
                     logger.warn(`直接内容转换失败: ${contentError.message}，尝试使用URL方式`);
+                    logger.warn(`输入内容预览: ${subscriptionContent.substring(0, 200)}...`);
                     
                     // 如果直接内容转换失败，回退到 URL 方式
                     // 优先使用 Nginx 代理端口（通常可用）
