@@ -69,7 +69,6 @@ fi
 export API_PORT="${PORT:-3000}"
 export NGINX_PORT="${NGINX_PORT:-3080}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-export CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
 
 # 检测操作系统并设置数据目录
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -107,11 +106,11 @@ fi
 # 使用envsubst生成配置文件
 if command -v envsubst >/dev/null 2>&1; then
     # 只替换指定的环境变量，避免nginx变量被误替换
-    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT} ${CLASH_FILENAME}' < config/nginx.conf.template > config/nginx.conf
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 envsubst 重新生成 nginx.conf"
 else
     # 如果没有envsubst，使用sed替换
-    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g; s/\${CLASH_FILENAME}/${CLASH_FILENAME}/g" config/nginx.conf.template > config/nginx.conf
+    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g" config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 sed 重新生成 nginx.conf"
 fi
 
@@ -207,11 +206,9 @@ echo "🎉 更新完成！"
 echo ""
 echo "📋 测试命令："
 NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-# 读取 CLASH_FILENAME 环境变量，默认为 clash.yaml
-CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
 echo "   API更新: curl http://localhost:${NGINX_PROXY_PORT}/api/update"
 echo "   Clash诊断: curl http://localhost:${NGINX_PROXY_PORT}/api/diagnose/clash"
-echo "   Clash配置: curl http://localhost:${NGINX_PROXY_PORT}/${CLASH_FILENAME}"
+echo "   Clash配置: curl http://localhost:${NGINX_PROXY_PORT}/clash.yaml"
 echo "   Dashboard: http://localhost:${NGINX_PROXY_PORT}/dashboard/"
 echo ""
 echo "📊 查看日志："

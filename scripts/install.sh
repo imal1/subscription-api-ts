@@ -762,9 +762,6 @@ if command -v nginx &> /dev/null; then
     # 获取项目绝对路径（用于nginx配置）
     ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
     
-    # 设置默认的 Clash 文件名
-    CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
-    
     # 检查并安装envsubst (gettext包的一部分)
     if ! command -v envsubst >/dev/null 2>&1; then
         echo "🔧 安装 envsubst 工具..."
@@ -784,14 +781,14 @@ if command -v nginx &> /dev/null; then
     fi
     
     # 使用envsubst生成配置文件
-    export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR ABSOLUTE_PROJECT_ROOT CLASH_FILENAME
+    export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR ABSOLUTE_PROJECT_ROOT
     if command -v envsubst >/dev/null 2>&1; then
         # 只替换指定的环境变量，避免nginx变量被误替换
-        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT} ${CLASH_FILENAME}' < config/nginx.conf.template > config/nginx.conf
+        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT}' < config/nginx.conf.template > config/nginx.conf
         echo "✅ 使用 envsubst 生成配置文件"
     else
         # 如果没有envsubst，使用sed替换
-        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g; s/\${CLASH_FILENAME}/${CLASH_FILENAME}/g" config/nginx.conf.template > config/nginx.conf
+        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g" config/nginx.conf.template > config/nginx.conf
         echo "✅ 使用 sed 生成配置文件"
     fi
     

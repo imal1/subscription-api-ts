@@ -273,9 +273,7 @@ show_api_help() {
     echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /api/configs     ${CYAN}│${WHITE} 获取配置列表       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
     echo -e "${CYAN}│${BLUE} POST    ${CYAN}│${WHITE} /api/configs     ${CYAN}│${WHITE} 更新配置列表       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
     echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /subscription.txt${CYAN}│${WHITE} 获取订阅文件       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
-    # 读取 CLASH_FILENAME 环境变量，默认为 clash.yaml
-    CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
-    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /${CLASH_FILENAME}      ${CYAN}│${WHITE} 获取Clash配置      ${CYAN}│${WHITE} 文件名可配置       ${CYAN}│${NC}"
+    echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /clash.yaml      ${CYAN}│${WHITE} 获取Clash配置      ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
     echo -e "${CYAN}│${GREEN} GET     ${CYAN}│${WHITE} /raw.txt         ${CYAN}│${WHITE} 获取原始链接       ${CYAN}│${WHITE}                    ${CYAN}│${NC}"
     echo -e "${CYAN}└─────────┴──────────────────┴────────────────────┴────────────────────┘${NC}"
     echo ""

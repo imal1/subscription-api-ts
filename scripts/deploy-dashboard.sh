@@ -28,7 +28,6 @@ fi
 NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 API_PORT="${PORT:-3000}"
 DATA_DIR="${STATIC_DIR:-./data}"
-CLASH_FILENAME="${CLASH_FILENAME:-clash.yaml}"
 
 echo -e "${YELLOW}📋 配置信息:${NC}"
 echo "   项目根目录: $PROJECT_ROOT"
@@ -36,7 +35,6 @@ echo "   前端目录: $FRONTEND_DIR"
 echo "   API 端口: $API_PORT"
 echo "   Nginx 代理端口: $NGINX_PROXY_PORT"
 echo "   数据目录: $DATA_DIR"
-echo "   Clash 文件名: $CLASH_FILENAME"
 echo ""
 
 # 1. 构建前端
@@ -113,7 +111,6 @@ if [ -f "$NGINX_CONF_TEMPLATE" ]; then
         -e "s|\${API_PORT}|$API_PORT|g" \
         -e "s|\${DATA_DIR}|$DATA_DIR|g" \
         -e "s|\${PROJECT_ROOT}|$PROJECT_ROOT|g" \
-        -e "s|\${CLASH_FILENAME}|$CLASH_FILENAME|g" \
         "$NGINX_CONF_TEMPLATE" > "$NGINX_CONF"
     
     echo -e "${GREEN}✅ Nginx 配置已生成: $NGINX_CONF${NC}"

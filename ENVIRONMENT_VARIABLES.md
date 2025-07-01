@@ -10,7 +10,7 @@
 | `/api/configs` | GET, POST | 获取/更新配置列表 |
 | `/api/status` | GET | 获取服务状态 |
 | `/subscription.txt` | GET | 下载订阅文件 |
-| `/clash.yaml` | GET | 下载Clash配置（文件名可通过CLASH_FILENAME配置） |
+| `/clash.yaml` | GET | 下载Clash配置 |
 | `/health` | GET | 健康检查 |
 
 ⚠️ **重要**：`/api/update` 现在支持 GET 方法。详细的 API 使用说明请参考 [README.md](./README.md)
@@ -27,7 +27,6 @@
 
 ### 🔄 Subconverter配置
 - `SUBCONVERTER_URL` - subconverter服务地址 (默认: http://localhost:25500)
-- `CLASH_FILENAME` - Clash配置文件名称，包含后缀 (默认: clash.yaml)
 
 ### 📁 文件路径配置
 - `DATA_DIR` - 数据文件目录 (默认: ./data)

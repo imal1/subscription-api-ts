@@ -46,7 +46,7 @@ server {
     }
     
     # 订阅文件直接访问
-    location ~ ^/(subscription\.txt|${CLASH_FILENAME}|raw\.txt)$ {
+    location ~ ^/(subscription\.txt|clash\.yaml|raw\.txt)$ {
         root ${DATA_DIR};
         add_header Content-Type "text/plain; charset=utf-8";
         add_header Access-Control-Allow-Origin "*";

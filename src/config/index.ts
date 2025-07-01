@@ -4,7 +4,7 @@ export const config: Config = {
     port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
     subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
-    clashFilename: process.env.CLASH_FILENAME || 'clash.yaml',
+    clashFilename: 'clash.yaml',
     staticDir: process.env.DATA_DIR || './data',
     logDir: process.env.LOG_DIR || './logs',
     backupDir: process.env.BACKUP_DIR || './data/backup',

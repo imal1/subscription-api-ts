@@ -96,7 +96,6 @@ Dashboard 会自动读取以下环境变量：
 
 - `PORT`: API 服务端口
 - `NGINX_PROXY_PORT`: Nginx 代理端口
-- `CLASH_FILENAME`: Clash 配置文件名
 
 ### API 基础路径
 
