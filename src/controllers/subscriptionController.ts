@@ -214,13 +214,24 @@ export class SubscriptionController {
      */
     getRawFile = async (req: Request, res: Response): Promise<void> => {
         try {
-            const content = await this.subscriptionService.getFileContent('raw_links.txt');
+            logger.info('尝试获取原始链接文件: raw.txt');
+            const content = await this.subscriptionService.getFileContent('raw.txt');
             
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-            res.setHeader('Content-Disposition', 'attachment; filename="raw_links.txt"');
+            res.setHeader('Content-Disposition', 'attachment; filename="raw.txt"');
             res.send(content);
+            logger.info('成功返回原始链接文件');
         } catch (error: any) {
-            res.status(404).send(`获取原始链接失败: ${error.message}`);
+            logger.error(`获取原始链接文件失败: ${error.message}`, error);
+            
+            const response: ApiResponse = {
+                success: false,
+                error: `获取原始链接失败: ${error.message}`,
+                message: '请确保 raw.txt 文件存在于数据目录中',
+                timestamp: new Date().toISOString()
+            };
+            
+            res.status(404).json(response);
         }
     };
 

@@ -107,7 +107,7 @@ export class SubscriptionService {
 
             // 保存文件
             const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
-            const rawFile = path.join(config.staticDir, 'raw_links.txt');
+            const rawFile = path.join(config.staticDir, 'raw.txt');
 
             await fs.writeFile(subscriptionFile, encodedContent, 'utf8');
             await fs.writeFile(rawFile, subscriptionContent, 'utf8');
@@ -222,7 +222,7 @@ export class SubscriptionService {
     async getStatus(): Promise<any> {
         const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
         const clashFile = path.join(config.staticDir, config.clashFilename);
-        const rawFile = path.join(config.staticDir, 'raw_links.txt');
+        const rawFile = path.join(config.staticDir, 'raw.txt');
 
         const status = {
             subscriptionExists: await fs.pathExists(subscriptionFile),
@@ -263,10 +263,34 @@ export class SubscriptionService {
         const filePath = path.join(config.staticDir, filename);
         
         if (!(await fs.pathExists(filePath))) {
-            throw new Error(`文件 ${filename} 不存在`);
+            // 如果是raw.txt文件不存在，尝试创建默认文件
+            if (filename === 'raw.txt') {
+                await this.createDefaultRawFile();
+                logger.info(`已创建默认的 ${filename} 文件`);
+            } else {
+                throw new Error(`文件 ${filename} 不存在`);
+            }
         }
 
         return await fs.readFile(filePath);
+    }
+
+    /**
+     * 创建默认的raw.txt文件
+     */
+    private async createDefaultRawFile(): Promise<void> {
+        const filePath = path.join(config.staticDir, 'raw.txt');
+        const defaultContent = `# 原始订阅链接文件
+# 请在此添加你的订阅链接，每行一个
+# 示例:
+# https://example.com/subscription1
+# https://example.com/subscription2
+
+`;
+        
+        await fs.ensureDir(config.staticDir);
+        await fs.writeFile(filePath, defaultContent, 'utf8');
+        logger.info(`已创建默认的raw.txt文件: ${filePath}`);
     }
 
     /**
@@ -366,7 +390,7 @@ export class SubscriptionService {
                     // 如果URL转换失败，尝试直接内容转换
                     if (diagnosis.checks.subscriptionFileExists) {
                         try {
-                            const rawFile = path.join(config.staticDir, 'raw_links.txt');
+                            const rawFile = path.join(config.staticDir, 'raw.txt');
                             if (await fs.pathExists(rawFile)) {
                                 const rawContent = await fs.readFile(rawFile, 'utf8');
                                 const directClashContent = await this.subconverterService.convertToClashByContent(rawContent);
