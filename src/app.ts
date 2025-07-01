@@ -31,7 +31,7 @@ export class App {
         }));
         
         // 压缩中间件
-        this.app.use(compression());
+        this.app.use(compression() as unknown as express.RequestHandler);
         
         // CORS中间件
         this.app.use(cors({
