@@ -490,4 +490,81 @@ export class SubscriptionService {
     async testSingleNodeConversion(nodeContent: string): Promise<string> {
         return await this.subconverterService.convertToClashByContent(nodeContent);
     }
+
+    /**
+     * 检查subconverter服务详细状态
+     */
+    async checkSubconverterService(): Promise<{ healthy: boolean; url: string; version?: string; error?: string; endpoints?: any }> {
+        const result: any = {
+            healthy: false,
+            url: config.subconverterUrl
+        };
+
+        try {
+            // 1. 检查基本健康状态
+            const healthCheck = await this.subconverterService.checkHealth();
+            if (!healthCheck) {
+                result.error = '健康检查失败';
+                return result;
+            }
+
+            // 2. 尝试获取版本信息
+            try {
+                result.version = await this.subconverterService.getVersion();
+            } catch (versionError: any) {
+                result.versionError = versionError.message;
+            }
+
+            // 3. 测试不同的端点
+            const axios = require('axios');
+            const endpoints = {
+                '/version': { method: 'GET', description: '版本信息' },
+                '/sub': { method: 'GET', description: '订阅转换' },
+                '/': { method: 'GET', description: '根路径' }
+            };
+
+            result.endpoints = {};
+
+            for (const [path, info] of Object.entries(endpoints)) {
+                try {
+                    const response = await axios({
+                        method: info.method,
+                        url: `${config.subconverterUrl}${path}`,
+                        timeout: 5000,
+                        validateStatus: (status: number) => status < 500 // 接受所有非5xx错误
+                    });
+
+                    result.endpoints[path] = {
+                        status: response.status,
+                        accessible: true,
+                        description: info.description
+                    };
+                } catch (error: any) {
+                    result.endpoints[path] = {
+                        status: error.response?.status || 'ERROR',
+                        accessible: false,
+                        error: error.message,
+                        description: info.description
+                    };
+                }
+            }
+
+            // 4. 检查是否所有必要端点都可访问
+            const requiredEndpoints = ['/version', '/sub'];
+            const accessibleRequired = requiredEndpoints.filter(endpoint => 
+                result.endpoints[endpoint]?.accessible
+            );
+
+            if (accessibleRequired.length === requiredEndpoints.length) {
+                result.healthy = true;
+            } else {
+                result.error = `必要端点不可访问: ${requiredEndpoints.filter(ep => !result.endpoints[ep]?.accessible).join(', ')}`;
+            }
+
+        } catch (error: any) {
+            result.error = error.message;
+        }
+
+        return result;
+    }
 }

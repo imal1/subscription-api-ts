@@ -37,6 +37,7 @@ export class SubscriptionController {
                         'GET /api/update': '更新订阅',
                         'GET /api/status': '获取状态',
                         'GET /api/diagnose/clash': '诊断Clash生成问题',
+                        'GET /api/diagnose/subconverter': '检查Subconverter服务状态',
                         'GET /api/test/protocols': '测试多协议转换',
                         'GET /subscription.txt': '获取Base64编码的订阅',
                         [`GET /${config.clashFilename}`]: '获取Clash配置',
@@ -292,6 +293,19 @@ export class SubscriptionController {
      */
     testProtocolConversion = async (req: Request, res: Response): Promise<void> => {
         try {
+            // 首先检查subconverter服务状态
+            const subconverterHealthy = await this.subscriptionService.checkSubconverterService();
+            if (!subconverterHealthy.healthy) {
+                const response: ApiResponse = {
+                    success: false,
+                    error: `Subconverter服务不可用: ${subconverterHealthy.error}`,
+                    message: '请检查subconverter服务配置和状态',
+                    timestamp: new Date().toISOString()
+                };
+                res.status(503).json(response);
+                return;
+            }
+
             // 测试单个协议的转换效果
             const testNodes = [
                 'vless://2df7ca47-b52d-4108-8db7-ca36049d7e83@104.234.37.101:43911?encryption=none&security=reality&flow=&type=h2&sni=aws.amazon.com&pbk=EMUKRSbFWEK8nju9E56Z4NsUrduOXZE7qtZwZRdOTwI&fp=chrome#test-vless',
@@ -302,6 +316,7 @@ export class SubscriptionController {
 
             const results: any = {
                 timestamp: new Date().toISOString(),
+                subconverterStatus: subconverterHealthy,
                 tests: []
             };
 
@@ -333,7 +348,8 @@ export class SubscriptionController {
                         success: true,
                         proxyCount,
                         outputType,
-                        contentLength: clashContent.length
+                        contentLength: clashContent.length,
+                        preview: clashContent.substring(0, 200) + '...'
                     });
                     
                     logger.info(`${protocol} 转换成功: ${proxyCount} 个节点，类型: ${outputType}`);
@@ -342,7 +358,8 @@ export class SubscriptionController {
                         protocol,
                         input: testNode.substring(0, 100) + '...',
                         success: false,
-                        error: error.message
+                        error: error.message,
+                        errorDetails: error.stack
                     });
                     
                     logger.error(`${protocol} 转换失败: ${error.message}`);
@@ -374,14 +391,16 @@ export class SubscriptionController {
                     inputCount: testNodes.length,
                     outputCount: allProxyCount,
                     outputTypes: allOutputTypes,
-                    contentLength: allClashContent.length
+                    contentLength: allClashContent.length,
+                    preview: allClashContent.substring(0, 500) + '...'
                 };
                 
                 logger.info(`组合转换结果: ${allProxyCount} 个节点，类型分布: ${JSON.stringify(allOutputTypes)}`);
             } catch (error: any) {
                 results.combinedTest = {
                     success: false,
-                    error: error.message
+                    error: error.message,
+                    errorDetails: error.stack
                 };
                 
                 logger.error(`组合转换失败: ${error.message}`);
@@ -397,6 +416,34 @@ export class SubscriptionController {
             res.json(response);
         } catch (error: any) {
             logger.error('多协议测试API错误:', error);
+            
+            const response: ApiResponse = {
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
+
+            res.status(500).json(response);
+        }
+    };
+
+    /**
+     * 检查subconverter服务状态
+     */
+    checkSubconverter = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const status = await this.subscriptionService.checkSubconverterService();
+            
+            const response: ApiResponse = {
+                success: status.healthy,
+                data: status,
+                message: status.healthy ? 'Subconverter服务正常' : 'Subconverter服务异常',
+                timestamp: new Date().toISOString()
+            };
+
+            res.status(status.healthy ? 200 : 503).json(response);
+        } catch (error: any) {
+            logger.error('检查Subconverter服务API错误:', error);
             
             const response: ApiResponse = {
                 success: false,
