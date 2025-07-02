@@ -29,6 +29,7 @@
     "build:all": "npm run build && npm run frontend:build"
   },
   "keywords": [
+    "subconverter",
     "subscription",
     "clash",
     "sing-box",
