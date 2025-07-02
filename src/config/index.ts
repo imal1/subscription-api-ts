@@ -3,7 +3,7 @@ import { Config } from '../types';
 export const config: Config = {
     port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
-    subconverterUrl: process.env.SUBCONVERTER_URL || 'http://localhost:25500',
+    mihomoPath: process.env.MIHOMO_PATH || '',
     clashFilename: 'clash.yaml',
     staticDir: process.env.DATA_DIR || './data',
     logDir: process.env.LOG_DIR || './logs',
@@ -15,7 +15,7 @@ export const config: Config = {
 };
 
 export const validateConfig = (): void => {
-    const requiredFields: (keyof Config)[] = ['port', 'singBoxConfigs', 'subconverterUrl'];
+    const requiredFields: (keyof Config)[] = ['port', 'singBoxConfigs'];
     
     for (const field of requiredFields) {
         if (!config[field]) {

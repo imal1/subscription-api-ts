@@ -1,7 +1,7 @@
 export interface Config {
     port: number;
     singBoxConfigs: string[];
-    subconverterUrl: string;
+    mihomoPath: string;
     clashFilename: string;
     staticDir: string;
     logDir: string;
@@ -32,7 +32,7 @@ export interface StatusInfo {
     subscriptionExists: boolean;
     clashExists: boolean;
     rawExists: boolean;
-    subconverterRunning: boolean;
+    mihomoAvailable: boolean;
     singBoxAccessible: boolean;
     subscriptionLastUpdated?: string;
     subscriptionSize?: number;
@@ -41,6 +41,7 @@ export interface StatusInfo {
     nodesCount?: number;
     uptime: number;
     version: string;
+    mihomoVersion?: string;
 }
 
 export interface ApiResponse<T = any> {

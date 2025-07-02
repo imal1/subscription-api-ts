@@ -4,12 +4,12 @@ import { UpdateResult } from '../types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { SingBoxService } from './singBoxService';
-import { SubconverterService } from './subconverterService';
+import { MihomoService } from './mihomoService';
 
 export class SubscriptionService {
     private static instance: SubscriptionService;
     private singBoxService: SingBoxService;
-    private subconverterService: SubconverterService;
+    private mihomoService: MihomoService;
     
     public static getInstance(): SubscriptionService {
         if (!SubscriptionService.instance) {
@@ -20,7 +20,7 @@ export class SubscriptionService {
 
     constructor() {
         this.singBoxService = SingBoxService.getInstance();
-        this.subconverterService = SubconverterService.getInstance();
+        this.mihomoService = MihomoService.getInstance();
     }
 
     /**
@@ -41,9 +41,9 @@ export class SubscriptionService {
             logger.info('开始更新订阅...');
 
             // 检查服务依赖
-            const subconverterRunning = await this.subconverterService.checkHealth();
-            if (!subconverterRunning) {
-                throw new Error('Subconverter服务未运行或不可访问');
+            const mihomoAvailable = await this.mihomoService.checkHealth();
+            if (!mihomoAvailable) {
+                throw new Error('Mihomo服务未运行或不可访问');
             }
 
             const singBoxAvailable = await this.singBoxService.checkSingBoxAvailable();
@@ -125,12 +125,12 @@ export class SubscriptionService {
             let clashGenerated = false;
             let clashError: string | null = null;
             try {
-                // 检查 subconverter 服务状态
-                const subconverterHealthy = await this.subconverterService.checkHealth();
-                logger.info(`Subconverter服务状态: ${subconverterHealthy ? '正常' : '异常'}`);
+                // 检查 mihomo 服务状态
+                const mihomoHealthy = await this.mihomoService.checkHealth();
+                logger.info(`Mihomo服务状态: ${mihomoHealthy ? '正常' : '异常'}`);
                 
-                if (!subconverterHealthy) {
-                    throw new Error('Subconverter服务不可用，请检查服务是否启动');
+                if (!mihomoHealthy) {
+                    throw new Error('Mihomo服务不可用，请检查服务是否启动');
                 }
                 
                 const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
@@ -144,7 +144,7 @@ export class SubscriptionService {
                     logger.info(`开始直接内容转换，内容长度: ${subscriptionContent.length} 字符`);
                     logger.info(`内容协议统计: ${JSON.stringify(protocolStats, null, 2)}`);
                     
-                    clashContent = await this.subconverterService.convertToClashByContent(subscriptionContent);
+                    clashContent = await this.mihomoService.convertToClashByContent(subscriptionContent);
                     
                     // 验证转换结果
                     if (clashContent && clashContent.includes('proxies:')) {
@@ -219,7 +219,7 @@ export class SubscriptionService {
                         }
                     }
                     
-                    clashContent = await this.subconverterService.convertToClash(subscriptionUrl);
+                    clashContent = await this.mihomoService.convertToClash(subscriptionUrl);
                 }
                 
                 if (!clashContent || clashContent.trim().length === 0) {
@@ -284,11 +284,19 @@ export class SubscriptionService {
             subscriptionExists: await fs.pathExists(subscriptionFile),
             clashExists: await fs.pathExists(clashFile),
             rawExists: await fs.pathExists(rawFile),
-            subconverterRunning: await this.subconverterService.checkHealth(),
+            mihomoAvailable: await this.mihomoService.checkHealth(),
             singBoxAccessible: await this.singBoxService.checkSingBoxAvailable(),
             uptime: process.uptime(),
-            version: '1.0.0'
+            version: '2.0.0'
         };
+
+        // 获取 mihomo 版本信息
+        try {
+            const mihomoVersion = await this.mihomoService.getVersion();
+            (status as any).mihomoVersion = mihomoVersion?.version || 'unknown';
+        } catch (error) {
+            logger.warn('获取 mihomo 版本失败:', error);
+        }
 
         // 获取文件信息
         if (status.subscriptionExists) {
@@ -378,14 +386,15 @@ export class SubscriptionService {
                 diagnosis.checks.clashLastModified = stats.mtime.toISOString();
             }
 
-            // 2. 检查 subconverter 服务
-            diagnosis.checks.subconverterHealthy = await this.subconverterService.checkHealth();
+            // 2. 检查 mihomo 服务
+            diagnosis.checks.mihomoHealthy = await this.mihomoService.checkHealth();
             
-            if (diagnosis.checks.subconverterHealthy) {
+            if (diagnosis.checks.mihomoHealthy) {
                 try {
-                    diagnosis.checks.subconverterVersion = await this.subconverterService.getVersion();
+                    const versionInfo = await this.mihomoService.getVersion();
+                    diagnosis.checks.mihomoVersion = versionInfo?.version || 'unknown';
                 } catch (error) {
-                    diagnosis.checks.subconverterVersionError = (error as Error).message;
+                    diagnosis.checks.mihomoVersionError = (error as Error).message;
                 }
             }
 
@@ -422,14 +431,14 @@ export class SubscriptionService {
                 diagnosis.checks.externalSubscriptionError = error.message;
             }
 
-            // 4. 如果 subconverter 可用，尝试转换
-            if (diagnosis.checks.subconverterHealthy) {
+            // 4. 如果 mihomo 可用，尝试转换
+            if (diagnosis.checks.mihomoHealthy) {
                 // 优先使用外部代理 URL 进行测试
                 const testUrl = diagnosis.checks.externalSubscriptionAccessible ? 
                     externalSubscriptionUrl : localSubscriptionUrl;
                 
                 try {
-                    const clashContent = await this.subconverterService.convertToClash(testUrl);
+                    const clashContent = await this.mihomoService.convertToClash(testUrl);
                     diagnosis.checks.conversionTest = {
                         success: true,
                         testUrl: testUrl,
@@ -449,7 +458,7 @@ export class SubscriptionService {
                             const rawFile = path.join(config.staticDir, 'raw.txt');
                             if (await fs.pathExists(rawFile)) {
                                 const rawContent = await fs.readFile(rawFile, 'utf8');
-                                const directClashContent = await this.subconverterService.convertToClashByContent(rawContent);
+                                const directClashContent = await this.mihomoService.convertToClashByContent(rawContent);
                                 diagnosis.checks.directContentConversionTest = {
                                     success: true,
                                     contentLength: directClashContent ? directClashContent.length : 0,
@@ -485,24 +494,23 @@ export class SubscriptionService {
     }
 
     /**
-     * 测试单个节点或多个节点的转换
+     * 测试单个节点or多个节点的转换 - 使用 mihomo
      */
     async testSingleNodeConversion(nodeContent: string): Promise<string> {
-        return await this.subconverterService.convertToClashByContent(nodeContent);
+        return await this.mihomoService.convertToClashByContent(nodeContent);
     }
 
     /**
-     * 检查subconverter服务详细状态
+     * 检查mihomo服务详细状态
      */
-    async checkSubconverterService(): Promise<{ healthy: boolean; url: string; version?: string; error?: string; endpoints?: any }> {
+    async checkMihomoService(): Promise<{ healthy: boolean; version?: string; error?: string; testResults?: any }> {
         const result: any = {
-            healthy: false,
-            url: config.subconverterUrl
+            healthy: false
         };
 
         try {
             // 1. 检查基本健康状态
-            const healthCheck = await this.subconverterService.checkHealth();
+            const healthCheck = await this.mihomoService.checkHealth();
             if (!healthCheck) {
                 result.error = '健康检查失败';
                 return result;
@@ -510,61 +518,29 @@ export class SubscriptionService {
 
             // 2. 尝试获取版本信息
             try {
-                result.version = await this.subconverterService.getVersion();
+                const versionInfo = await this.mihomoService.getVersion();
+                result.version = versionInfo?.version || 'unknown';
             } catch (versionError: any) {
                 result.versionError = versionError.message;
             }
 
-            // 3. 测试不同的端点
-            const axios = require('axios');
-            const endpoints = {
-                '/version': { method: 'GET', description: '版本信息' },
-                '/sub': { method: 'GET', description: '订阅转换' },
-                '/': { method: 'GET', description: '根路径' }
-            };
-
-            result.endpoints = {};
-
-            for (const [path, info] of Object.entries(endpoints)) {
-                try {
-                    const response = await axios({
-                        method: info.method,
-                        url: `${config.subconverterUrl}${path}`,
-                        timeout: 5000,
-                        validateStatus: (status: number) => status < 500 // 接受所有非5xx错误
-                    });
-
-                    result.endpoints[path] = {
-                        status: response.status,
-                        accessible: true,
-                        description: info.description
-                    };
-                } catch (error: any) {
-                    result.endpoints[path] = {
-                        status: error.response?.status || 'ERROR',
-                        accessible: false,
-                        error: error.message,
-                        description: info.description
-                    };
+            // 3. 运行测试转换
+            try {
+                const testResult = await this.mihomoService.testConversion();
+                result.testResults = testResult;
+                result.healthy = testResult.success;
+                
+                if (!testResult.success) {
+                    result.error = testResult.message;
                 }
+            } catch (testError: any) {
+                result.error = `测试转换失败: ${testError.message}`;
             }
 
-            // 4. 检查是否所有必要端点都可访问
-            const requiredEndpoints = ['/version', '/sub'];
-            const accessibleRequired = requiredEndpoints.filter(endpoint => 
-                result.endpoints[endpoint]?.accessible
-            );
-
-            if (accessibleRequired.length === requiredEndpoints.length) {
-                result.healthy = true;
-            } else {
-                result.error = `必要端点不可访问: ${requiredEndpoints.filter(ep => !result.endpoints[ep]?.accessible).join(', ')}`;
-            }
-
+            return result;
         } catch (error: any) {
             result.error = error.message;
+            return result;
         }
-
-        return result;
     }
 }

@@ -17,7 +17,7 @@ router.post('/api/configs', subscriptionController.updateConfigs);
 
 // 诊断
 router.get('/api/diagnose/clash', subscriptionController.diagnoseClash);
-router.get('/api/diagnose/subconverter', subscriptionController.checkSubconverter);
+router.get('/api/diagnose/mihomo', subscriptionController.checkMihomo);
 router.get('/api/test/protocols', subscriptionController.testProtocolConversion);
 
 // 文件下载

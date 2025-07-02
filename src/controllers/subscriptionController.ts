@@ -28,8 +28,8 @@ export class SubscriptionController {
                 success: true,
                 data: {
                     name: 'Subscription API',
-                    version: '1.0.0',
-                    description: 'TypeScript订阅转换API服务',
+                    version: '2.0.0',
+                    description: 'TypeScript订阅转换API服务 - 使用 Mihomo 内核',
                     author: 'imal1',
                     timestamp: new Date().toISOString(),
                     dashboard: '/dashboard/',
@@ -37,7 +37,7 @@ export class SubscriptionController {
                         'GET /api/update': '更新订阅',
                         'GET /api/status': '获取状态',
                         'GET /api/diagnose/clash': '诊断Clash生成问题',
-                        'GET /api/diagnose/subconverter': '检查Subconverter服务状态',
+                        'GET /api/diagnose/mihomo': '检查Mihomo服务状态',
                         'GET /api/test/protocols': '测试多协议转换',
                         'GET /subscription.txt': '获取Base64编码的订阅',
                         'GET /clash.yaml': '获取Clash配置',
@@ -293,13 +293,13 @@ export class SubscriptionController {
      */
     testProtocolConversion = async (req: Request, res: Response): Promise<void> => {
         try {
-            // 首先检查subconverter服务状态
-            const subconverterHealthy = await this.subscriptionService.checkSubconverterService();
-            if (!subconverterHealthy.healthy) {
+            // 首先检查mihomo服务状态
+            const mihomoHealthy = await this.subscriptionService.checkMihomoService();
+            if (!mihomoHealthy.healthy) {
                 const response: ApiResponse = {
                     success: false,
-                    error: `Subconverter服务不可用: ${subconverterHealthy.error}`,
-                    message: '请检查subconverter服务配置和状态',
+                    error: `Mihomo服务不可用: ${mihomoHealthy.error}`,
+                    message: '请检查mihomo服务配置和状态',
                     timestamp: new Date().toISOString()
                 };
                 res.status(503).json(response);
@@ -316,7 +316,7 @@ export class SubscriptionController {
 
             const results: any = {
                 timestamp: new Date().toISOString(),
-                subconverterStatus: subconverterHealthy,
+                mihomoStatus: mihomoHealthy,
                 tests: []
             };
 
@@ -428,30 +428,26 @@ export class SubscriptionController {
     };
 
     /**
-     * 检查subconverter服务状态
+     * 检查mihomo服务状态
      */
-    checkSubconverter = async (req: Request, res: Response): Promise<void> => {
+    checkMihomo = async (req: Request, res: Response): Promise<void> => {
         try {
-            const status = await this.subscriptionService.checkSubconverterService();
-            
-            // 进行额外的 API 调用方式测试
-            const testContent = 'trojan://password@server.com:443?security=tls&type=tcp#test';
-            const subconverterService = new (await import('../services/subconverterService')).SubconverterService();
-            const apiTests = await subconverterService.testSubconverterMethods(testContent);
+            const status = await this.subscriptionService.checkMihomoService();
             
             const response: ApiResponse = {
                 success: status.healthy,
                 data: {
-                    basicStatus: status,
-                    apiTests: apiTests
+                    status: status,
+                    version: status.version,
+                    testResults: status.testResults
                 },
-                message: status.healthy ? 'Subconverter服务正常' : 'Subconverter服务异常',
+                message: status.healthy ? 'Mihomo服务正常' : 'Mihomo服务异常',
                 timestamp: new Date().toISOString()
             };
 
             res.status(status.healthy ? 200 : 503).json(response);
         } catch (error: any) {
-            logger.error('检查Subconverter服务API错误:', error);
+            logger.error('检查Mihomo服务API错误:', error);
             
             const response: ApiResponse = {
                 success: false,

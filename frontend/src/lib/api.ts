@@ -6,7 +6,7 @@ export interface ApiStatus {
   subscriptionExists: boolean;
   clashExists: boolean;
   rawExists: boolean;
-  subconverterRunning: boolean;
+  mihomoAvailable: boolean;
   singBoxAccessible: boolean;
   subscriptionLastUpdated?: string;
   subscriptionSize?: number;
@@ -15,6 +15,7 @@ export interface ApiStatus {
   nodesCount?: number;
   uptime: number;
   version: string;
+  mihomoVersion?: string;
 }
 
 export interface UpdateResult {

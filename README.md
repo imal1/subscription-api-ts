@@ -2,14 +2,31 @@
 
 🚀 一个基于 TypeScript 的 sing-box 订阅转换 API 服务，支持将 sing-box 配置自动转换为 Clash 订阅格式。
 
+## 🔥 重要更新 - 迁移到 Mihomo
+
+> ⚠️ **BREAKING CHANGE**: 从 v2.0.0 开始，本项目已完全迁移到 **mihomo (clash-meta)** 内核，不再使用 subconverter。
+> 
+> **为什么迁移？**
+> - subconverter 不支持 vless/hysteria2/tuic 等新协议
+> - mihomo 提供原生协议支持，转换更准确
+> - 无需外部服务依赖，简化部署流程
+> - 更好的性能和稳定性
+>
+> 📖 **迁移指南**: 请查看 [MIGRATION_TO_MIHOMO.md](./MIGRATION_TO_MIHOMO.md) 了解详细迁移步骤
+>
+> **旧版本支持**: subconverter 版本 (v1.x) 已停止维护，建议尽快迁移到 v2.0.0+
+
 ## ✨ 功能特性
 
 - 🔄 **自动转换**: 自动获取 sing-box 节点配置并转换为 Clash 格式
+- 🌟 **多协议支持**: 原生支持 vless、vmess、hysteria2、tuic、trojan、shadowsocks
+- 🤖 **智能下载**: 自动下载和管理最新 mihomo 二进制文件
 - 🕒 **定时更新**: 支持定时自动更新订阅
 - 🛡️ **类型安全**: 完整的 TypeScript 支持
 - 🌐 **REST API**: 提供完整的 REST API 接口
 - 📊 **状态监控**: 实时监控服务状态和健康检查
 - 📝 **日志系统**: 完善的日志记录和错误处理
+- 🔧 **无外部依赖**: 不再需要 subconverter 服务
 - 🔧**常见问题解决**
 
 **1. TypeScript 编译错误**（找不到模块声明文件）：
@@ -40,7 +57,8 @@ npm run build
 ## 🏗️ 技术栈
 
 - **后端**: TypeScript + Node.js + Express.js
-- **转换器**: Subconverter
+- **转换内核**: mihomo (clash-meta)
+- **前端**: Next.js + React + Tailwind CSS
 - **代理**: Nginx
 - **日志**: Winston
 - **进程管理**: systemd / PM2
@@ -48,10 +66,10 @@ npm run build
 
 ## 📋 系统要求
 
-- Ubuntu 18.04+ / Debian 10+ / CentOS 8+
+- Ubuntu 18.04+ / Debian 10+ / CentOS 8+ / macOS 10.15+
 - **Node.js 18+** （推荐使用官方安装包，避免版本管理器）
 - sing-box (已安装配置)
-- subconverter 服务
+- ~~subconverter 服务~~ (v2.0.0+ 不再需要)
 
 ### 💡 Node.js 安装建议
 

@@ -298,16 +298,21 @@ const Dashboard = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Subconverter</span>
+                      <span className="text-sm font-medium">Mihomo</span>
                       <div className="flex items-center space-x-2">
-                        {status.subconverterRunning ? (
+                        {status.mihomoAvailable ? (
                           <Icon icon="mdi:check-circle" className="w-4 h-4 text-green-600" />
                         ) : (
                           <Icon icon="mdi:close-circle" className="w-4 h-4 text-red-600" />
                         )}
-                        <span className={`text-sm ${status.subconverterRunning ? 'text-green-600' : 'text-red-600'}`}>
-                          {status.subconverterRunning ? '运行中' : '离线'}
+                        <span className={`text-sm ${status.mihomoAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                          {status.mihomoAvailable ? '可用' : '不可用'}
                         </span>
+                        {status.mihomoVersion && (
+                          <span className="text-xs text-gray-500">
+                            v{status.mihomoVersion}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
