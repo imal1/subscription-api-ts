@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,6 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { apiService, ApiStatus, UpdateResult } from "@/lib/api";
 import { Icon } from "@iconify/react";
 import { useEffect, useState, useTransition } from "react";
@@ -60,7 +69,7 @@ const Dashboard = () => {
   const [convertModalOpen, setConvertModalOpen] = useState(false);
 
   // React 19.x useTransition for better UX
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   const fetchStatus = async () => {
     try {
@@ -460,128 +469,128 @@ const Dashboard = () => {
                 <CardDescription>可用的 API 端点和使用说明</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">方法</th>
-                        <th className="text-left p-2">端点</th>
-                        <th className="text-left p-2">描述</th>
-                        <th className="text-left p-2">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b">
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/api/status</td>
-                        <td className="p-2">获取服务状态</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open("/api/status", "_blank")}
-                          >
-                            测试
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/api/update</td>
-                        <td className="p-2">更新订阅</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleUpdate}
-                          >
-                            执行
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/subscription.txt</td>
-                        <td className="p-2">下载订阅文件</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload("subscription.txt")}
-                          >
-                            下载
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/clash.yaml</td>
-                        <td className="p-2">下载 Clash 配置</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload("clash.yaml")}
-                          >
-                            下载
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/raw.txt</td>
-                        <td className="p-2">下载原始链接</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload("raw.txt")}
-                          >
-                            下载
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            GET
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">/health</td>
-                        <td className="p-2">健康检查</td>
-                        <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open("/health", "_blank")}
-                          >
-                            测试
-                          </Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>方法</TableHead>
+                      <TableHead>端点</TableHead>
+                      <TableHead>描述</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">/api/status</TableCell>
+                      <TableCell>获取服务状态</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open("/api/status", "_blank")}
+                        >
+                          测试
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">/api/update</TableCell>
+                      <TableCell>更新订阅</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleUpdate}
+                        >
+                          执行
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        /subscription.txt
+                      </TableCell>
+                      <TableCell>下载订阅文件</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload("subscription.txt")}
+                        >
+                          下载
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">/clash.yaml</TableCell>
+                      <TableCell>下载 Clash 配置</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload("clash.yaml")}
+                        >
+                          下载
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">/raw.txt</TableCell>
+                      <TableCell>下载原始链接</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload("raw.txt")}
+                        >
+                          下载
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                          GET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">/health</TableCell>
+                      <TableCell>健康检查</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open("/health", "_blank")}
+                        >
+                          测试
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </>

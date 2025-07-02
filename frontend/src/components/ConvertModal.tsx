@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { apiService } from "@/lib/api";
 import { Icon } from "@iconify/react";
 import { Editor } from "@monaco-editor/react";
@@ -112,27 +113,12 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
               </Button>
             </div>
 
-            <div className="flex-1 border rounded-md overflow-hidden">
-              <Editor
-                height="100%"
-                defaultLanguage="text"
-                value={inputText}
-                onChange={(value) => setInputText(value || "")}
-                options={{
-                  minimap: { enabled: false },
-                  lineNumbers: "on",
-                  wordWrap: "on",
-                  scrollBeyondLastLine: false,
-                  fontSize: 13,
-                  tabSize: 2,
-                  insertSpaces: true,
-                  folding: false,
-                  renderWhitespace: "boundary",
-                  automaticLayout: true,
-                }}
-                theme="vs"
-              />
-            </div>
+            <Textarea
+              className="flex-1 min-h-[500px] font-mono text-sm"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="请粘贴包含节点链接的原始文本，支持 vmess://, ss://, trojan:// 等协议"
+            />
 
             <div className="text-xs text-muted-foreground">
               请粘贴包含节点链接的原始文本，支持 vmess://, ss://, trojan://
