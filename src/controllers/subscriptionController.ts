@@ -40,7 +40,7 @@ export class SubscriptionController {
                         'GET /api/diagnose/subconverter': '检查Subconverter服务状态',
                         'GET /api/test/protocols': '测试多协议转换',
                         'GET /subscription.txt': '获取Base64编码的订阅',
-                        [`GET /${config.clashFilename}`]: '获取Clash配置',
+                        'GET /clash.yaml': '获取Clash配置',
                         'GET /raw.txt': '获取原始链接',
                         'GET /api/configs': '获取可用配置列表',
                         'POST /api/configs': '更新配置列表',
