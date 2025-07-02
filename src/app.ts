@@ -7,7 +7,10 @@ import * as cron from 'node-cron';
 import { config, validateConfig } from './config';
 import { logger } from './utils/logger';
 import { SubscriptionService } from './services/subscriptionService';
+import { MihomoService } from './services/mihomoService';
+import { SingBoxService } from './services/singBoxService';
 import routes from './routes';
+import * as packageJson from '../package.json';
 
 export class App {
     public app: Application;
@@ -132,30 +135,85 @@ export class App {
 
     public async initialize(): Promise<void> {
         try {
+            logger.info('🔍 正在验证配置...');
             // 验证配置
             validateConfig();
-            logger.info('配置验证通过');
+            logger.info('✅ 配置验证通过');
 
+            logger.info('📁 正在初始化目录...');
             // 确保必要目录存在
             await this.subscriptionService.ensureDirectories();
-            logger.info('目录初始化完成');
+            logger.info('✅ 目录初始化完成');
+
+            // 检查 Mihomo 状态
+            logger.info('🔍 正在检查 Mihomo 状态...');
+            try {
+                const mihomoService = MihomoService.getInstance();
+                const mihomoAvailable = await mihomoService.checkHealth();
+                if (mihomoAvailable) {
+                    const version = await mihomoService.getVersion();
+                    logger.info(`✅ Mihomo 可用 (版本: ${version?.version || 'unknown'})`);
+                } else {
+                    logger.warn('⚠️  Mihomo 不可用，将在首次使用时自动下载');
+                }
+            } catch (error: any) {
+                logger.warn('⚠️  Mihomo 检查失败:', error.message);
+            }
+
+            // 检查 Sing-box 状态
+            logger.info('🔍 正在检查 Sing-box 状态...');
+            try {
+                const singBoxService = SingBoxService.getInstance();
+                const singBoxAvailable = await singBoxService.checkSingBoxAvailable();
+                if (singBoxAvailable) {
+                    logger.info('✅ Sing-box 可用');
+                } else {
+                    logger.warn('⚠️  Sing-box 不可用');
+                }
+            } catch (error: any) {
+                logger.warn('⚠️  Sing-box 检查失败:', error.message);
+            }
+
+            // 显示配置信息
+            logger.info('📋 服务配置:');
+            logger.info(`  🎯 监听端口: ${config.port}`);
+            logger.info(`  📦 配置列表: ${config.singBoxConfigs.join(', ')}`);
+            logger.info(`  📂 数据目录: ${config.staticDir}`);
+            logger.info(`  📝 日志目录: ${config.logDir}`);
+            logger.info(`  ⏰ 自动更新: ${config.autoUpdateCron}`);
 
             // 初始化完成
-            logger.info('应用初始化完成');
+            logger.info('✅ 应用初始化完成');
         } catch (error: any) {
-            logger.error('应用初始化失败:', error);
+            logger.error('❌ 应用初始化失败:', error);
             throw error;
         }
     }
 
     public listen(): void {
         this.app.listen(config.port, '0.0.0.0', () => {
-            logger.info(`🚀 服务器启动成功`);
+            logger.info('');
+            logger.info('🎉 ===== 服务器启动成功 =====');
             logger.info(`📡 监听端口: ${config.port}`);
-            logger.info(`🌍 访问地址: http://localhost:${config.port}`);
-            logger.info(`📝 API文档: http://localhost:${config.port}/`);
-            logger.info(`📊 健康检查: http://localhost:${config.port}/health`);
-            logger.info(`🔧 环境: ${process.env.NODE_ENV || 'development'}`);
+            logger.info(`🌍 本地访问: http://localhost:${config.port}`);
+            logger.info(`🌐 网络访问: http://0.0.0.0:${config.port}`);
+            logger.info(`� 仪表板: http://localhost:${config.port}/`);
+            logger.info(`❤️  健康检查: http://localhost:${config.port}/health`);
+            logger.info(`📋 API状态: http://localhost:${config.port}/api/status`);
+            logger.info(`� 更新订阅: http://localhost:${config.port}/api/update`);
+            logger.info('');
+            logger.info('📥 下载链接:');
+            logger.info(`  📄 订阅文件: http://localhost:${config.port}/subscription.txt`);
+            logger.info(`  ⚔️  Clash配置: http://localhost:${config.port}/clash.yaml`);
+            logger.info(`  🔗 原始链接: http://localhost:${config.port}/raw.txt`);
+            logger.info('');
+            logger.info(`�🔧 环境: ${process.env.NODE_ENV || 'development'}`);
+            logger.info(`📝 日志级别: ${process.env.LOG_LEVEL || 'info'}`);
+            logger.info(`🏷️  服务版本: ${packageJson.version}`);
+            logger.info('');
+            logger.info('✨ 服务已就绪，等待请求...');
+            logger.info('💡 按 Ctrl+C 停止服务');
+            logger.info('==============================');
         });
     }
 }
