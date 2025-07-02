@@ -4,7 +4,7 @@
   "description": "Dashboard for Subscription API TypeScript",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "export": "next build",
