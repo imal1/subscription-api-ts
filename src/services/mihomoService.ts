@@ -563,34 +563,62 @@ export class MihomoService {
             const urlObj = new URL(url);
             const params = new URLSearchParams(urlObj.search);
 
-            return {
+            const config: ProxyConfig = {
                 name: decodeURIComponent(urlObj.hash.substring(1)) || `vless-${urlObj.hostname}`,
                 type: 'vless',
                 server: urlObj.hostname,
                 port: parseInt(urlObj.port) || 443,
                 uuid: urlObj.username,
-                flow: params.get('flow') || '',
-                network: params.get('type') || 'tcp',
-                tls: params.get('security') === 'tls' || params.get('security') === 'reality',
                 'skip-cert-verify': true,
-                ...(params.get('security') === 'reality' && {
-                    'reality-opts': {
+            };
+
+            // 处理 flow
+            const flow = params.get('flow');
+            if (flow) {
+                config.flow = flow;
+            }
+
+            // 处理传输类型
+            const networkType = params.get('type') || 'tcp';
+            config.network = networkType;
+
+            // 处理安全设置
+            const security = params.get('security');
+            if (security === 'tls' || security === 'reality') {
+                config.tls = true;
+                
+                if (security === 'reality') {
+                    config['reality-opts'] = {
                         'public-key': params.get('pbk') || '',
                         'short-id': params.get('sid') || ''
-                    }
-                }),
-                ...(params.get('type') === 'ws' && {
-                    'ws-opts': {
-                        path: params.get('path') || '/',
-                        headers: params.get('host') ? { Host: params.get('host')! } : {}
-                    }
-                }),
-                ...(params.get('type') === 'grpc' && {
-                    'grpc-opts': {
-                        'grpc-service-name': params.get('serviceName') || ''
-                    }
-                })
-            };
+                    };
+                }
+                
+                // 处理 SNI
+                const sni = params.get('sni');
+                if (sni) {
+                    config.sni = sni;
+                }
+            }
+
+            // 处理不同的传输类型
+            if (networkType === 'ws') {
+                config['ws-opts'] = {
+                    path: params.get('path') || '/',
+                    headers: params.get('host') ? { Host: params.get('host')! } : {}
+                };
+            } else if (networkType === 'h2') {
+                config['h2-opts'] = {
+                    host: params.get('host') ? [params.get('host')!] : [],
+                    path: params.get('path') || '/'
+                };
+            } else if (networkType === 'grpc') {
+                config['grpc-opts'] = {
+                    'grpc-service-name': params.get('serviceName') || params.get('path') || ''
+                };
+            }
+
+            return config;
         } catch (error) {
             logger.warn('解析 VLESS 失败:', error);
             return null;
@@ -605,28 +633,39 @@ export class MihomoService {
             const urlObj = new URL(url);
             const params = new URLSearchParams(urlObj.search);
 
-            return {
+            const config: ProxyConfig = {
                 name: decodeURIComponent(urlObj.hash.substring(1)) || `trojan-${urlObj.hostname}`,
                 type: 'trojan',
                 server: urlObj.hostname,
                 port: parseInt(urlObj.port) || 443,
                 password: urlObj.username,
-                'skip-cert-verify': true,
-                sni: params.get('sni') || urlObj.hostname,
-                ...(params.get('type') === 'ws' && {
-                    network: 'ws',
-                    'ws-opts': {
-                        path: params.get('path') || '/',
-                        headers: params.get('host') ? { Host: params.get('host')! } : {}
-                    }
-                }),
-                ...(params.get('type') === 'grpc' && {
-                    network: 'grpc',
-                    'grpc-opts': {
-                        'grpc-service-name': params.get('serviceName') || ''
-                    }
-                })
+                'skip-cert-verify': params.get('allowInsecure') === '1',
             };
+
+            // 处理 SNI
+            const sni = params.get('sni');
+            if (sni) {
+                config.sni = sni;
+            } else {
+                config.sni = urlObj.hostname;
+            }
+
+            // 处理传输类型
+            const networkType = params.get('type');
+            if (networkType === 'ws') {
+                config.network = 'ws';
+                config['ws-opts'] = {
+                    path: params.get('path') || '/',
+                    headers: params.get('host') ? { Host: params.get('host')! } : {}
+                };
+            } else if (networkType === 'grpc') {
+                config.network = 'grpc';
+                config['grpc-opts'] = {
+                    'grpc-service-name': params.get('serviceName') || params.get('path') || ''
+                };
+            }
+
+            return config;
         } catch (error) {
             logger.warn('解析 Trojan 失败:', error);
             return null;
@@ -642,19 +681,40 @@ export class MihomoService {
             const urlObj = new URL(cleanUrl);
             const params = new URLSearchParams(urlObj.search);
 
-            return {
+            const config: ProxyConfig = {
                 name: decodeURIComponent(urlObj.hash.substring(1)) || `hysteria2-${urlObj.hostname}`,
                 type: 'hysteria2',
                 server: urlObj.hostname,
                 port: parseInt(urlObj.port) || 443,
                 password: urlObj.username,
-                'skip-cert-verify': true,
-                sni: params.get('sni') || urlObj.hostname,
-                ...(params.get('obfs') && {
-                    obfs: params.get('obfs'),
-                    'obfs-password': params.get('obfs-password') || ''
-                })
+                'skip-cert-verify': params.get('insecure') === '1',
             };
+
+            // 处理 SNI
+            const sni = params.get('sni');
+            if (sni) {
+                config.sni = sni;
+            } else {
+                config.sni = urlObj.hostname;
+            }
+
+            // 处理混淆
+            const obfs = params.get('obfs');
+            if (obfs) {
+                config.obfs = obfs;
+                const obfsPassword = params.get('obfs-password');
+                if (obfsPassword) {
+                    config['obfs-password'] = obfsPassword;
+                }
+            }
+
+            // 处理 ALPN
+            const alpn = params.get('alpn');
+            if (alpn) {
+                config.alpn = alpn.split(',');
+            }
+
+            return config;
         } catch (error) {
             logger.warn('解析 Hysteria2 失败:', error);
             return null;
@@ -669,19 +729,53 @@ export class MihomoService {
             const urlObj = new URL(url);
             const params = new URLSearchParams(urlObj.search);
 
-            return {
+            const config: ProxyConfig = {
                 name: decodeURIComponent(urlObj.hash.substring(1)) || `tuic-${urlObj.hostname}`,
                 type: 'tuic',
                 server: urlObj.hostname,
                 port: parseInt(urlObj.port) || 443,
                 uuid: urlObj.username,
                 password: urlObj.password,
-                'skip-cert-verify': true,
-                sni: params.get('sni') || urlObj.hostname,
-                'congestion-controller': params.get('congestion_control') || 'cubic',
-                'udp-relay-mode': params.get('udp_relay_mode') || 'native',
-                'reduce-rtt': params.get('reduce_rtt') === '1'
+                'skip-cert-verify': params.get('allow_insecure') === '1',
             };
+
+            // 处理 SNI
+            const sni = params.get('sni');
+            if (sni) {
+                config.sni = sni;
+            } else {
+                config.sni = urlObj.hostname;
+            }
+
+            // 处理拥塞控制算法
+            const congestionControl = params.get('congestion_control');
+            if (congestionControl) {
+                config['congestion-controller'] = congestionControl;
+            } else {
+                config['congestion-controller'] = 'cubic';
+            }
+
+            // 处理 UDP 中继模式
+            const udpRelayMode = params.get('udp_relay_mode');
+            if (udpRelayMode) {
+                config['udp-relay-mode'] = udpRelayMode;
+            } else {
+                config['udp-relay-mode'] = 'native';
+            }
+
+            // 处理 reduce RTT
+            const reduceRtt = params.get('reduce_rtt');
+            if (reduceRtt === '1') {
+                config['reduce-rtt'] = true;
+            }
+
+            // 处理 ALPN
+            const alpn = params.get('alpn');
+            if (alpn) {
+                config.alpn = alpn.split(',');
+            }
+
+            return config;
         } catch (error) {
             logger.warn('解析 TUIC 失败:', error);
             return null;
@@ -814,46 +908,61 @@ ${yaml.dump(clashConfig, {
      * 验证 Clash 配置
      */
     private async validateClashConfig(config: string): Promise<void> {
-        // 在生产环境中跳过验证以提高容错性
-        if (process.env.NODE_ENV === 'production' && process.env.SKIP_CONFIG_VALIDATION === 'true') {
-            logger.info('生产环境跳过配置验证');
-            return;
-        }
-
         try {
             // 将配置写入临时文件
             const tempConfigPath = path.join(path.dirname(this.configPath), 'temp-config.yaml');
             await fs.writeFile(tempConfigPath, config);
 
             try {
-                logger.debug(`验证配置文件: ${tempConfigPath}`);
+                logger.debug(`使用 mihomo 验证配置文件: ${tempConfigPath}`);
                 
-                // 使用 mihomo 验证配置
+                // 使用 mihomo -t 参数验证配置
                 const result = execSync(`"${this.mihomoPath}" -t -f "${tempConfigPath}"`, {
                     encoding: 'utf8',
-                    timeout: 10000
+                    timeout: 10000,
+                    stdio: ['ignore', 'pipe', 'pipe']
                 });
 
                 logger.info('Clash 配置验证通过');
-                logger.debug(`验证输出: ${result}`);
+                logger.debug(`验证输出: ${result.trim()}`);
+            } catch (execError: any) {
+                // 获取详细的错误信息
+                const stderr = execError.stderr || '';
+                const stdout = execError.stdout || '';
+                const errorMessage = stderr || stdout || execError.message;
+                
+                logger.error('Mihomo 配置验证失败:', {
+                    stderr: stderr.trim(),
+                    stdout: stdout.trim(),
+                    message: execError.message,
+                    status: execError.status
+                });
+                
+                // 输出配置内容用于调试 (只输出前500字符)
+                logger.debug('验证失败的配置内容:', config.substring(0, 500) + (config.length > 500 ? '...' : ''));
+                
+                throw new Error(`配置验证失败: ${errorMessage.trim()}`);
             } finally {
                 // 清理临时文件
-                if (fs.existsSync(tempConfigPath)) {
-                    fs.removeSync(tempConfigPath);
+                try {
+                    if (fs.existsSync(tempConfigPath)) {
+                        fs.removeSync(tempConfigPath);
+                    }
+                } catch (cleanupError) {
+                    logger.warn('清理临时文件失败:', cleanupError);
                 }
             }
         } catch (error) {
-            logger.error('Clash 配置验证失败:', {
+            if (error instanceof Error && error.message.includes('配置验证失败')) {
+                throw error; // 重新抛出详细的验证错误
+            }
+            
+            logger.error('配置验证过程失败:', {
                 message: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined
             });
             
-            // 在开发环境中抛出错误，生产环境中警告但继续
-            if (process.env.NODE_ENV === 'development') {
-                throw new Error(`生成的 Clash 配置无效: ${error instanceof Error ? error.message : String(error)}`);
-            } else {
-                logger.warn('配置验证失败，但继续处理 (生产环境)');
-            }
+            throw new Error(`配置验证过程失败: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
