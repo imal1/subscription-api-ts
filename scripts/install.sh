@@ -259,11 +259,11 @@ install_dependencies() {
     local install_success=false
     
     # 使用检测到的或安装的 bun 路径
-    local bun_cmd="${BUN_BINARY:-bun}"
+    BUN_CMD="${BUN_BINARY:-bun}"
     
     # 使用 bun 安装依赖
-    echo "   使用 $bun_cmd 安装依赖..."
-    if $user_prefix "$bun_cmd" install --dev 2>/dev/null; then
+    echo "   使用 $BUN_CMD 安装依赖..."
+    if $user_prefix "$BUN_CMD" install --dev 2>/dev/null; then
         echo "   ✅ bun install 安装成功"
         install_success=true
     else
@@ -275,7 +275,7 @@ install_dependencies() {
     if [ "$install_success" = true ]; then
         if ! $user_prefix test -f "node_modules/@types/node/index.d.ts"; then
             echo "   ⚠️  重新安装 @types/node..."
-            $user_prefix "$bun_cmd" add --dev @types/node
+            $user_prefix "$BUN_CMD" add --dev @types/node
         fi
     fi
     
@@ -346,15 +346,15 @@ if [ -f "node_modules/.bin/tsc" ] && [ -f "node_modules/.bin/ts-node" ]; then
     echo "✅ 使用项目本地的 TypeScript 工具"
 else
     echo "🔧 安装全局 TypeScript 工具..."
-    local bun_cmd="${BUN_BINARY:-bun}"
+    BUN_CMD="${BUN_BINARY:-bun}"
     if [ "$OS" = "Linux" ]; then
         if [[ $EUID -eq 0 ]]; then
-            "$bun_cmd" add -g typescript ts-node pm2
+            "$BUN_CMD" add -g typescript ts-node pm2
         else
-            safe_sudo "$bun_cmd" add -g typescript ts-node pm2
+            safe_sudo "$BUN_CMD" add -g typescript ts-node pm2
         fi
     elif [ "$OS" = "Mac" ]; then
-        "$bun_cmd" add -g typescript ts-node pm2
+        "$BUN_CMD" add -g typescript ts-node pm2
     fi
 fi
 
@@ -525,19 +525,19 @@ fi
 
 # 执行构建（monorepo方式）
 echo "   执行 TypeScript 编译和前端构建..."
-local bun_cmd="${BUN_BINARY:-bun}"
+BUN_CMD="${BUN_BINARY:-bun}"
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
-    if ! safe_sudo_user $TARGET_USER "$bun_cmd" run build:all 2>&1; then
+    if ! safe_sudo_user $TARGET_USER "$BUN_CMD" run build:all; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: $bun_cmd run build:all 查看详细错误信息"
+        echo "   尝试运行: $BUN_CMD run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
 else
-    if ! "$bun_cmd" run build:all 2>&1; then
+    if ! "$BUN_CMD" run build:all; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: $bun_cmd run build:all 查看详细错误信息"
+        echo "   尝试运行: $BUN_CMD run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
