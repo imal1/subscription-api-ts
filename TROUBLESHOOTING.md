@@ -164,17 +164,17 @@ mkdir -p data logs data/backup
 
 **错误信息：**
 ```bash
-EACCES: permission denied, mkdir '$HOME/.config/.subscription/log'
+EACCES: permission denied, mkdir '$HOME/.config/subscription/log'
 EACCES: permission denied, open '/var/run/subscription-api.pid'
 ```
 
 **解决方案：**
 ```bash
 # 检查文件权限
-ls -la $HOME/.config/.subscription/ /var/run/
+ls -la $HOME/.config/subscription/ /var/run/
 
 # 修改权限
-sudo chown -R $USER:$USER $HOME/.config/.subscription/
+sudo chown -R $USER:$USER $HOME/.config/subscription/
 sudo chown -R $USER:$USER /var/run/subscription-api.pid
 
 # 或使用 sudo 运行
@@ -309,7 +309,7 @@ top -p $(pgrep -f subscription-api)
 
 ### 日志位置
 ```bash
-$BASE_DIR/log/combined.log    # 综合日志 (默认: $HOME/.config/.subscription/log/)
+$BASE_DIR/log/combined.log    # 综合日志 (默认: $HOME/.config/subscription/log/)
 $BASE_DIR/log/error.log       # 错误日志
 $BASE_DIR/log/nginx-*.log     # Nginx 日志（如果使用）
 ```

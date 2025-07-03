@@ -170,7 +170,7 @@ curl -I https://api.github.com/repos/MetaCubeX/mihomo/releases/latest
 
 # 手动下载 mihomo（现在由安装脚本自动处理）
 # 如果需要手动安装：
-MIHOMO_DIR="$HOME/.config/.subscription/mihomo"
+MIHOMO_DIR="$HOME/.config/subscription/mihomo"
 mkdir -p "$MIHOMO_DIR"
 cd "$MIHOMO_DIR"
 # 根据系统下载对应版本

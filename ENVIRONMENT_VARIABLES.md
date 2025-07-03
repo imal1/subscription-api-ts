@@ -29,7 +29,7 @@
 - `SUBCONVERTER_URL` - subconverter服务地址 (默认: http://localhost:25500)
 
 ### 📁 文件路径配置
-- `BASE_DIR` - 工作区基础目录 (默认: $HOME/.config/.subscription)
+- `BASE_DIR` - 工作区基础目录 (默认: $HOME/.config/subscription)
 - `DATA_DIR` - 数据文件目录 (默认: $BASE_DIR/www)
 - `LOG_DIR` - 日志文件目录 (默认: $BASE_DIR/log)
 - `BACKUP_DIR` - 备份文件目录 (默认: $BASE_DIR/www/backup)

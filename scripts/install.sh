@@ -50,8 +50,8 @@ if [ -f "$PROJECT_ROOT/config/nginx.conf" ]; then
     rm -f "$PROJECT_ROOT/config/nginx.conf"
 fi
 
-# 设置默认值 - 统一使用 $HOME/.config/.subscription 下的目录
-export BASE_DIR="${BASE_DIR:-$HOME/.config/.subscription}"
+# 设置默认值 - 统一使用 $HOME/.config/subscription 下的目录
+export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
 
 export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
 export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"

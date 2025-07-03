@@ -27,8 +27,8 @@ export class MihomoService {
     private configPath: string;
 
     private constructor() {
-        // 从环境变量读取 mihomo 路径，默认为 $HOME/.config/.subscription/mihomo
-        const basePath = process.env.MIHOMO_PATH || path.join(os.homedir(), '.config', '.subscription', 'mihomo');
+        // 从环境变量读取 mihomo 路径，默认为 $HOME/.config/subscription/mihomo
+        const basePath = process.env.MIHOMO_PATH || path.join(os.homedir(), '.config', 'subscription', 'mihomo');
         this.mihomoPath = path.join(basePath, 'mihomo');
         this.configPath = path.join(basePath, 'config.yaml');
         

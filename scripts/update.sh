@@ -59,8 +59,8 @@ export API_PORT="${PORT:-3000}"
 export NGINX_PORT="${NGINX_PORT:-3080}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
-# 检测操作系统并设置数据目录 - 统一使用 $HOME/.config/.subscription
-export BASE_DIR="${BASE_DIR:-$HOME/.config/.subscription}"
+# 检测操作系统并设置数据目录 - 统一使用 $HOME/.config/subscription
+export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
 
 export DATA_DIR="${STATIC_DIR:-${BASE_DIR}/www}"
 export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
