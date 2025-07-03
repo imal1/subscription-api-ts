@@ -65,6 +65,9 @@ export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
 export DATA_DIR="${STATIC_DIR:-${BASE_DIR}/www}"
 export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
 
+# 设置构建目录默认值
+export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+
 # 获取项目绝对路径（用于nginx配置）
 export ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
 
@@ -90,11 +93,11 @@ fi
 # 使用envsubst生成配置文件
 if command -v envsubst >/dev/null 2>&1; then
     # 只替换指定的环境变量，避免nginx变量被误替换
-    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT}' < config/nginx.conf.template > config/nginx.conf
+    envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${ABSOLUTE_PROJECT_ROOT} ${DIST_DIR}' < config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 envsubst 重新生成 nginx.conf"
 else
     # 如果没有envsubst，使用sed替换
-    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g" config/nginx.conf.template > config/nginx.conf
+    sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g; s|\${DIST_DIR}|${DIST_DIR}|g" config/nginx.conf.template > config/nginx.conf
     echo "✅ 使用 sed 重新生成 nginx.conf"
 fi
 

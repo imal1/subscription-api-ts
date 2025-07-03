@@ -10,9 +10,9 @@ User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${INSTALL_DIR}
 Environment=NODE_ENV=production
-Environment=PATH=/usr/bin:/usr/local/bin:/opt/node/bin:${INSTALL_DIR}/node_modules/.bin
+Environment=PATH=/usr/bin:/usr/local/bin:${BASE_DIR}/bin
 EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=${NODE_PATH} ${INSTALL_DIR}/dist/index.js
+ExecStart=${BUN_PATH}/bun ${DIST_DIR}/backend/index.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3

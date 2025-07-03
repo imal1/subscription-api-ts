@@ -351,7 +351,6 @@ bun run nginx:setup
 - `nginx:setup` - 自动安装nginx并应用配置 (仅限Linux)
 
 生成的配置文件：
-- 开发环境：`config/nginx.dev.conf`
 - 生产环境：`config/nginx.conf`
 
 **端口说明:**

@@ -11,7 +11,7 @@ const getSubscriptionBaseDir = (): string => {
 export const config: Config = {
     port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
-    mihomoPath: process.env.MIHOMO_PATH || '',
+    mihomoPath: process.env.MIHOMO_PATH || path.join(getSubscriptionBaseDir(), 'bin'),
     clashFilename: 'clash.yaml',
     staticDir: process.env.DATA_DIR || path.join(getSubscriptionBaseDir(), 'www'),
     logDir: process.env.LOG_DIR || path.join(getSubscriptionBaseDir(), 'log'),

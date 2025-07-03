@@ -8,7 +8,7 @@ server {
     
     # Dashboard 静态文件服务
     location /dashboard/ {
-        alias ${ABSOLUTE_PROJECT_ROOT}/frontend/dist/;
+        alias ${DIST_DIR}/frontend/;
         index index.html;
         try_files $uri $uri/ @dashboard;
         expires 1h;
@@ -17,7 +17,7 @@ server {
     
     # Next.js 静态资源 (_next目录)
     location /_next/ {
-        alias ${ABSOLUTE_PROJECT_ROOT}/frontend/dist/_next/;
+        alias ${DIST_DIR}/frontend/_next/;
         expires 1y;
         add_header Cache-Control "public, immutable";
         access_log off;

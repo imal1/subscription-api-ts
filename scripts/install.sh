@@ -49,6 +49,10 @@ if [ -f "$PROJECT_ROOT/config/nginx.conf" ]; then
     echo "  删除旧的 nginx.conf 文件"
     rm -f "$PROJECT_ROOT/config/nginx.conf"
 fi
+if [ -f "$PROJECT_ROOT/config/subscription-api-ts.service" ]; then
+    echo "  删除旧的 subscription-api-ts.service 文件"
+    rm -f "$PROJECT_ROOT/config/subscription-api-ts.service"
+fi
 
 # 设置默认值 - 统一使用 $HOME/.config/subscription 下的目录
 export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
@@ -56,6 +60,13 @@ export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
 export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
 export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+
+# 设置构建目录默认值
+export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+
+# 设置二进制文件目录（固定为 BASE_DIR/bin）
+export MIHOMO_PATH="${MIHOMO_PATH:-${BASE_DIR}/bin}"
+export BUN_PATH="${BUN_PATH:-${BASE_DIR}/bin}"
 
 # 设置工作目录为项目根目录
 cd "$PROJECT_ROOT"
@@ -138,47 +149,42 @@ if ! command -v node &> /dev/null; then
     fi
 fi
 
-# 安装 Bun (如果未安装)
-if ! command -v bun &> /dev/null; then
-    echo "📦 安装 Bun..."
-    
-    # 检测系统架构
-    ARCH=$(uname -m)
-    case $ARCH in
-        x86_64)
-            BUN_ARCH="x64"
-            ;;
-        aarch64|arm64)
-            BUN_ARCH="aarch64"
-            ;;
-        *)
-            echo "❌ 不支持的系统架构: $ARCH"
-            exit 1
-            ;;
-    esac
-    
-    # 设置 Bun 安装目录
-    if [ "$OS" = "Linux" ]; then
-        if [[ $EUID -eq 0 ]]; then
-            BUN_INSTALL_DIR="/usr/local/bin"
-            BUN_BINARY="$BUN_INSTALL_DIR/bun"
-        else
-            BUN_INSTALL_DIR="$HOME/.local/bin"
-            BUN_BINARY="$BUN_INSTALL_DIR/bun"
-            mkdir -p "$BUN_INSTALL_DIR"
-        fi
-    elif [ "$OS" = "Mac" ]; then
-        BUN_INSTALL_DIR="$HOME/.local/bin"
-        BUN_BINARY="$BUN_INSTALL_DIR/bun"
-        mkdir -p "$BUN_INSTALL_DIR"
-    fi
-    
-    echo "   下载 Bun 到 $BUN_BINARY..."
-    
+# 下载和安装 Bun 到统一的二进制目录
+echo "📦 下载和安装 Bun..."
+
+# 检测系统架构
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)
+        BUN_ARCH="x64"
+        ;;
+    aarch64|arm64)
+        BUN_ARCH="aarch64"
+        ;;
+    *)
+        echo "❌ 不支持的系统架构: $ARCH"
+        exit 1
+        ;;
+esac
+
+# 设置 Bun 安装到统一的二进制目录
+mkdir -p "${BASE_DIR}/bin"
+BUN_BINARY="${BASE_DIR}/bin/bun"
+
+echo "   Bun 安装目录: ${BASE_DIR}/bin"
+
+# 检查是否已经安装了 bun
+if [ -f "$BUN_BINARY" ] && "$BUN_BINARY" --version &> /dev/null; then
+    echo "   ✅ Bun 已安装: $("$BUN_BINARY" --version)"
+else
     # 获取最新版本
+    echo "   获取最新版本信息..."
     BUN_VERSION=$(curl -s https://api.github.com/repos/oven-sh/bun/releases/latest | grep -o '"tag_name": "[^"]*' | grep -o '[^"]*$' | sed 's/^bun-v//')
     if [ -z "$BUN_VERSION" ]; then
         BUN_VERSION="1.0.30"  # 备用版本
+        echo "   ⚠️  无法获取最新版本，使用备用版本: $BUN_VERSION"
+    else
+        echo "   最新版本: $BUN_VERSION"
     fi
     
     # 根据操作系统构建下载URL
@@ -187,6 +193,8 @@ if ! command -v bun &> /dev/null; then
     elif [ "$OS" = "Mac" ]; then
         BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-darwin-${BUN_ARCH}.zip"
     fi
+    
+    echo "   下载地址: $BUN_URL"
     
     # 下载并安装
     TEMP_DIR=$(mktemp -d)
@@ -198,61 +206,38 @@ if ! command -v bun &> /dev/null; then
             # 查找解压后的bun可执行文件
             BUN_EXTRACTED=$(find . -name "bun" -type f -executable | head -1)
             if [ -n "$BUN_EXTRACTED" ]; then
-                if [[ $EUID -eq 0 ]] || [ "$OS" = "Linux" ] && [ "$BUN_INSTALL_DIR" = "/usr/local/bin" ]; then
-                    safe_sudo cp "$BUN_EXTRACTED" "$BUN_BINARY"
-                    safe_sudo chmod +x "$BUN_BINARY"
-                else
-                    cp "$BUN_EXTRACTED" "$BUN_BINARY"
-                    chmod +x "$BUN_BINARY"
-                fi
-                echo "   ✅ Bun 安装成功: $BUN_BINARY"
+                cp "$BUN_EXTRACTED" "$BUN_BINARY"
+                chmod +x "$BUN_BINARY"
+                echo "   ✅ Bun 下载安装成功: $BUN_BINARY"
                 
-                # 添加到PATH (如果需要)
-                if [ "$BUN_INSTALL_DIR" = "$HOME/.local/bin" ]; then
-                    if ! echo "$PATH" | grep -q "$BUN_INSTALL_DIR"; then
-                        echo "   🔧 添加 $BUN_INSTALL_DIR 到 PATH..."
-                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.profile"
-                        [ -f "$HOME/.zshrc" ] && echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
-                        export PATH="$HOME/.local/bin:$PATH"
-                    fi
+                # 验证安装
+                if "$BUN_BINARY" --version &> /dev/null; then
+                    echo "   ✅ Bun 验证成功: $("$BUN_BINARY" --version)"
+                else
+                    echo "   ❌ Bun 验证失败"
+                    rm -f "$BUN_BINARY"
+                    exit 1
                 fi
             else
-                echo "❌ 无法找到解压后的 bun 可执行文件"
+                echo "   ❌ 无法找到解压后的 bun 可执行文件"
                 exit 1
             fi
         else
-            echo "❌ 系统缺少 unzip 命令"
+            echo "   ❌ 系统缺少 unzip 命令"
             if [ "$OS" = "Linux" ]; then
                 echo "   请安装: apt-get install unzip 或 yum install unzip"
             fi
             exit 1
         fi
     else
-        echo "❌ 下载 Bun 失败"
-        echo "   请检查网络连接或手动安装: curl -fsSL https://bun.sh/install | bash"
+        echo "   ❌ 下载失败"
+        echo "   请检查网络连接或手动下载: $BUN_URL"
         exit 1
     fi
     
     # 清理临时文件
     cd "$PROJECT_ROOT"
     rm -rf "$TEMP_DIR"
-    
-    # 验证安装
-    if "$BUN_BINARY" --version &> /dev/null; then
-        echo "   ✅ Bun 验证成功: $("$BUN_BINARY" --version)"
-        # 创建符号链接到 bun 命令 (如果不在标准路径)
-        if [ "$BUN_INSTALL_DIR" != "/usr/local/bin" ] && [ "$BUN_INSTALL_DIR" != "/usr/bin" ]; then
-            alias bun="$BUN_BINARY"
-            echo "   💡 使用 $BUN_BINARY 替代 bun 命令"
-        fi
-    else
-        echo "❌ Bun 安装验证失败"
-        exit 1
-    fi
-else
-    echo "✅ Bun 已安装: $(bun --version)"
-    BUN_BINARY=$(which bun)
 fi
 
 # 设置全局 BUN_BINARY 变量供后续使用
@@ -290,13 +275,10 @@ case $ARCH in
         ;;
 esac
 
-# 设置 mihomo 安装目录（使用统一的基础目录）
-MIHOMO_DIR="$BASE_DIR/mihomo"
-MIHOMO_BINARY="$MIHOMO_DIR/mihomo"
+# 设置 mihomo 安装目录（使用统一的二进制目录）
+MIHOMO_BINARY="${BASE_DIR}/bin/mihomo"
 
-mkdir -p "$MIHOMO_DIR"
-
-echo "   mihomo 安装目录: $MIHOMO_DIR"
+echo "   mihomo 安装目录: ${BASE_DIR}/bin"
 
 # 检查是否已经安装了 mihomo
 if [ -f "$MIHOMO_BINARY" ] && "$MIHOMO_BINARY" -v &> /dev/null; then
@@ -359,15 +341,15 @@ echo "   设置 mihomo 路径到环境文件..."
 if [ -f .env ]; then
     if grep -q "MIHOMO_PATH=" .env; then
         if [ "$OS" = "Linux" ]; then
-            sed -i "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_DIR}|g" .env
+            sed -i "s|MIHOMO_PATH=.*|MIHOMO_PATH=${BASE_DIR}/bin|g" .env
         elif [ "$OS" = "Mac" ]; then
-            sed -i '' "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_DIR}|g" .env
+            sed -i '' "s|MIHOMO_PATH=.*|MIHOMO_PATH=${BASE_DIR}/bin|g" .env
         fi
     else
-        echo "MIHOMO_PATH=${MIHOMO_DIR}" >> .env
+        echo "MIHOMO_PATH=${BASE_DIR}/bin" >> .env
     fi
 else
-    echo "MIHOMO_PATH=${MIHOMO_DIR}" > .env
+    echo "MIHOMO_PATH=${BASE_DIR}/bin" > .env
 fi
 
 echo "   ✅ mihomo 环境配置完成"
@@ -599,18 +581,28 @@ if [ ! -f .env ]; then
         sed -i "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" .env
         sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
         sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
+        sed -i "s|DIST_DIR=.*|DIST_DIR=${DIST_DIR}|g" .env
+        sed -i "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_PATH}|g" .env
+        sed -i "s|BUN_PATH=.*|BUN_PATH=${BUN_PATH}|g" .env
         echo "✅ 已配置 Linux 系统路径"
         echo "   基础目录: ${BASE_DIR}"
         echo "   数据目录: ${DATA_DIR}"
         echo "   日志目录: ${LOG_DIR}"
+        echo "   构建目录: ${DIST_DIR}"
+        echo "   二进制目录: ${BASE_DIR}/bin"
     elif [ "$OS" = "Mac" ]; then
         sed -i '' "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" .env
         sed -i '' "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
         sed -i '' "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
+        sed -i '' "s|DIST_DIR=.*|DIST_DIR=${DIST_DIR}|g" .env
+        sed -i '' "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_PATH}|g" .env
+        sed -i '' "s|BUN_PATH=.*|BUN_PATH=${BUN_PATH}|g" .env
         echo "✅ 已配置 macOS 项目本地路径"
         echo "   基础目录: ${BASE_DIR}"
         echo "   数据目录: ${DATA_DIR}"
         echo "   日志目录: ${LOG_DIR}"
+        echo "   构建目录: ${DIST_DIR}"
+        echo "   二进制目录: ${BASE_DIR}/bin"
     fi
     
     echo "请编辑 .env 文件配置您的参数"
@@ -837,10 +829,10 @@ if [ "$OS" = "Linux" ]; then
     fi
     
     # 导出环境变量供envsubst使用
-    export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP" INSTALL_DIR="$ABSOLUTE_PROJECT_ROOT" NODE_PATH DATA_DIR LOG_DIR
+    export SERVICE_USER="$TARGET_USER" SERVICE_GROUP="$TARGET_GROUP" INSTALL_DIR="$ABSOLUTE_PROJECT_ROOT" NODE_PATH DATA_DIR LOG_DIR DIST_DIR BASE_DIR BUN_PATH
     
     # 生成服务文件
-    envsubst '${SERVICE_USER} ${SERVICE_GROUP} ${INSTALL_DIR} ${NODE_PATH} ${DATA_DIR} ${LOG_DIR}' < "$SERVICE_TEMPLATE" > "$SERVICE_OUTPUT"
+    envsubst '${SERVICE_USER} ${SERVICE_GROUP} ${INSTALL_DIR} ${NODE_PATH} ${DATA_DIR} ${LOG_DIR} ${DIST_DIR} ${BASE_DIR} ${BUN_PATH}' < "$SERVICE_TEMPLATE" > "$SERVICE_OUTPUT"
     echo "✅ 服务文件已生成: $SERVICE_OUTPUT"
     
     # 安装服务文件
@@ -978,13 +970,17 @@ if command -v nginx &> /dev/null; then
     
     # 使用envsubst生成配置文件
     export API_PORT NGINX_PORT NGINX_PROXY_PORT DATA_DIR LOG_DIR ABSOLUTE_PROJECT_ROOT
+    
+    # 设置构建目录环境变量
+    export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+    
     if command -v envsubst >/dev/null 2>&1; then
         # 只替换指定的环境变量，避免nginx变量被误替换
-        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${LOG_DIR} ${ABSOLUTE_PROJECT_ROOT}' < config/nginx.conf.template > config/nginx.conf
+        envsubst '${API_PORT} ${NGINX_PORT} ${NGINX_PROXY_PORT} ${DATA_DIR} ${LOG_DIR} ${ABSOLUTE_PROJECT_ROOT} ${DIST_DIR}' < config/nginx.conf.template > config/nginx.conf
         echo "✅ 使用 envsubst 生成配置文件"
     else
         # 如果没有envsubst，使用sed替换
-        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${LOG_DIR}|${LOG_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g" config/nginx.conf.template > config/nginx.conf
+        sed "s/\${API_PORT}/${API_PORT}/g; s/\${NGINX_PORT}/${NGINX_PORT}/g; s/\${NGINX_PROXY_PORT}/${NGINX_PROXY_PORT}/g; s|\${DATA_DIR}|${DATA_DIR}|g; s|\${LOG_DIR}|${LOG_DIR}|g; s|\${ABSOLUTE_PROJECT_ROOT}|${ABSOLUTE_PROJECT_ROOT}|g; s|\${DIST_DIR}|${DIST_DIR}|g" config/nginx.conf.template > config/nginx.conf
         echo "✅ 使用 sed 生成配置文件"
     fi
     

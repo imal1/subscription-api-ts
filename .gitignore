@@ -35,6 +35,10 @@ dist/
 .env.test.local
 .env.production.local
 
+# Generated configuration files
+config/nginx.conf
+config/subscription-api-ts.service
+
 # Logs
 logs
 *.log

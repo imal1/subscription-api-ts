@@ -24,11 +24,7 @@ subscription-api-ts/
 │   ├── app.ts                        # Express app setup
 │   └── index.ts                      # Application entry point
 ├── config/                           # System configuration files
-│   ├── nginx.conf                    # Nginx configuration
 │   ├── nginx.conf.template           # Nginx template
-│   ├── nginx.dev.conf                # Development Nginx config
-│   ├── nginx.dev.conf.template       # Development Nginx template
-│   ├── subscription-api-ts.service   # SystemD service file
 │   └── subscription-api-ts.service.template  # SystemD template
 ├── scripts/                          # Automation scripts
 │   ├── install.sh                    # Installation script
@@ -41,7 +37,6 @@ subscription-api-ts/
 │   └── systemd/
 │       └── system/
 │           ├── subscription-api.service
-│           ├── subscription-api-ts.service
 │           ├── subscription-api-node.service
 │           ├── subscription-api-ts-compiled.service
 │           └── subconverter.service
@@ -83,10 +78,11 @@ Contains the main TypeScript source code organized by functionality:
 - **routes**: API route definitions
 
 ### `/config`
-System configuration files and templates:
-- Nginx configuration for reverse proxy
-- SystemD service files for Linux deployment
+System configuration templates (not committed files):
+- Nginx configuration template for reverse proxy
+- SystemD service template for Linux deployment
 - Templates support environment variable substitution
+- Generated files are in .gitignore
 
 ### `/scripts`
 Automation and deployment scripts:
