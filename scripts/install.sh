@@ -39,16 +39,22 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     done < <(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/.env" | grep -v '^[[:space:]]*$')
 fi
 
-# 设置默认值 - 统一使用 tmpdir/.subscription 下的目录
-if command -v node &> /dev/null; then
-    SUBSCRIPTION_BASE_DIR=$(node -e "console.log(require('os').tmpdir())")/.subscription
-else
-    # 如果没有 node，使用系统临时目录
-    SUBSCRIPTION_BASE_DIR=$(mktemp -d)/.subscription
+# 删除旧的配置文件，确保全新安装环境
+echo "🧹 清理旧配置文件..."
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    echo "  删除旧的 .env 文件"
+    rm -f "$PROJECT_ROOT/.env"
+fi
+if [ -f "$PROJECT_ROOT/config/nginx.conf" ]; then
+    echo "  删除旧的 nginx.conf 文件"
+    rm -f "$PROJECT_ROOT/config/nginx.conf"
 fi
 
-export DATA_DIR="${DATA_DIR:-${SUBSCRIPTION_BASE_DIR}/www}"
-export LOG_DIR="${LOG_DIR:-${SUBSCRIPTION_BASE_DIR}/log}"
+# 设置默认值 - 统一使用 $HOME/.config/.subscription 下的目录
+export BASE_DIR="${BASE_DIR:-$HOME/.config/.subscription}"
+
+export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
+export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
 # 设置工作目录为项目根目录
@@ -284,8 +290,8 @@ case $ARCH in
         ;;
 esac
 
-# 设置 mihomo 安装目录（使用统一的 .subscription 目录）
-MIHOMO_DIR="$SUBSCRIPTION_BASE_DIR/mihomo"
+# 设置 mihomo 安装目录（使用统一的基础目录）
+MIHOMO_DIR="$BASE_DIR/mihomo"
 MIHOMO_BINARY="$MIHOMO_DIR/mihomo"
 
 mkdir -p "$MIHOMO_DIR"
@@ -590,15 +596,19 @@ if [ ! -f .env ]; then
     # 根据操作系统调整配置文件中的路径
     if [ "$OS" = "Linux" ]; then
         # 使用已经设置的目录路径
+        sed -i "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" .env
         sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
         sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
         echo "✅ 已配置 Linux 系统路径"
+        echo "   基础目录: ${BASE_DIR}"
         echo "   数据目录: ${DATA_DIR}"
         echo "   日志目录: ${LOG_DIR}"
     elif [ "$OS" = "Mac" ]; then
+        sed -i '' "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" .env
         sed -i '' "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" .env
         sed -i '' "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" .env
         echo "✅ 已配置 macOS 项目本地路径"
+        echo "   基础目录: ${BASE_DIR}"
         echo "   数据目录: ${DATA_DIR}"
         echo "   日志目录: ${LOG_DIR}"
     fi

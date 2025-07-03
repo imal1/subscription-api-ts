@@ -29,9 +29,11 @@
 - `SUBCONVERTER_URL` - subconverter服务地址 (默认: http://localhost:25500)
 
 ### 📁 文件路径配置
-- `DATA_DIR` - 数据文件目录 (默认: ./data)
-- `LOG_DIR` - 日志文件目录 (默认: ./logs)
-- `BACKUP_DIR` - 备份文件目录 (默认: ./data/backup)
+- `BASE_DIR` - 工作区基础目录 (默认: $HOME/.config/.subscription)
+- `DATA_DIR` - 数据文件目录 (默认: $BASE_DIR/www)
+- `LOG_DIR` - 日志文件目录 (默认: $BASE_DIR/log)
+- `BACKUP_DIR` - 备份文件目录 (默认: $BASE_DIR/www/backup)
+- `MIHOMO_PATH` - mihomo二进制目录 (默认: $BASE_DIR/mihomo)
 
 ### ⏰ 定时任务配置
 - `AUTO_UPDATE_CRON` - 自动更新cron表达式 (默认: 0 */2 * * *)

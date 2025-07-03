@@ -4,7 +4,8 @@ import * as path from 'path';
 
 // 获取统一的基础目录
 const getSubscriptionBaseDir = (): string => {
-    return path.join(os.tmpdir(), '.subscription');
+    // 优先使用环境变量，否则使用默认的 $HOME/.config/.subscription
+    return process.env.BASE_DIR || path.join(os.homedir(), '.config', '.subscription');
 };
 
 export const config: Config = {
