@@ -7,6 +7,19 @@
 
 set -e
 
+# 检测 bun 命令函数
+detect_bun() {
+    if command -v bun >/dev/null 2>&1; then
+        echo "bun"
+    elif [ -f "$HOME/.local/bin/bun" ]; then
+        echo "$HOME/.local/bin/bun"
+    elif [ -f "/usr/local/bin/bun" ]; then
+        echo "/usr/local/bin/bun"
+    else
+        echo ""
+    fi
+}
+
 # 检查sudo命令是否可用
 HAS_SUDO=false
 if command -v sudo >/dev/null 2>&1; then
@@ -15,7 +28,68 @@ fi
 
 # 定义安全的sudo函数
 safe_sudo() {
-    if [[ $EUID -eq 0 ]]; then
+    if        "build")
+            echo -e "${BLUE}🏗        "dev")
+            echo -e "${BLUE}🔥 启动开发模式...${NC}"
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" run dev
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                exit 1
+            fi
+            ;;
+        "test")
+            echo -e "${BLUE}🧪 运行测试...${NC}"
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" test
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                exit 1
+            fi
+            ;;
+        "clean")
+            echo -e "${YELLOW}🧹 清理编译文件...${NC}"
+            rm -rf dist
+            echo -e "${GREEN}✅ 清理完成${NC}"
+            ;;C}"
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" run build
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                exit 1
+            fi
+            ;;
+        "build-frontend")
+            echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
+            if [ -f "frontend/build.sh" ]; then
+                bash frontend/build.sh
+            else
+                echo -e "${RED}❌ 前端构建脚本不存在${NC}"
+                exit 1
+            fi
+            ;;
+        "dev")
+            echo -e "${BLUE}🔥 启动开发模式...${NC}"
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" run dev
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                exit 1
+            fi
+            ;;
+        "test")
+            echo -e "${BLUE}🧪 运行测试...${NC}"
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" test
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                exit 1
+            fithen
         # 如果是root用户，直接执行命令
         "$@"
     elif [ "$HAS_SUDO" = true ]; then
@@ -23,9 +97,27 @@ safe_sudo() {
         sudo "$@"
     else
         echo "❌ 错误：需要root权限或sudo命令来执行: $*"
-        echo "   请以root用户运行此脚本，或安装sudo命令"
-        exit 1
-    fi
+        echo "   请以root用户运行此脚本，或安装sud        "build")
+            ec            echo -e "${BLUE}🔥 启动开发模式...${NC}"
+            bun run dev -e "${BLUE}🏗️  编译项目...${NC}"
+            bun run build
+            ;;
+        "build-frontend")
+            echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
+            if [ -f "frontend/build.sh" ]; then
+                bash frontend/build.sh
+            else
+                echo "前端构建脚本不存在"
+                exit 1
+            fi
+            ;;
+        "dev")
+            echo -e "${BLUE}🔥 启动开发模式...${NC}"
+            bun run dev
+            ;;
+        "test")
+            echo -e "${BLUE}🧪 运行测试...${NC}"
+            bun test    fi
 }
 
 # 获取脚本所在目录
@@ -160,8 +252,14 @@ manage_service() {
                     pm2 start dist/index.js --name subscription-api-ts
                     pm2 status
                 else
-                    echo -e "${YELLOW}💡 使用 npm start 启动服务，或安装 PM2: npm install -g pm2${NC}"
-                    npm start &
+                    echo -e "${YELLOW}💡 使用 bun start 启动服务，或安装 PM2: bun add -g pm2${NC}"
+                    BUN_CMD=$(detect_bun)
+                    if [ -n "$BUN_CMD" ]; then
+                        "$BUN_CMD" start &
+                    else
+                        echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
+                        exit 1
+                    fi
                 fi
                 ;;
             "stop")
@@ -177,9 +275,15 @@ manage_service() {
                 if command -v pm2 >/dev/null 2>&1; then
                     pm2 restart subscription-api-ts
                 else
-                    pkill -f "node.*dist/index.js"
+                    pkill -f "bun.*dist/index.js"
                     sleep 1
-                    npm start &
+                    BUN_CMD=$(detect_bun)
+                    if [ -n "$BUN_CMD" ]; then
+                        "$BUN_CMD" start &
+                    else
+                        echo -e "${RED}❌ 未找到 bun${NC}"
+                        exit 1
+                    fi
                 fi
                 ;;
         esac
@@ -238,8 +342,8 @@ show_version() {
     if command -v node >/dev/null 2>&1; then
         echo -e "  Node.js: ${GREEN}$(node --version)${NC}"
     fi
-    if command -v npm >/dev/null 2>&1; then
-        echo -e "  npm: ${GREEN}$(npm --version)${NC}"
+    if command -v bun >/dev/null 2>&1; then
+        echo -e "  bun: ${GREEN}$(bun --version)${NC}"
     fi
     echo -e "  操作系统: ${GREEN}$(detect_os)${NC}"
     echo -e "  用户: ${GREEN}$(whoami)${NC}"
@@ -489,7 +593,7 @@ main() {
         # 开发工具
         "build")
             echo -e "${BLUE}🏗️  编译项目...${NC}"
-            npm run build
+            bun run build
             ;;
         "build-frontend")
             echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
@@ -502,11 +606,11 @@ main() {
             ;;
         "dev")
             echo -e "${BLUE}🚀 启动开发模式...${NC}"
-            npm run dev
+            "$BUN_BINARY" run dev
             ;;
         "test")
             echo -e "${BLUE}🧪 运行测试...${NC}"
-            npm test
+            "$BUN_BINARY" test
             ;;
         "clean")
             echo -e "${YELLOW}🧹 清理编译文件...${NC}"

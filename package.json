@@ -4,32 +4,33 @@
   "description": "TypeScript订阅转换API服务 - 基于 Mihomo 内核，支持全协议转换 (vless/vmess/trojan/hysteria2/tuic)",
   "main": "dist/index.js",
   "private": true,
+  "packageManager": "bun@1.0.30",
   "workspaces": [
     "frontend"
   ],
   "scripts": {
     "build": "tsc",
     "build:with-alias": "tsc && tsc-alias",
-    "start": "node dist/index.js",
-    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
-    "dev:watch": "nodemon --exec ts-node -r tsconfig-paths/register src/index.ts",
+    "start": "bun dist/index.js",
+    "dev": "bun --watch run src/index.ts",
+    "dev:watch": "bun --watch run src/index.ts",
     "lint": "echo 'Linting not configured'",
     "test": "echo 'Tests not configured'",
     "clean": "rm -rf dist",
-    "prebuild": "npm run clean",
+    "prebuild": "bun run clean",
     "postbuild": "echo 'Build completed successfully'",
-    "install:deps": "npm install",
-    "setup": "npm run install:deps && npm run build && npm run frontend:build",
-    "config:validate": "node -e \"require('dotenv').config(); console.log('✅ 环境变量验证通过:', JSON.stringify(process.env, null, 2))\"",
-    "mihomo:check": "node -e \"const {MihomoService} = require('./dist/services/mihomoService.js'); MihomoService.getInstance().checkHealth().then(r => console.log('Mihomo 状态:', r ? '✅ 可用' : '❌ 不可用'))\"",
-    "mihomo:version": "node -e \"const {MihomoService} = require('./dist/services/mihomoService.js'); MihomoService.getInstance().getVersion().then(v => console.log('Mihomo 版本:', v))\"",
-    "diagnose": "npm run build && npm run mihomo:check && npm run config:validate",
-    "frontend:dev": "npm run dev --workspace=frontend",
-    "frontend:build": "npm run build --workspace=frontend",
-    "frontend:start": "npm run start --workspace=frontend",
-    "frontend:lint": "npm run lint --workspace=frontend",
-    "dev:all": "concurrently \"npm run dev\" \"npm run frontend:dev\"",
-    "build:all": "npm run build && npm run frontend:build"
+    "install:deps": "bun install",
+    "setup": "bun run install:deps && bun run build && bun run frontend:build",
+    "config:validate": "bun -e \"require('dotenv').config(); console.log('✅ 环境变量验证通过:', JSON.stringify(process.env, null, 2))\"",
+    "mihomo:check": "bun -e \"const {MihomoService} = require('./dist/services/mihomoService.js'); MihomoService.getInstance().checkHealth().then(r => console.log('Mihomo 状态:', r ? '✅ 可用' : '❌ 不可用'))\"",
+    "mihomo:version": "bun -e \"const {MihomoService} = require('./dist/services/mihomoService.js'); MihomoService.getInstance().getVersion().then(v => console.log('Mihomo 版本:', v))\"",
+    "diagnose": "bun run build && bun run mihomo:check && bun run config:validate",
+    "frontend:dev": "cd frontend && bun run dev",
+    "frontend:build": "cd frontend && bun run build",
+    "frontend:start": "cd frontend && bun run start",
+    "frontend:lint": "cd frontend && bun run lint",
+    "dev:all": "concurrently \"bun run dev\" \"bun run frontend:dev\"",
+    "build:all": "bun run build && bun run frontend:build"
   },
   "keywords": [
     "subconverter",
@@ -89,6 +90,6 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "bun": ">=1.0.0"
   }
 }

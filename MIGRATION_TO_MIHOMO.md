@@ -51,7 +51,7 @@ git fetch origin
 git checkout v1.1.0  # 或 main 分支
 
 # 更新依赖
-npm install
+bun install
 ```
 
 ### 4. 更新配置文件
@@ -85,10 +85,10 @@ LOG_DIR=./logs
 
 ```bash
 # 构建项目
-npm run build
+bun run build
 
 # 构建前端 (如果使用)
-npm run frontend:build
+bun run frontend:build
 
 # 启动服务
 ./manage.sh start
@@ -242,10 +242,10 @@ git checkout v1.0.x
 cp .env.backup .env
 
 # 重新安装依赖
-npm install
+bun install
 
 # 重新构建
-npm run build
+bun run build
 
 # 启动服务
 ./manage.sh start

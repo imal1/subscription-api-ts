@@ -90,7 +90,7 @@ config/                # 配置模板目录
 ./manage.sh overview
 
 # 检查配置文件
-npm run build
+bun run build
 ```
 
 ### 手动检查
@@ -140,8 +140,8 @@ grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules
 
 4. **启动服务**：
    ```bash
-   npm run dev    # 开发模式
-   npm start      # 生产模式
+   bun run dev    # 开发模式
+   bun start      # 生产模式
    ```
 
 ## 🔗 相关文档

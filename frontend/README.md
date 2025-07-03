@@ -30,8 +30,8 @@
 
 # 或者手动构建
 cd frontend
-npm install
-npm run build
+bun install
+bun run build
 ```
 
 ### 2. 完整部署
@@ -120,7 +120,7 @@ Dashboard 会自动读取以下环境变量：
 1. 构建前端：
 ```bash
 cd frontend
-npm run build
+bun run build
 ```
 
 2. 将 `frontend/dist/` 目录内容部署到 Web 服务器
@@ -131,11 +131,11 @@ npm run build
 
 ```bash
 # 启动 API 服务
-npm run dev
+bun run dev
 
 # 另一个终端启动前端开发服务器
 cd frontend
-npm run dev
+bun run dev
 ```
 
 ## Nginx 配置
@@ -152,13 +152,13 @@ Dashboard 集成了 Nginx 配置，主要路由：
 ### 1. 构建失败
 
 ```bash
-# 检查 Node.js 版本
-node --version  # 需要 >= 16
+# 检查 Bun 版本
+bun --version  # 需要 >= 1.0
 
 # 清理并重新安装依赖
 cd frontend
-rm -rf node_modules package-lock.json
-npm install
+rm -rf node_modules bun.lockb
+bun install
 ```
 
 ### 2. API 请求失败

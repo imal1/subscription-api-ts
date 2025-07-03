@@ -1,14 +1,16 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Lock files (all package managers)
+# Bun files
+bun.lockb
+
+# Other package managers (not used in this project)
 package-lock.json
 yarn.lock
+yarn-debug.log*
+yarn-error.log*
+npm-debug.log*
 pnpm-lock.yaml
-bun.lockb
 .pnpm-lock.yaml
 .yarn.lock
 

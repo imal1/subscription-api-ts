@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Dashboard for Subscription API TypeScript",
   "private": true,
+  "packageManager": "bun@1.0.30",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",

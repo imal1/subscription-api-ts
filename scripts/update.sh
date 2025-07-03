@@ -45,11 +45,18 @@ fi
 # 安装依赖（monorepo方式）
 if [ -f "package.json" ]; then
     echo "📦 安装 monorepo 依赖..."
-    if [ -f "package-lock.json" ]; then
-        npm ci --include=dev
+    # 检测 bun 路径
+    if command -v bun >/dev/null 2>&1; then
+        BUN_CMD="bun"
+    elif [ -f "$HOME/.local/bin/bun" ]; then
+        BUN_CMD="$HOME/.local/bin/bun"
+    elif [ -f "/usr/local/bin/bun" ]; then
+        BUN_CMD="/usr/local/bin/bun"
     else
-        npm install --include=dev
+        echo "❌ 未找到 bun，请先运行 bash scripts/install.sh"
+        exit 1
     fi
+    "$BUN_CMD" install --dev
 fi
 
 # 重新生成配置文件
@@ -116,7 +123,8 @@ fi
 
 # 构建项目
 echo "🏗️ 构建项目..."
-npm run build:all
+# 使用检测到的 bun 命令
+"${BUN_CMD:-bun}" run build:all
 
 # 设置前端文件权限（Linux）
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [ -d "frontend/dist" ]; then

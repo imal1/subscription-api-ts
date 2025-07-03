@@ -35,9 +35,9 @@
 ./manage.sh fix-ts
 
 # 或手动清理重装
-rm -rf node_modules package-lock.json
-npm install
-npm run build
+rm -rf node_modules bun.lockb
+bun install
+bun run build
 ```
 
 **2. SystemD 服务工作目录错误**：
@@ -90,6 +90,20 @@ sudo yum install -y nodejs
 **或访问 [nodejs.org](https://nodejs.org/) 下载官方安装包**
 
 ⚠️ **注意**: 请避免使用 fnm、nvm 等版本管理器，因为它们的 Node.js 路径在 systemd 服务中可能不可用。
+
+## 💪 包管理工具
+
+本项目推荐使用 [Bun](https://bun.sh) 作为包管理工具和运行时环境。Bun 比 npm 和 Node.js 拥有更快的执行速度和更低的内存占用，特别适合在低配置服务器上运行。
+
+```bash
+# 安装 Bun (Linux & macOS)
+curl -fsSL https://bun.sh/install | bash
+
+# 验证安装
+bun --version
+```
+
+💡 **提示**: 即使在低配置服务器上，Bun 也能高效地安装依赖，不会出现 "JavaScript heap out of memory" 错误。
 
 ## 🚀 快速开始
 
@@ -146,8 +160,10 @@ sudo systemctl start subscription-api-ts
 sudo systemctl status subscription-api-ts
 sudo systemctl enable subscription-api-ts
 
-# macOS  
-npm start
+# 直接使用 Bun
+bun start
+# 或使用 PM2
+pm2 start dist/index.js --name subscription-api-ts
 # 或使用 PM2
 pm2 start dist/index.js --name subscription-api-ts
 ```
@@ -324,10 +340,10 @@ REQUEST_TIMEOUT=30000
 
 ```bash
 # 生成nginx配置文件
-npm run nginx:config
+bun run nginx:config
 
 # 自动安装和配置nginx (Linux)
-npm run nginx:setup
+bun run nginx:setup
 ```
 
 **配置说明:**
@@ -353,13 +369,13 @@ npm run nginx:setup
 
 ```bash
 # 生成服务配置文件
-npm run systemd:service /path/to/installation/directory
+bun run systemd:service /path/to/installation/directory
 
 # 例如，如果项目安装在当前目录
-npm run systemd:service $(pwd)
+bun run systemd:service $(pwd)
 
 # 或者如果安装在 /opt/subscription-api-ts
-npm run systemd:service /opt/subscription-api-ts
+bun run systemd:service /opt/subscription-api-ts
 ```
 
 该命令会：
@@ -382,7 +398,7 @@ npm run systemd:service /opt/subscription-api-ts
 ### 方式二：PM2 部署
 ```bash
 # 安装 PM2
-npm install -g pm2
+bun add -g pm2
 
 # 启动服务
 pm2 start dist/index.js --name subscription-api
@@ -439,14 +455,14 @@ docker run -d \
 
 ```bash
 # 检查路径配置和编译环境
-npm run config:check
+bun run config:check
 
 # TypeScript 编译问题诊断
-npm run ts:diagnose
+bun run ts:diagnose
 ./scripts/diagnose-typescript.sh
 
 # 自动修复 TypeScript 问题  
-npm run ts:fix
+bun run ts:fix
 ./scripts/fix-typescript.sh
 
 # 系统服务诊断（Linux）
@@ -459,10 +475,10 @@ npm run ts:fix
 ./scripts/fix-node-path.sh
 
 # 验证环境变量加载
-npm run config:validate
+bun run config:validate
 
 # 检查服务状态
-npm run service:status
+bun run service:status
 ```
 
 ### 常见问题解决
@@ -470,28 +486,28 @@ npm run service:status
 **TypeScript 编译错误**（找不到模块声明文件）：
 ```bash
 # 自动诊断和修复
-npm run ts:fix
+bun run ts:fix
 
 # 或手动清理重装
-rm -rf node_modules package-lock.json
-npm install
-npm run build
+rm -rf node_modules bun.lock
+bun install
+bun run build
 ```
 
 ## 🔧 开发
 ### 开发环境
 ```bash
 # 安装依赖
-npm install
+bun install
 
 # 开发模式 (热重载)
-npm run dev:watch
+bun run dev:watch
 
 # 构建
-npm run build
+bun run build
 
 # 生产模式
-npm start
+bun start
 ```
 ### 项目结构
 
@@ -517,7 +533,7 @@ src/
 sudo journalctl -u subscription-api-ts -f
 
 # 检查配置
-npm run dev
+bun run dev
 ```
 2. sing-box 连接失败
 
@@ -557,7 +573,7 @@ tail -f ./logs/error.log
 #### 快速诊断
 ```bash
 # 检查服务状态（跨平台）
-npm run service:status
+bun run service:status
 
 # Linux 专用诊断
 bash scripts/diagnose-systemd.sh
@@ -568,7 +584,7 @@ bash scripts/diagnose-systemd.sh
 1. **服务文件不存在**
    ```bash
    # 重新生成服务配置
-   npm run systemd:service $(pwd)
+   bun run systemd:service $(pwd)
    sudo cp /tmp/subscription-api-ts.service /etc/systemd/system/
    sudo systemctl daemon-reload
    ```
@@ -583,7 +599,7 @@ bash scripts/diagnose-systemd.sh
 3. **服务配置错误**
    ```bash
    # 一键修复（需要 sudo 权限）
-   npm run service:fix
+   bun run service:fix
    ```
 
 4. **工作目录问题 (CHDIR 失败)**
@@ -598,7 +614,7 @@ bash scripts/diagnose-systemd.sh
 5. **项目路径问题**
    ```bash
    # 确保项目已构建
-   npm run build
+   bun run build
    
    # 重新安装到正确路径
    sudo bash scripts/install.sh
@@ -610,7 +626,7 @@ bash scripts/diagnose-systemd.sh
 
 ```bash
 # 通用服务修复（需要 sudo 权限）
-sudo npm run service:fix
+sudo bun run service:fix
 
 # 专门修复 systemd 工作目录问题
 bash scripts/fix-systemd-workdir.sh

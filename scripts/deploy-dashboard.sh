@@ -53,20 +53,33 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
+# 检测 bun 命令函数
+detect_bun() {
+    if command -v bun >/dev/null 2>&1; then
+        echo "bun"
+    elif [ -f "$HOME/.local/bin/bun" ]; then
+        echo "$HOME/.local/bin/bun"
+    elif [ -f "/usr/local/bin/bun" ]; then
+        echo "/usr/local/bin/bun"
+    else
+        echo ""
+    fi
+}
+
 # 安装依赖
 echo -e "${YELLOW}📦 安装前端依赖...${NC}"
-if command -v npm >/dev/null 2>&1; then
-    npm install
-elif command -v yarn >/dev/null 2>&1; then
-    yarn install
+BUN_CMD=$(detect_bun)
+if [ -n "$BUN_CMD" ]; then
+    "$BUN_CMD" install
 else
-    echo -e "${RED}❌ 错误: 未找到 npm 或 yarn${NC}"
+    echo -e "${RED}❌ 错误: 未找到 bun${NC}"
+    echo "请先运行 bash scripts/install.sh 自动安装 bun"
     exit 1
 fi
 
 # 构建
 echo -e "${YELLOW}🔨 构建前端...${NC}"
-npm run build
+"$BUN_CMD" run build
 
 if [ ! -d "dist" ]; then
     echo -e "${RED}❌ 错误: 前端构建失败，dist 目录不存在${NC}"
@@ -82,10 +95,16 @@ cd "$PROJECT_ROOT"
 
 if [ -f "package.json" ] && [ -f "tsconfig.json" ]; then
     echo -e "${YELLOW}📦 安装后端依赖...${NC}"
-    npm install
+    BUN_CMD=$(detect_bun)
+    if [ -n "$BUN_CMD" ]; then
+        "$BUN_CMD" install
+    else
+        echo -e "${RED}❌ 错误: 未找到 bun${NC}"
+        exit 1
+    fi
     
     echo -e "${YELLOW}🔨 编译 TypeScript...${NC}"
-    npm run build
+    "$BUN_CMD" run build
     
     if [ ! -d "dist" ]; then
         echo -e "${RED}❌ 错误: 后端编译失败，dist 目录不存在${NC}"
@@ -165,7 +184,12 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 else
     echo -e "${BLUE}1. 启动 API 服务:${NC}"
     echo "   cd $PROJECT_ROOT"
-    echo "   npm start"
+    BUN_CMD=$(detect_bun)
+    if [ -n "$BUN_CMD" ]; then
+        echo "   $BUN_CMD start"
+    else
+        echo "   bun start (需要先安装 bun)"
+    fi
     echo ""
     
     echo -e "${BLUE}2. 配置 Web 服务器:${NC}"

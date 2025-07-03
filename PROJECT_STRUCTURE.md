@@ -112,7 +112,7 @@ Legacy implementations in different languages (JavaScript, Python) for compatibi
 ## Build Artifacts
 
 - `dist/`: Compiled JavaScript output
-- `node_modules/`: NPM dependencies
+- `node_modules/`: Bun dependencies
 - `data/`: Runtime data storage
 - `logs/`: Application logs
 

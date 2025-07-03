@@ -51,7 +51,18 @@ fi
 
 # 构建项目
 echo "🏗️ 构建项目..."
-npm run build
+# 检测 bun 路径
+if command -v bun >/dev/null 2>&1; then
+    BUN_CMD="bun"
+elif [ -f "$HOME/.local/bin/bun" ]; then
+    BUN_CMD="$HOME/.local/bin/bun"
+elif [ -f "/usr/local/bin/bun" ]; then
+    BUN_CMD="/usr/local/bin/bun"
+else
+    echo "❌ 未找到 bun，请先运行 bash scripts/install.sh"
+    exit 1
+fi
+"$BUN_CMD" run build
 
 # 重启服务
 echo "🔄 重启服务..."

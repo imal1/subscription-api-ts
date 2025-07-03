@@ -176,6 +176,126 @@ if ! command -v node &> /dev/null; then
     fi
 fi
 
+# 安装 Bun (如果未安装)
+if ! command -v bun &> /dev/null; then
+    echo "📦 安装 Bun..."
+    
+    # 检测系统架构
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64)
+            BUN_ARCH="x64"
+            ;;
+        aarch64|arm64)
+            BUN_ARCH="aarch64"
+            ;;
+        *)
+            echo "❌ 不支持的系统架构: $ARCH"
+            exit 1
+            ;;
+    esac
+    
+    # 设置 Bun 安装目录
+    if [ "$OS" = "Linux" ]; then
+        if [[ $EUID -eq 0 ]]; then
+            BUN_INSTALL_DIR="/usr/local/bin"
+            BUN_BINARY="$BUN_INSTALL_DIR/bun"
+        else
+            BUN_INSTALL_DIR="$HOME/.local/bin"
+            BUN_BINARY="$BUN_INSTALL_DIR/bun"
+            mkdir -p "$BUN_INSTALL_DIR"
+        fi
+    elif [ "$OS" = "Mac" ]; then
+        BUN_INSTALL_DIR="$HOME/.local/bin"
+        BUN_BINARY="$BUN_INSTALL_DIR/bun"
+        mkdir -p "$BUN_INSTALL_DIR"
+    fi
+    
+    echo "   下载 Bun 到 $BUN_BINARY..."
+    
+    # 获取最新版本
+    BUN_VERSION=$(curl -s https://api.github.com/repos/oven-sh/bun/releases/latest | grep -o '"tag_name": "[^"]*' | grep -o '[^"]*$' | sed 's/^bun-v//')
+    if [ -z "$BUN_VERSION" ]; then
+        BUN_VERSION="1.0.30"  # 备用版本
+    fi
+    
+    # 根据操作系统构建下载URL
+    if [ "$OS" = "Linux" ]; then
+        BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${BUN_ARCH}.zip"
+    elif [ "$OS" = "Mac" ]; then
+        BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-darwin-${BUN_ARCH}.zip"
+    fi
+    
+    # 下载并安装
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    
+    if curl -fsSL "$BUN_URL" -o bun.zip; then
+        if command -v unzip &> /dev/null; then
+            unzip -q bun.zip
+            # 查找解压后的bun可执行文件
+            BUN_EXTRACTED=$(find . -name "bun" -type f -executable | head -1)
+            if [ -n "$BUN_EXTRACTED" ]; then
+                if [[ $EUID -eq 0 ]] || [ "$OS" = "Linux" ] && [ "$BUN_INSTALL_DIR" = "/usr/local/bin" ]; then
+                    safe_sudo cp "$BUN_EXTRACTED" "$BUN_BINARY"
+                    safe_sudo chmod +x "$BUN_BINARY"
+                else
+                    cp "$BUN_EXTRACTED" "$BUN_BINARY"
+                    chmod +x "$BUN_BINARY"
+                fi
+                echo "   ✅ Bun 安装成功: $BUN_BINARY"
+                
+                # 添加到PATH (如果需要)
+                if [ "$BUN_INSTALL_DIR" = "$HOME/.local/bin" ]; then
+                    if ! echo "$PATH" | grep -q "$BUN_INSTALL_DIR"; then
+                        echo "   🔧 添加 $BUN_INSTALL_DIR 到 PATH..."
+                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.profile"
+                        [ -f "$HOME/.zshrc" ] && echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+                        export PATH="$HOME/.local/bin:$PATH"
+                    fi
+                fi
+            else
+                echo "❌ 无法找到解压后的 bun 可执行文件"
+                exit 1
+            fi
+        else
+            echo "❌ 系统缺少 unzip 命令"
+            if [ "$OS" = "Linux" ]; then
+                echo "   请安装: apt-get install unzip 或 yum install unzip"
+            fi
+            exit 1
+        fi
+    else
+        echo "❌ 下载 Bun 失败"
+        echo "   请检查网络连接或手动安装: curl -fsSL https://bun.sh/install | bash"
+        exit 1
+    fi
+    
+    # 清理临时文件
+    cd "$PROJECT_ROOT"
+    rm -rf "$TEMP_DIR"
+    
+    # 验证安装
+    if "$BUN_BINARY" --version &> /dev/null; then
+        echo "   ✅ Bun 验证成功: $("$BUN_BINARY" --version)"
+        # 创建符号链接到 bun 命令 (如果不在标准路径)
+        if [ "$BUN_INSTALL_DIR" != "/usr/local/bin" ] && [ "$BUN_INSTALL_DIR" != "/usr/bin" ]; then
+            alias bun="$BUN_BINARY"
+            echo "   💡 使用 $BUN_BINARY 替代 bun 命令"
+        fi
+    else
+        echo "❌ Bun 安装验证失败"
+        exit 1
+    fi
+else
+    echo "✅ Bun 已安装: $(bun --version)"
+    BUN_BINARY=$(which bun)
+fi
+
+# 设置全局 BUN_BINARY 变量供后续使用
+export BUN_BINARY
+
 # 安装项目依赖
 echo "📦 安装项目依赖..."
 
@@ -184,30 +304,24 @@ install_dependencies() {
     local user_prefix="$1"
     local install_success=false
     
-    # 首先尝试 npm ci
-    echo "   尝试使用 npm ci 安装依赖..."
-    if $user_prefix npm ci --include=dev 2>/dev/null; then
-        echo "   ✅ npm ci 安装成功"
+    # 使用检测到的或安装的 bun 路径
+    local bun_cmd="${BUN_BINARY:-bun}"
+    
+    # 使用 bun 安装依赖
+    echo "   使用 $bun_cmd 安装依赖..."
+    if $user_prefix "$bun_cmd" install --dev 2>/dev/null; then
+        echo "   ✅ bun install 安装成功"
         install_success=true
     else
-        echo "   ⚠️  npm ci 失败，可能是 package-lock.json 与 package.json 不同步"
-        echo "   📦 回退到 npm install..."
-        
-        # 如果 npm ci 失败，使用 npm install
-        if $user_prefix npm install --include=dev; then
-            echo "   ✅ npm install 安装成功"
-            install_success=true
-        else
-            echo "   ❌ npm install 也失败了"
-            return 1
-        fi
+        echo "   ❌ bun install 失败，请检查错误信息"
+        return 1
     fi
     
     # 验证关键依赖是否安装成功
     if [ "$install_success" = true ]; then
         if ! $user_prefix test -f "node_modules/@types/node/index.d.ts"; then
             echo "   ⚠️  重新安装 @types/node..."
-            $user_prefix npm install --save-dev @types/node
+            $user_prefix "$bun_cmd" add --dev @types/node
         fi
     fi
     
@@ -278,14 +392,15 @@ if [ -f "node_modules/.bin/tsc" ] && [ -f "node_modules/.bin/ts-node" ]; then
     echo "✅ 使用项目本地的 TypeScript 工具"
 else
     echo "🔧 安装全局 TypeScript 工具..."
+    local bun_cmd="${BUN_BINARY:-bun}"
     if [ "$OS" = "Linux" ]; then
         if [[ $EUID -eq 0 ]]; then
-            npm install -g typescript ts-node pm2
+            "$bun_cmd" add -g typescript ts-node pm2
         else
-            safe_sudo npm install -g typescript ts-node pm2
+            safe_sudo "$bun_cmd" add -g typescript ts-node pm2
         fi
     elif [ "$OS" = "Mac" ]; then
-        npm install -g typescript ts-node pm2
+        "$bun_cmd" add -g typescript ts-node pm2
     fi
 fi
 
@@ -456,18 +571,19 @@ fi
 
 # 执行构建（monorepo方式）
 echo "   执行 TypeScript 编译和前端构建..."
+local bun_cmd="${BUN_BINARY:-bun}"
 if [[ $EUID -eq 0 ]] && [ "$OS" = "Linux" ] && [ "$TARGET_USER" != "root" ]; then
     # root 执行但目标用户非 root 时，使用目标用户身份构建
-    if ! safe_sudo_user $TARGET_USER npm run build:all 2>&1; then
+    if ! safe_sudo_user $TARGET_USER "$bun_cmd" run build:all 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: npm run build:all 查看详细错误信息"
+        echo "   尝试运行: $bun_cmd run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
 else
-    if ! npm run build:all 2>&1; then
+    if ! "$bun_cmd" run build:all 2>&1; then
         echo "❌ 构建失败，请检查 TypeScript 错误"
-        echo "   尝试运行: npm run build:all 查看详细错误信息"
+        echo "   尝试运行: $bun_cmd run build:all 查看详细错误信息"
         echo "   或者检查 tsconfig.json 配置"
         exit 1
     fi
@@ -906,7 +1022,7 @@ if [ "$OS" = "Linux" ]; then
     fi
 elif [ "$OS" = "Mac" ]; then
     API_PORT="${PORT:-3000}"
-    echo "1. 启动服务: npm run dev"
+    echo "1. 启动服务: bun run dev"
     echo "2. 生成订阅: curl http://localhost:${API_PORT}/api/update"
     echo "3. 访问控制面板: http://localhost:${API_PORT}/dashboard/"
 fi

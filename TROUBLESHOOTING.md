@@ -89,7 +89,7 @@ pgrep -f "node.*dist/index.js"
 ./manage.sh logs
 
 # 手动启动（调试模式）
-npm run dev
+bun run dev
 ```
 
 ### 3. Subconverter 服务不可用
@@ -271,7 +271,7 @@ sudo systemctl status subconverter
 #### 启用详细日志
 ```bash
 # 临时启用调试模式
-NODE_ENV=development LOG_LEVEL=debug npm run dev
+NODE_ENV=development LOG_LEVEL=debug bun run dev
 
 # 或修改 .env 文件
 echo "LOG_LEVEL=debug" >> .env
@@ -346,7 +346,7 @@ tail -100 logs/error.log >> debug-info.txt
 
 # 系统环境
 node --version >> debug-info.txt
-npm --version >> debug-info.txt
+bun --version >> debug-info.txt
 cat .env >> debug-info.txt
 
 # 网络状态
@@ -457,9 +457,8 @@ telnet localhost 3000
 
 4. **检查依赖服务：**
    ```bash
-   # 检查 Node.js 版本
-   node --version
-   npm --version
+   # 检查 Bun 版本
+   bun --version
    
    # 检查系统服务
    sudo systemctl status subconverter
