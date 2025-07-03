@@ -18,6 +18,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# 引入公共函数库
+source "$SCRIPT_DIR/common.sh"
+
 # 读取环境变量文件
 if [ -f "$PROJECT_ROOT/.env" ]; then
     echo "📋 加载环境变量..."
@@ -45,55 +48,6 @@ else
     export LOG_DIR="${LOG_DIR:-./logs}"
 fi
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-
-# 检查sudo命令是否可用
-HAS_SUDO=false
-if command -v sudo >/dev/null 2>&1; then
-    HAS_SUDO=true
-fi
-
-# 定义安全的sudo函数
-safe_sudo() {
-    if [[ $EUID -eq 0 ]]; then
-        # 如果是root用户，直接执行命令
-        "$@"
-    elif [ "$HAS_SUDO" = true ]; then
-        # 如果有sudo且不是root，使用sudo
-        sudo "$@"
-    else
-        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
-        echo "   请以root用户运行此脚本，或安装sudo命令"
-        exit 1
-    fi
-}
-
-# 定义用户切换函数
-safe_sudo_user() {
-    local target_user="$1"
-    shift
-    
-    if [[ $EUID -eq 0 ]]; then
-        if [ "$target_user" = "root" ]; then
-            # root用户直接执行
-            "$@"
-        else
-            # root用户切换到目标用户
-            if command -v su >/dev/null 2>&1; then
-                su -c "$(printf '%q ' "$@")" "$target_user"
-            else
-                echo "❌ 错误：无法切换用户，缺少su命令"
-                exit 1
-            fi
-        fi
-    elif [ "$HAS_SUDO" = true ]; then
-        # 非root用户使用sudo切换
-        sudo -u "$target_user" "$@"
-    else
-        echo "❌ 错误：需要sudo命令来切换用户执行: $*"
-        echo "   请安装sudo命令或以root用户运行此脚本"
-        exit 1
-    fi
-}
 
 # 设置工作目录为项目根目录
 cd "$PROJECT_ROOT"

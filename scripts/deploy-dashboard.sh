@@ -4,20 +4,16 @@
 
 set -e
 
-# 颜色定义
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FRONTEND_DIR="$PROJECT_ROOT/frontend"
+
+# 引入公共函数库
+source "$SCRIPT_DIR/common.sh"
 
 echo -e "${BLUE}🎨 Dashboard 集成部署${NC}"
 echo "================================"
-
-# 获取脚本所在目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR"
-FRONTEND_DIR="$PROJECT_ROOT/frontend"
 
 # 读取环境变量
 if [ -f "$PROJECT_ROOT/.env" ]; then
@@ -28,6 +24,9 @@ fi
 NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 API_PORT="${PORT:-3000}"
 DATA_DIR="${STATIC_DIR:-./data}"
+
+# 进入项目根目录
+cd "$PROJECT_ROOT"
 
 echo -e "${YELLOW}📋 配置信息:${NC}"
 echo "   项目根目录: $PROJECT_ROOT"
@@ -52,19 +51,6 @@ if [ ! -f "package.json" ]; then
     echo -e "${RED}❌ 错误: package.json 不存在${NC}"
     exit 1
 fi
-
-# 检测 bun 命令函数
-detect_bun() {
-    if command -v bun >/dev/null 2>&1; then
-        echo "bun"
-    elif [ -f "$HOME/.local/bin/bun" ]; then
-        echo "$HOME/.local/bin/bun"
-    elif [ -f "/usr/local/bin/bun" ]; then
-        echo "/usr/local/bin/bun"
-    else
-        echo ""
-    fi
-}
 
 # 安装依赖
 echo -e "${YELLOW}📦 安装前端依赖...${NC}"

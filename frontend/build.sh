@@ -4,70 +4,53 @@
 
 set -e
 
-# 颜色定义
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-
-echo -e "${GREEN}🚀 开始构建前端 Dashboard...${NC}"
-
-# 获取脚本所在目录
+# 获取脚本所在目录和项目根目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$SCRIPT_DIR"
 PROJECT_ROOT="$(dirname "$FRONTEND_DIR")"
 
-echo -e "${YELLOW}📂 工作目录: $FRONTEND_DIR${NC}"
+# 引入公共函数库
+source "$PROJECT_ROOT/scripts/common.sh"
+
+print_status "info" "开始构建前端 Dashboard..."
+print_status "info" "工作目录: $FRONTEND_DIR"
 
 # 检查 Node.js 和包管理器
-if ! command -v node >/dev/null 2>&1; then
-    echo -e "${RED}❌ 错误: 未找到 Node.js${NC}"
+if ! command_exists node; then
+    print_status "error" "未找到 Node.js"
     echo "请先安装 Node.js: https://nodejs.org/"
     exit 1
 fi
 
-# 检测 bun 命令函数
-detect_bun() {
-    if command -v bun >/dev/null 2>&1; then
-        echo "bun"
-    elif [ -f "$HOME/.local/bin/bun" ]; then
-        echo "$HOME/.local/bin/bun"
-    elif [ -f "/usr/local/bin/bun" ]; then
-        echo "/usr/local/bin/bun"
-    else
-        echo ""
-    fi
-}
-
 # 检查 Bun
 BUN_CMD=$(detect_bun)
 if [ -z "$BUN_CMD" ]; then
-    echo -e "${RED}❌ 错误: 未找到 bun${NC}"
+    print_status "error" "未找到 bun"
     echo "请先运行安装脚本来自动安装 bun: bash scripts/install.sh"
     echo "或手动安装 bun: https://bun.sh/"
     exit 1
 fi
 
-echo -e "${GREEN}✅ 使用 bun: $($BUN_CMD --version)${NC}"
+print_status "success" "使用 bun: $($BUN_CMD --version)"
 
 # 切换到前端目录
 cd "$FRONTEND_DIR"
 
 # 安装依赖
-echo -e "${YELLOW}📦 安装依赖...${NC}"
+print_status "info" "安装依赖..."
 "$BUN_CMD" install
 
-echo -e "${GREEN}✅ 依赖安装完成${NC}"
+print_status "success" "依赖安装完成"
 
 # 构建项目
-echo -e "${YELLOW}🏗️  构建项目...${NC}"
+print_status "info" "构建项目..."
 "$BUN_CMD" run build
 
-echo -e "${GREEN}✅ 构建完成${NC}"
+print_status "success" "构建完成"
 
 # 检查构建输出
 if [ -d "dist" ]; then
-    echo -e "${GREEN}✅ 构建文件已生成在 dist/ 目录${NC}"
+    print_status "success" "构建文件已生成在 dist/ 目录"
     
     # 显示构建文件大小
     echo -e "${YELLOW}📊 构建文件大小:${NC}"
@@ -78,11 +61,11 @@ if [ -d "dist" ]; then
     find dist -name "*.html" -o -name "*.css" -o -name "*.js" | head -10
     
 else
-    echo -e "${RED}❌ 错误: 构建文件未生成${NC}"
+    print_status "error" "构建文件未生成"
     exit 1
 fi
 
-echo -e "${GREEN}🎉 前端 Dashboard 构建完成！${NC}"
+print_status "success" "前端 Dashboard 构建完成！"
 echo ""
 echo -e "${YELLOW}📋 下一步:${NC}"
 echo "1. 配置 Nginx 以服务静态文件"

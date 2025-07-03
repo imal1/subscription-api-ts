@@ -2,6 +2,7 @@
 node_modules/
 
 # Bun files
+bun.lock
 bun.lockb
 
 # Other package managers (not used in this project)

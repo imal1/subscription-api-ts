@@ -7,144 +7,16 @@
 
 set -e
 
-# 检测 bun 命令函数
-detect_bun() {
-    if command -v bun >/dev/null 2>&1; then
-        echo "bun"
-    elif [ -f "$HOME/.local/bin/bun" ]; then
-        echo "$HOME/.local/bin/bun"
-    elif [ -f "/usr/local/bin/bun" ]; then
-        echo "/usr/local/bin/bun"
-    else
-        echo ""
-    fi
-}
-
-# 检查sudo命令是否可用
-HAS_SUDO=false
-if command -v sudo >/dev/null 2>&1; then
-    HAS_SUDO=true
-fi
-
-# 定义安全的sudo函数
-safe_sudo() {
-    if        "build")
-            echo -e "${BLUE}🏗        "dev")
-            echo -e "${BLUE}🔥 启动开发模式...${NC}"
-            BUN_CMD=$(detect_bun)
-            if [ -n "$BUN_CMD" ]; then
-                "$BUN_CMD" run dev
-            else
-                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
-                exit 1
-            fi
-            ;;
-        "test")
-            echo -e "${BLUE}🧪 运行测试...${NC}"
-            BUN_CMD=$(detect_bun)
-            if [ -n "$BUN_CMD" ]; then
-                "$BUN_CMD" test
-            else
-                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
-                exit 1
-            fi
-            ;;
-        "clean")
-            echo -e "${YELLOW}🧹 清理编译文件...${NC}"
-            rm -rf dist
-            echo -e "${GREEN}✅ 清理完成${NC}"
-            ;;C}"
-            BUN_CMD=$(detect_bun)
-            if [ -n "$BUN_CMD" ]; then
-                "$BUN_CMD" run build
-            else
-                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
-                exit 1
-            fi
-            ;;
-        "build-frontend")
-            echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
-            if [ -f "frontend/build.sh" ]; then
-                bash frontend/build.sh
-            else
-                echo -e "${RED}❌ 前端构建脚本不存在${NC}"
-                exit 1
-            fi
-            ;;
-        "dev")
-            echo -e "${BLUE}🔥 启动开发模式...${NC}"
-            BUN_CMD=$(detect_bun)
-            if [ -n "$BUN_CMD" ]; then
-                "$BUN_CMD" run dev
-            else
-                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
-                exit 1
-            fi
-            ;;
-        "test")
-            echo -e "${BLUE}🧪 运行测试...${NC}"
-            BUN_CMD=$(detect_bun)
-            if [ -n "$BUN_CMD" ]; then
-                "$BUN_CMD" test
-            else
-                echo -e "${RED}❌ 未找到 bun，请先运行 bash scripts/install.sh${NC}"
-                exit 1
-            fithen
-        # 如果是root用户，直接执行命令
-        "$@"
-    elif [ "$HAS_SUDO" = true ]; then
-        # 如果有sudo且不是root，使用sudo
-        sudo "$@"
-    else
-        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
-        echo "   请以root用户运行此脚本，或安装sud        "build")
-            ec            echo -e "${BLUE}🔥 启动开发模式...${NC}"
-            bun run dev -e "${BLUE}🏗️  编译项目...${NC}"
-            bun run build
-            ;;
-        "build-frontend")
-            echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
-            if [ -f "frontend/build.sh" ]; then
-                bash frontend/build.sh
-            else
-                echo "前端构建脚本不存在"
-                exit 1
-            fi
-            ;;
-        "dev")
-            echo -e "${BLUE}🔥 启动开发模式...${NC}"
-            bun run dev
-            ;;
-        "test")
-            echo -e "${BLUE}🧪 运行测试...${NC}"
-            bun test    fi
-}
-
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-NC='\033[0m' # No Color
-
-# 显示标题
-show_header() {
-    echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║${WHITE}    Subscription API TypeScript 管理工具    ${PURPLE}║${NC}"
-    echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
-    echo ""
-}
+# 引入公共函数库
+source "$SCRIPTS_DIR/common.sh"
 
 # 显示帮助信息
 show_help() {
-    show_header
+    show_header "Subscription API TypeScript 管理工具"
     echo -e "${WHITE}使用方法:${NC}"
     echo -e "  ${CYAN}./manage.sh [命令]${NC}"
     echo ""
@@ -213,18 +85,14 @@ run_script() {
 }
 
 # 检测操作系统
-detect_os() {
-    case "$(uname -s)" in
-        Linux*)     echo "Linux";;
-        Darwin*)    echo "Mac";;
-        *)          echo "Unknown";;
-    esac
+get_os() {
+    detect_os
 }
 
 # 服务管理
 manage_service() {
     local action="$1"
-    local os=$(detect_os)
+    local os=$(get_os)
     
     if [ "$os" = "Linux" ]; then
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
@@ -292,7 +160,7 @@ manage_service() {
 
 # 查看日志
 show_logs() {
-    local os=$(detect_os)
+    local os=$(get_os)
     
     if [ "$os" = "Linux" ]; then
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
@@ -427,7 +295,7 @@ show_project_overview() {
         echo -e "${WHITE}项目:${NC} ${GREEN}$name${NC} v${version}"
     fi
     
-    local os=$(detect_os)
+    local os=$(get_os)
     echo -e "${WHITE}环境:${NC} ${GREEN}$os${NC}"
     
     # 编译状态
@@ -492,7 +360,7 @@ show_project_overview() {
 
 # 显示服务状态
 show_service_status() {
-    local os=$(detect_os)
+    local os=$(get_os)
     
     if [ "$os" = "Linux" ]; then
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
@@ -593,7 +461,13 @@ main() {
         # 开发工具
         "build")
             echo -e "${BLUE}🏗️  编译项目...${NC}"
-            bun run build
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" run build
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 ./manage.sh install${NC}"
+                exit 1
+            fi
             ;;
         "build-frontend")
             echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
@@ -606,11 +480,23 @@ main() {
             ;;
         "dev")
             echo -e "${BLUE}🚀 启动开发模式...${NC}"
-            "$BUN_BINARY" run dev
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" run dev
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 ./manage.sh install${NC}"
+                exit 1
+            fi
             ;;
         "test")
             echo -e "${BLUE}🧪 运行测试...${NC}"
-            "$BUN_BINARY" test
+            BUN_CMD=$(detect_bun)
+            if [ -n "$BUN_CMD" ]; then
+                "$BUN_CMD" test
+            else
+                echo -e "${RED}❌ 未找到 bun，请先运行 ./manage.sh install${NC}"
+                exit 1
+            fi
             ;;
         "clean")
             echo -e "${YELLOW}🧹 清理编译文件...${NC}"

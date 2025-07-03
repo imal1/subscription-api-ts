@@ -3,28 +3,13 @@
 # 部署脚本
 set -e
 
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 引入公共函数库
+source "$SCRIPT_DIR/common.sh"
+
 echo "🚀 开始部署 Subscription API..."
-
-# 检查sudo命令是否可用
-HAS_SUDO=false
-if command -v sudo >/dev/null 2>&1; then
-    HAS_SUDO=true
-fi
-
-# 定义安全的sudo函数
-safe_sudo() {
-    if [[ $EUID -eq 0 ]]; then
-        # 如果是root用户，直接执行命令
-        "$@"
-    elif [ "$HAS_SUDO" = true ]; then
-        # 如果有sudo且不是root，使用sudo
-        sudo "$@"
-    else
-        echo "❌ 错误：需要root权限或sudo命令来执行: $*"
-        echo "   请以root用户运行此脚本，或安装sudo命令"
-        exit 1
-    fi
-}
 
 # 读取环境变量
 if [ -f ".env" ]; then
