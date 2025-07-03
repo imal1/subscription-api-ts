@@ -1,13 +1,20 @@
 import { Config } from '../types';
+import * as os from 'os';
+import * as path from 'path';
+
+// 获取统一的基础目录
+const getSubscriptionBaseDir = (): string => {
+    return path.join(os.tmpdir(), '.subscription');
+};
 
 export const config: Config = {
     port: parseInt(process.env.PORT || '3000'),
     singBoxConfigs: (process.env.SING_BOX_CONFIGS || 'vless-reality,hysteria2,trojan,tuic,vmess').split(','),
     mihomoPath: process.env.MIHOMO_PATH || '',
     clashFilename: 'clash.yaml',
-    staticDir: process.env.DATA_DIR || './data',
-    logDir: process.env.LOG_DIR || './logs',
-    backupDir: process.env.BACKUP_DIR || './data/backup',
+    staticDir: process.env.DATA_DIR || path.join(getSubscriptionBaseDir(), 'www'),
+    logDir: process.env.LOG_DIR || path.join(getSubscriptionBaseDir(), 'log'),
+    backupDir: process.env.BACKUP_DIR || path.join(getSubscriptionBaseDir(), 'www', 'backup'),
     autoUpdateCron: process.env.AUTO_UPDATE_CRON || '0 */2 * * *',
     nginxPort: parseInt(process.env.NGINX_PORT || '3080'),
     maxRetries: parseInt(process.env.MAX_RETRIES || '3'),

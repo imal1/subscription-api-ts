@@ -59,16 +59,16 @@ export API_PORT="${PORT:-3000}"
 export NGINX_PORT="${NGINX_PORT:-3080}"
 export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
 
-# 检测操作系统并设置数据目录
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    export DATA_DIR="${STATIC_DIR:-./data}"
-    export LOG_DIR="${LOG_DIR:-./logs}"
+# 检测操作系统并设置数据目录 - 统一使用 tmpdir/.subscription
+if command -v node &> /dev/null; then
+    SUBSCRIPTION_BASE_DIR=$(node -e "console.log(require('os').tmpdir())")/.subscription
 else
-    # Linux
-    export DATA_DIR="${STATIC_DIR:-/var/www/subscription}"
-    export LOG_DIR="${LOG_DIR:-/var/log/subscription}"
+    # 如果没有 node，使用系统临时目录
+    SUBSCRIPTION_BASE_DIR=$(mktemp -d)/.subscription
 fi
+
+export DATA_DIR="${STATIC_DIR:-${SUBSCRIPTION_BASE_DIR}/www}"
+export LOG_DIR="${LOG_DIR:-${SUBSCRIPTION_BASE_DIR}/log}"
 
 # 获取项目绝对路径（用于nginx配置）
 export ABSOLUTE_PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"

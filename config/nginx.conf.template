@@ -2,9 +2,9 @@ server {
     listen ${NGINX_PROXY_PORT};
     server_name _;
     
-    # 启用错误日志
-    error_log /var/log/nginx/subscription-error.log debug;
-    access_log /var/log/nginx/subscription-access.log;
+    # 启用错误日志 - 使用统一的日志目录
+    error_log ${LOG_DIR}/nginx-error.log debug;
+    access_log ${LOG_DIR}/nginx-access.log;
     
     # Dashboard 静态文件服务
     location /dashboard/ {
@@ -53,9 +53,9 @@ server {
         expires 5m;
     }
     
-    # 静态文件直接服务 (生产环境路径)
+    # 静态文件直接服务
     location /static/ {
-        alias /var/www/subscription/;
+        alias ${DATA_DIR}/;
         expires 1h;
         add_header Cache-Control "public, no-transform";
     }

@@ -168,15 +168,19 @@ v1.1.0+ 会自动：
 # 检查网络连接
 curl -I https://api.github.com/repos/MetaCubeX/mihomo/releases/latest
 
-# 手动下载 mihomo
-mkdir -p /tmp/mihomo
-cd /tmp/mihomo
+# 手动下载 mihomo（现在由安装脚本自动处理）
+# 如果需要手动安装：
+MIHOMO_DIR="$(node -e "console.log(require('os').tmpdir())")/.subscription/mihomo"
+mkdir -p "$MIHOMO_DIR"
+cd "$MIHOMO_DIR"
 # 根据系统下载对应版本
-wget https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64
-chmod +x mihomo-linux-amd64
+wget https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64.gz
+gunzip mihomo-linux-amd64.gz
+mv mihomo-linux-amd64 mihomo
+chmod +x mihomo
 
 # 设置环境变量
-echo "MIHOMO_PATH=/tmp/mihomo" >> .env
+echo "MIHOMO_PATH=$MIHOMO_DIR" >> .env
 ```
 
 #### 2. 协议转换失败

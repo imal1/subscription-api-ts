@@ -27,7 +27,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/www/subscription /var/log/subscription
+ReadWritePaths=${DATA_DIR} ${LOG_DIR}
 
 [Install]
 WantedBy=multi-user.target

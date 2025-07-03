@@ -3,7 +3,6 @@ import * as fs from 'fs-extra';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
-import * as zlib from 'zlib';
 import * as yaml from 'js-yaml';
 import { logger } from '../utils/logger';
 import { config } from '../config';
@@ -13,15 +12,6 @@ interface ProxyConfig {
     type: string;
     server: string;
     port: number;
-    [key: string]: any;
-}
-
-interface ClashConfig {
-    proxies: ProxyConfig[];
-    'proxy-groups': any[];
-    rules: string[];
-    dns?: any;
-    tun?: any;
     [key: string]: any;
 }
 
@@ -35,12 +25,11 @@ export class MihomoService {
     private static instance: MihomoService;
     private mihomoPath: string;
     private configPath: string;
-    private isDownloading = false;
 
     private constructor() {
-        // 从环境变量读取 mihomo 路径，默认为系统临时目录
-        const basePath = process.env.MIHOMO_PATH || path.join(os.tmpdir(), 'mihomo');
-        this.mihomoPath = path.join(basePath, this.getMihomoExecutableName());
+        // 从环境变量读取 mihomo 路径，默认为系统临时目录下的 .subscription 文件夹
+        const basePath = process.env.MIHOMO_PATH || path.join(os.tmpdir(), '.subscription', 'mihomo');
+        this.mihomoPath = path.join(basePath, 'mihomo');
         this.configPath = path.join(basePath, 'config.yaml');
         
         // 确保目录存在
@@ -55,118 +44,13 @@ export class MihomoService {
     }
 
     /**
-     * 获取适用于当前操作系统的 mihomo 可执行文件名
-     */
-    private getMihomoExecutableName(): string {
-        const platform = os.platform();
-        const arch = os.arch();
-        
-        let platformName: string;
-        let archName: string;
-
-        // 映射平台名称
-        switch (platform) {
-            case 'win32':
-                platformName = 'windows';
-                break;
-            case 'darwin':
-                platformName = 'darwin';
-                break;
-            case 'linux':
-                platformName = 'linux';
-                break;
-            default:
-                throw new Error(`不支持的操作系统: ${platform}`);
-        }
-
-        // 映射架构名称
-        switch (arch) {
-            case 'x64':
-                archName = 'amd64';
-                break;
-            case 'arm64':
-                archName = 'arm64';
-                break;
-            case 'arm':
-                archName = 'armv7';
-                break;
-            default:
-                throw new Error(`不支持的CPU架构: ${arch}`);
-        }
-
-        const extension = platform === 'win32' ? '.exe' : '';
-        return `mihomo-${platformName}-${archName}${extension}`;
-    }
-
-    /**
-     * 获取下载文件名（包含版本号和压缩扩展名）
-     */
-    private getMihomoDownloadFileName(version: string): string {
-        const platform = os.platform();
-        const arch = os.arch();
-        
-        let platformName: string;
-        let archName: string;
-
-        // 映射平台名称
-        switch (platform) {
-            case 'win32':
-                platformName = 'windows';
-                break;
-            case 'darwin':
-                platformName = 'darwin';
-                break;
-            case 'linux':
-                platformName = 'linux';
-                break;
-            default:
-                throw new Error(`不支持的操作系统: ${platform}`);
-        }
-
-        // 映射架构名称
-        switch (arch) {
-            case 'x64':
-                archName = 'amd64';
-                break;
-            case 'arm64':
-                archName = 'arm64';
-                break;
-            case 'arm':
-                archName = 'armv7';
-                break;
-            default:
-                throw new Error(`不支持的CPU架构: ${arch}`);
-        }
-
-        // GitHub 仓库中的文件名格式: mihomo-{platform}-{arch}-{version}.gz
-        return `mihomo-${platformName}-${archName}-${version}.gz`;
-    }
-
-    /**
-     * 检查 mihomo 是否可用，如果不可用则自动下载
-     */
-    public async ensureMihomoAvailable(): Promise<boolean> {
-        try {
-            // 检查本地是否已存在
-            if (await this.checkLocalMihomo()) {
-                return true;
-            }
-
-            // 如果不存在，尝试下载
-            logger.info('未找到 mihomo 二进制文件，开始下载最新版本...');
-            return await this.downloadLatestMihomo();
-        } catch (error) {
-            logger.error('确保 mihomo 可用时发生错误:', error);
-            return false;
-        }
-    }
-
-    /**
      * 检查本地 mihomo 是否可用
      */
     private async checkLocalMihomo(): Promise<boolean> {
         try {
             if (!fs.existsSync(this.mihomoPath)) {
+                logger.error(`mihomo 二进制文件不存在: ${this.mihomoPath}`);
+                logger.info('请确保已通过安装脚本安装 mihomo');
                 return false;
             }
 
@@ -185,108 +69,14 @@ export class MihomoService {
     }
 
     /**
-     * 下载最新版本的 mihomo
+     * 确保 mihomo 可用
      */
-    private async downloadLatestMihomo(): Promise<boolean> {
-        if (this.isDownloading) {
-            logger.info('mihomo 正在下载中，请等待...');
-            return false;
-        }
-
-        this.isDownloading = true;
-
+    public async ensureMihomoAvailable(): Promise<boolean> {
         try {
-            // 获取最新版本信息
-            const latestVersion = await this.getLatestVersion();
-            if (!latestVersion) {
-                throw new Error('无法获取最新版本信息');
-            }
-
-            logger.info(`开始下载 mihomo ${latestVersion}...`);
-
-            // 构建下载 URL
-            const downloadFileName = this.getMihomoDownloadFileName(latestVersion);
-            const downloadUrl = `https://github.com/MetaCubeX/mihomo/releases/download/${latestVersion}/${downloadFileName}`;
-
-            logger.info(`下载地址: ${downloadUrl}`);
-
-            // 下载压缩文件
-            const response = await axios.get(downloadUrl, {
-                responseType: 'stream',
-                timeout: 300000, // 5分钟超时
-                headers: {
-                    'User-Agent': 'subscription-api-ts/1.0.0'
-                }
-            });
-
-            // 创建临时文件路径
-            const tempGzPath = this.mihomoPath + '.gz';
-
-            // 保存压缩文件
-            const writeStream = fs.createWriteStream(tempGzPath);
-            response.data.pipe(writeStream);
-
-            await new Promise<void>((resolve, reject) => {
-                writeStream.on('finish', () => resolve());
-                writeStream.on('error', reject);
-            });
-
-            // 解压缩文件
-            logger.info('正在解压缩文件...');
-            const gzipData = fs.readFileSync(tempGzPath);
-            const decompressedData = zlib.gunzipSync(gzipData);
-            fs.writeFileSync(this.mihomoPath, decompressedData);
-
-            // 清理临时文件
-            fs.removeSync(tempGzPath);
-
-            // 设置执行权限 (非 Windows 系统)
-            if (os.platform() !== 'win32') {
-                fs.chmodSync(this.mihomoPath, '755');
-            }
-
-            logger.info(`mihomo ${latestVersion} 下载完成: ${this.mihomoPath}`);
-            
-            // 验证下载的文件
-            const isValid = await this.checkLocalMihomo();
-            if (!isValid) {
-                throw new Error('下载的 mihomo 文件无效');
-            }
-
-            return true;
+            return await this.checkLocalMihomo();
         } catch (error) {
-            logger.error('下载 mihomo 失败:', error);
-            // 清理可能损坏的文件
-            if (fs.existsSync(this.mihomoPath)) {
-                fs.removeSync(this.mihomoPath);
-            }
-            // 清理临时文件
-            const tempGzPath = this.mihomoPath + '.gz';
-            if (fs.existsSync(tempGzPath)) {
-                fs.removeSync(tempGzPath);
-            }
+            logger.error('检查 mihomo 可用性时发生错误:', error);
             return false;
-        } finally {
-            this.isDownloading = false;
-        }
-    }
-
-    /**
-     * 获取最新版本号
-     */
-    private async getLatestVersion(): Promise<string | null> {
-        try {
-            const response = await axios.get('https://api.github.com/repos/MetaCubeX/mihomo/releases/latest', {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'subscription-api-ts/1.0.0'
-                }
-            });
-
-            return response.data.tag_name;
-        } catch (error) {
-            logger.error('获取最新版本失败:', error);
-            return null;
         }
     }
 
