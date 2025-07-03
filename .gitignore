@@ -74,3 +74,6 @@ frontend/dist/
 # Next.js cache
 .next/cache
 frontend/.next/cache
+
+# Nginx configuration files
+config/nginx.conf
