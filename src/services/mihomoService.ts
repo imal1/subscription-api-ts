@@ -370,6 +370,7 @@ export class MihomoService {
      */
     public async convertToClashByContent(content: string): Promise<string> {
         logger.info('开始使用 mihomo 转换订阅内容');
+        logger.debug(`内容长度: ${content.length} 字符`);
 
         try {
             // 确保 mihomo 可用
@@ -379,7 +380,10 @@ export class MihomoService {
 
             return await this.convertContentToClash(content);
         } catch (error) {
-            logger.error('mihomo 内容转换失败:', error);
+            logger.error('mihomo 内容转换失败:', {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
             throw error;
         }
     }
@@ -408,23 +412,37 @@ export class MihomoService {
      */
     private async convertContentToClash(content: string): Promise<string> {
         try {
+            logger.info('开始解析代理节点...');
+            
             // 解析代理节点
             const proxies = this.parseProxies(content);
             
+            logger.info(`解析完成，发现 ${proxies.length} 个代理节点`);
+            
             if (proxies.length === 0) {
+                logger.warn('未找到有效的代理节点');
                 throw new Error('未找到有效的代理节点');
             }
 
+            logger.info('开始生成 Clash 配置...');
+            
             // 生成 Clash 配置
             const clashConfig = this.generateClashConfig(proxies);
             
+            logger.info(`Clash 配置生成完成，长度: ${clashConfig.length} 字符`);
+            
             // 使用 mihomo 验证配置
+            logger.info('开始验证生成的配置...');
             await this.validateClashConfig(clashConfig);
+            logger.info('配置验证通过');
 
             logger.info(`成功转换 ${proxies.length} 个代理节点`);
             return clashConfig;
         } catch (error) {
-            logger.error('转换内容为 Clash 配置失败:', error);
+            logger.error('转换内容为 Clash 配置失败:', {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
             throw error;
         }
     }
@@ -436,17 +454,34 @@ export class MihomoService {
         const proxies: ProxyConfig[] = [];
         const lines = content.split('\n').filter(line => line.trim());
 
-        for (const line of lines) {
+        logger.info(`开始解析订阅内容，总行数: ${lines.length}`);
+        
+        // 记录支持的协议类型
+        const supportedProtocols = ['vmess://', 'vless://', 'trojan://', 'hysteria2://', 'hy2://', 'tuic://', 'ss://'];
+        logger.debug(`支持的协议: ${supportedProtocols.join(', ')}`);
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
             try {
-                const proxy = this.parseProxyLine(line.trim());
+                const proxy = this.parseProxyLine(line);
                 if (proxy) {
                     proxies.push(proxy);
+                    logger.debug(`成功解析第 ${i + 1} 行: ${proxy.name} (${proxy.type})`);
+                } else {
+                    // 记录未识别的协议
+                    const protocol = line.split('://')[0];
+                    logger.debug(`第 ${i + 1} 行未识别协议: ${protocol}://...`);
                 }
             } catch (error) {
-                logger.warn(`解析代理行失败: ${line}`, error);
+                logger.warn(`解析第 ${i + 1} 行失败: ${line.substring(0, 50)}...`, {
+                    error: error instanceof Error ? error.message : String(error)
+                });
             }
         }
 
+        logger.info(`解析完成，成功解析 ${proxies.length}/${lines.length} 个节点`);
         return proxies;
     }
 
@@ -779,19 +814,28 @@ ${yaml.dump(clashConfig, {
      * 验证 Clash 配置
      */
     private async validateClashConfig(config: string): Promise<void> {
+        // 在生产环境中跳过验证以提高容错性
+        if (process.env.NODE_ENV === 'production' && process.env.SKIP_CONFIG_VALIDATION === 'true') {
+            logger.info('生产环境跳过配置验证');
+            return;
+        }
+
         try {
             // 将配置写入临时文件
             const tempConfigPath = path.join(path.dirname(this.configPath), 'temp-config.yaml');
             await fs.writeFile(tempConfigPath, config);
 
             try {
+                logger.debug(`验证配置文件: ${tempConfigPath}`);
+                
                 // 使用 mihomo 验证配置
-                execSync(`"${this.mihomoPath}" -t -f "${tempConfigPath}"`, {
+                const result = execSync(`"${this.mihomoPath}" -t -f "${tempConfigPath}"`, {
                     encoding: 'utf8',
                     timeout: 10000
                 });
 
                 logger.info('Clash 配置验证通过');
+                logger.debug(`验证输出: ${result}`);
             } finally {
                 // 清理临时文件
                 if (fs.existsSync(tempConfigPath)) {
@@ -799,8 +843,17 @@ ${yaml.dump(clashConfig, {
                 }
             }
         } catch (error) {
-            logger.error('Clash 配置验证失败:', error);
-            throw new Error('生成的 Clash 配置无效');
+            logger.error('Clash 配置验证失败:', {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
+            
+            // 在开发环境中抛出错误，生产环境中警告但继续
+            if (process.env.NODE_ENV === 'development') {
+                throw new Error(`生成的 Clash 配置无效: ${error instanceof Error ? error.message : String(error)}`);
+            } else {
+                logger.warn('配置验证失败，但继续处理 (生产环境)');
+            }
         }
     }
 

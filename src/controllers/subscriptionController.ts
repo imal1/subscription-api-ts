@@ -492,6 +492,7 @@ export class SubscriptionController {
       const { content } = req.body;
 
       if (!content || typeof content !== "string") {
+        logger.warn("内容转换请求缺少有效内容");
         const response: ApiResponse = {
           success: false,
           error: "请提供有效的订阅内容",
@@ -502,14 +503,18 @@ export class SubscriptionController {
       }
 
       logger.info(`收到内容转换请求，内容长度: ${content.length} 字符`);
+      logger.debug(`请求内容预览: ${content.substring(0, 200)}...`);
 
       // 检查 mihomo 服务状态
       const mihomoService = (
         await import("../services/mihomoService")
       ).MihomoService.getInstance();
+      
+      logger.info("检查 Mihomo 服务状态...");
       const mihomoAvailable = await mihomoService.checkHealth();
 
       if (!mihomoAvailable) {
+        logger.error("Mihomo 服务不可用");
         const response: ApiResponse = {
           success: false,
           error: "Mihomo 服务不可用",
@@ -519,8 +524,12 @@ export class SubscriptionController {
         return;
       }
 
+      logger.info("Mihomo 服务正常，开始转换内容...");
+
       // 转换内容
       const clashConfig = await mihomoService.convertToClashByContent(content);
+
+      logger.info(`转换成功，生成配置长度: ${clashConfig.length} 字符`);
 
       const response: ApiResponse = {
         success: true,
@@ -535,11 +544,15 @@ export class SubscriptionController {
 
       res.json(response);
     } catch (error: any) {
-      logger.error("内容转换API错误:", error);
+      logger.error("内容转换API错误:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
 
       const response: ApiResponse = {
         success: false,
-        error: error.message,
+        error: `转换失败: ${error.message}`,
         timestamp: new Date().toISOString(),
       };
 
