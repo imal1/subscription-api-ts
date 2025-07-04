@@ -154,12 +154,13 @@ verify_update() {
     
     local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
     local api_port="${PORT:-3000}"
+    local external_host="${EXTERNAL_HOST:-localhost}"
     
     # 测试 API 健康检查
     if [ "$OS" = "Linux" ]; then
-        local base_url="http://localhost:${nginx_proxy_port}"
+        local base_url="http://${external_host}:${nginx_proxy_port}"
     else
-        local base_url="http://localhost:${api_port}"
+        local base_url="http://${external_host}:${api_port}"
     fi
     
     print_status "info" "测试 API 连接..."
@@ -187,6 +188,7 @@ show_completion_info() {
     
     local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
     local api_port="${PORT:-3000}"
+    local external_host="${EXTERNAL_HOST:-localhost}"
     
     print_status "success" "服务更新完成！"
     
@@ -194,15 +196,15 @@ show_completion_info() {
     print_status "info" "🚀 测试命令："
     
     if [ "$OS" = "Linux" ]; then
-        echo "  - 健康检查: curl http://localhost:${nginx_proxy_port}/api/health"
-        echo "  - 更新订阅: curl http://localhost:${nginx_proxy_port}/api/update"
-        echo "  - Clash配置: curl http://localhost:${nginx_proxy_port}/clash.yaml"
-        echo "  - 控制面板: http://localhost:${nginx_proxy_port}/dashboard/"
+        echo "  - 健康检查: curl http://${external_host}:${nginx_proxy_port}/api/health"
+        echo "  - 更新订阅: curl http://${external_host}:${nginx_proxy_port}/api/update"
+        echo "  - Clash配置: curl http://${external_host}:${nginx_proxy_port}/clash.yaml"
+        echo "  - 控制面板: http://${external_host}:${nginx_proxy_port}/dashboard/"
     else
-        echo "  - 健康检查: curl http://localhost:${api_port}/api/health"
-        echo "  - 更新订阅: curl http://localhost:${api_port}/api/update"
-        echo "  - Clash配置: curl http://localhost:${api_port}/clash.yaml"
-        echo "  - 控制面板: http://localhost:${api_port}/dashboard/"
+        echo "  - 健康检查: curl http://${external_host}:${api_port}/api/health"
+        echo "  - 更新订阅: curl http://${external_host}:${api_port}/api/update"
+        echo "  - Clash配置: curl http://${external_host}:${api_port}/clash.yaml"
+        echo "  - 控制面板: http://${external_host}:${api_port}/dashboard/"
     fi
     
     echo ""

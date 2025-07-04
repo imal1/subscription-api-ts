@@ -2,6 +2,32 @@
 
 本文档列出了项目中所有支持的环境变量，确保所有配置都可通过 `.env` 文件读取。
 
+## 🛠️ 安装和管理脚本
+
+项目采用模块化脚本架构，提供以下管理工具：
+
+| 脚本 | 功能 | 使用场景 |
+|------|------|----------|
+| `scripts/install.sh` | 完整项目安装 | 首次部署时使用 |
+| `scripts/update.sh` | 服务更新 | 代码更新后重新部署 |
+| `scripts/deploy.sh` | 生产环境部署 | 正式环境部署 |
+| `scripts/build-frontend.sh` | 前端构建 | 单独构建前端项目 |
+| `scripts/build-all.sh` | 完整项目构建 | 构建前端+后端 |
+| `scripts/setup-nginx.sh` | Nginx 配置 | 配置反向代理 |
+| `scripts/verify-permissions.sh` | 权限验证 | 排查权限问题 |
+
+**推荐使用方式**：
+```bash
+# 首次安装
+sudo bash scripts/install.sh
+
+# 服务更新  
+bash scripts/update.sh
+
+# 生产部署
+bash scripts/deploy.sh
+```
+
 ## 🚀 API 端点参考
 
 | 端点 | 支持方法 | 功能描述 |
@@ -51,7 +77,11 @@
 ### 🌐 网络配置
 - `MAX_RETRIES` - 最大重试次数 (默认: 3)
 - `REQUEST_TIMEOUT` - 请求超时时间，毫秒 (默认: 30000)
-- `EXTERNAL_HOST` - 外部访问主机名 (默认: localhost)
+- `EXTERNAL_HOST` - 外部访问主机名，影响所有脚本显示的访问地址 (默认: localhost)
+  - 本地开发: `localhost`
+  - 服务器部署: `your-server.example.com` 或服务器IP
+  - Docker 部署: 容器IP或域名
+  - 云平台部署: 平台提供的域名
 
 ### 🔒 CORS配置
 - `CORS_ORIGIN` - 允许的跨域来源 (默认: *)

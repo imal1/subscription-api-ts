@@ -353,15 +353,18 @@ test_nginx_service() {
     # 等待服务启动
     sleep 3
     
+    # 获取主机地址
+    local external_host="${EXTERNAL_HOST:-localhost}"
+    
     # 测试静态文件访问
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PORT}/" | grep -q "200"; then
+    if curl -s -o /dev/null -w "%{http_code}" "http://${external_host}:${NGINX_PORT}/" | grep -q "200"; then
         print_status "success" "静态文件服务测试通过"
     else
         print_status "warning" "静态文件服务测试失败，请检查配置"
     fi
     
     # 测试代理服务（如果 API 服务正在运行）
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${NGINX_PROXY_PORT}/api/health" | grep -q "200"; then
+    if curl -s -o /dev/null -w "%{http_code}" "http://${external_host}:${NGINX_PROXY_PORT}/api/health" | grep -q "200"; then
         print_status "success" "API 代理服务测试通过"
     else
         print_status "warning" "API 代理服务测试失败，请确保 API 服务正在运行"
@@ -370,11 +373,13 @@ test_nginx_service() {
 
 # 显示访问信息
 show_access_info() {
+    local external_host="${EXTERNAL_HOST:-localhost}"
+    
     print_status "info" "访问信息:"
-    echo "  - 静态文件服务: http://localhost:${NGINX_PORT}/"
-    echo "  - API 代理服务: http://localhost:${NGINX_PROXY_PORT}/"
-    echo "  - 控制面板: http://localhost:${NGINX_PROXY_PORT}/dashboard/"
-    echo "  - 测试页面: http://localhost:${NGINX_PORT}/test.html"
+    echo "  - 静态文件服务: http://${external_host}:${NGINX_PORT}/"
+    echo "  - API 代理服务: http://${external_host}:${NGINX_PROXY_PORT}/"
+    echo "  - 控制面板: http://${external_host}:${NGINX_PROXY_PORT}/dashboard/"
+    echo "  - 测试页面: http://${external_host}:${NGINX_PORT}/test.html"
     echo "  - 数据目录: $DATA_DIR"
     echo "  - 日志目录: $LOG_DIR"
 }

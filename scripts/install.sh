@@ -98,14 +98,33 @@ setup_default_env() {
 cleanup_old_config() {
     print_status "info" "清理旧配置文件..."
     
-    # 删除旧的配置文件，确保全新安装环境
-    local files_to_remove=(
-        "$PROJECT_ROOT/.env"
+    # 检查 .env 文件是否存在，如果存在则询问用户
+    if [ -f "$PROJECT_ROOT/.env" ]; then
+        print_status "warning" "发现现有的 .env 配置文件"
+        echo ""
+        echo "删除现有配置文件将重置所有自定义设置为默认值。"
+        echo "如果你有重要的自定义配置，请先手动备份。"
+        echo ""
+        
+        read -p "是否删除现有的 .env 文件并创建新配置？(y/N): " -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -f "$PROJECT_ROOT/.env"
+            print_status "success" ".env 文件已删除，将创建新的配置文件"
+        else
+            print_status "info" "保留现有的 .env 文件"
+            print_status "warning" "注意: 现有配置可能与新版本不兼容，如遇问题请手动更新配置"
+        fi
+    fi
+    
+    # 删除其他旧的配置文件（不需要用户确认）
+    local other_files_to_remove=(
         "$PROJECT_ROOT/config/nginx.conf"
         "$PROJECT_ROOT/config/subscription-api-ts.service"
     )
     
-    for file in "${files_to_remove[@]}"; do
+    for file in "${other_files_to_remove[@]}"; do
         if [ -f "$file" ]; then
             print_status "info" "删除旧配置: $(basename "$file")"
             rm -f "$file"
@@ -145,7 +164,24 @@ create_env_config() {
             print_status "warning" "未找到 .env.example 文件"
         fi
     else
-        print_status "info" "环境配置文件已存在"
+        print_status "info" "使用现有的 .env 配置文件"
+        
+        # 验证现有配置文件是否包含必要的变量
+        local required_vars=("BASE_DIR" "DATA_DIR" "LOG_DIR" "DIST_DIR")
+        local missing_vars=()
+        
+        for var in "${required_vars[@]}"; do
+            if ! grep -q "^${var}=" "$PROJECT_ROOT/.env"; then
+                missing_vars+=("$var")
+            fi
+        done
+        
+        if [ ${#missing_vars[@]} -gt 0 ]; then
+            print_status "warning" "检测到缺少的环境变量: ${missing_vars[*]}"
+            print_status "info" "建议手动检查并更新 .env 文件，或重新运行安装脚本并选择删除现有配置"
+        else
+            print_status "success" "现有配置文件验证通过"
+        fi
     fi
 }
 
@@ -187,14 +223,20 @@ run_optional_step() {
 
 # 显示安装完成信息
 show_completion_info() {
+    # 加载环境变量
+    load_env_file "$PROJECT_ROOT/.env"
+    
+    # 设置主机地址
+    local external_host="${EXTERNAL_HOST:-localhost}"
+    
     print_status "success" "安装完成！"
     
     echo ""
     print_status "info" "🚀 快速开始："
     
     if [ "$OS" = "Linux" ]; then
-        echo "1. 生成订阅文件: curl http://localhost:${NGINX_PROXY_PORT}/api/update"
-        echo "2. 访问控制面板: http://localhost:${NGINX_PROXY_PORT}/dashboard/"
+        echo "1. 生成订阅文件: curl http://${external_host}:${NGINX_PROXY_PORT}/api/update"
+        echo "2. 访问控制面板: http://${external_host}:${NGINX_PROXY_PORT}/dashboard/"
         
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
         echo ""
@@ -213,8 +255,8 @@ show_completion_info() {
     elif [ "$OS" = "Mac" ]; then
         local api_port="${PORT:-3000}"
         echo "1. 启动服务: bun run dev"
-        echo "2. 生成订阅: curl http://localhost:${api_port}/api/update"
-        echo "3. 访问控制面板: http://localhost:${api_port}/dashboard/"
+        echo "2. 生成订阅: curl http://${external_host}:${api_port}/api/update"
+        echo "3. 访问控制面板: http://${external_host}:${api_port}/dashboard/"
     fi
     
     echo ""

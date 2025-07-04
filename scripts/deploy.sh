@@ -89,12 +89,13 @@ deploy_project() {
         load_env_file "$PROJECT_ROOT/.env"
         local api_port="${PORT:-3000}"
         local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
+        local external_host="${EXTERNAL_HOST:-localhost}"
         
         print_status "info" "服务信息:"
         echo "  - 服务状态: $(systemctl is-active "$SERVICE_NAME")"
         echo "  - API 端口: $api_port"
         echo "  - Nginx 代理端口: $nginx_proxy_port"
-        echo "  - 访问地址: http://localhost:$nginx_proxy_port"
+        echo "  - 访问地址: http://${external_host}:$nginx_proxy_port"
     else
         print_status "error" "服务启动失败"
         service_status "$SERVICE_NAME"

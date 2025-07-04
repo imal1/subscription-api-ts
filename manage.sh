@@ -224,12 +224,14 @@ show_api_help() {
     
     # 读取端口配置
     local port="3000"
+    local external_host="localhost"
     if [ -f ".env" ]; then
         port=$(grep "^PORT=" .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
+        external_host=$(grep "^EXTERNAL_HOST=" .env | cut -d'=' -f2 | tr -d '"' || echo "localhost")
     fi
     
     echo -e "${WHITE}🌐 基础信息:${NC}"
-    echo -e "  Base URL: ${GREEN}http://localhost:${port}${NC}"
+    echo -e "  Base URL: ${GREEN}http://${external_host}:${port}${NC}"
     echo -e "  Content-Type: ${GREEN}application/json${NC}"
     echo ""
     
@@ -256,19 +258,19 @@ show_api_help() {
     
     echo -e "${WHITE}✅ 正确用法示例:${NC}"
     echo -e "${GREEN}  # 更新订阅（现在支持GET方法）${NC}"
-    echo -e "  curl http://localhost:${port}/api/update"
-    echo -e "  curl -X GET http://localhost:${port}/api/update"
-    echo -e "  wget http://localhost:${port}/api/update"
+    echo -e "  curl http://${external_host}:${port}/api/update"
+    echo -e "  curl -X GET http://${external_host}:${port}/api/update"
+    echo -e "  wget http://${external_host}:${port}/api/update"
     echo -e "  # 也可以直接在浏览器中访问"
     echo ""
     echo -e "${GREEN}  # 获取状态${NC}"
-    echo -e "  curl http://localhost:${port}/api/status"
+    echo -e "  curl http://${external_host}:${port}/api/status"
     echo ""
     echo -e "${GREEN}  # 获取配置列表${NC}"
-    echo -e "  curl http://localhost:${port}/api/configs"
+    echo -e "  curl http://${external_host}:${port}/api/configs"
     echo ""
     echo -e "${GREEN}  # 健康检查${NC}"
-    echo -e "  curl http://localhost:${port}/health"
+    echo -e "  curl http://${external_host}:${port}/health"
     echo ""
     
     echo -e "${WHITE}🎉 优势:${NC}"
@@ -371,7 +373,8 @@ show_service_status() {
             
             # 显示端口信息
             local port=$(grep "PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "3000")
-            echo -e "  访问地址: ${BLUE}http://localhost:${port}${NC}"
+            local external_host=$(grep "EXTERNAL_HOST=" .env 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "localhost")
+            echo -e "  访问地址: ${BLUE}http://${external_host}:${port}${NC}"
             
             # 检查端口是否被监听
             if command -v netstat >/dev/null 2>&1; then
