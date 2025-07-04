@@ -5,11 +5,13 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { SingBoxService } from './singBoxService';
 import { MihomoService } from './mihomoService';
+import { YamlService } from './yamlService';
 
 export class SubscriptionService {
     private static instance: SubscriptionService;
     private singBoxService: SingBoxService;
     private mihomoService: MihomoService;
+    private yamlService: YamlService;
     
     public static getInstance(): SubscriptionService {
         if (!SubscriptionService.instance) {
@@ -21,6 +23,7 @@ export class SubscriptionService {
     constructor() {
         this.singBoxService = SingBoxService.getInstance();
         this.mihomoService = MihomoService.getInstance();
+        this.yamlService = YamlService.getInstance();
     }
 
     /**
@@ -121,7 +124,7 @@ export class SubscriptionService {
 
             logger.info(`订阅文件已保存: ${subscriptionFile}`);
 
-            // 生成Clash配置
+            // 生成Clash配置 - 通过 mihomoService 生成 YAML
             let clashGenerated = false;
             let clashError: string | null = null;
             try {
@@ -133,99 +136,21 @@ export class SubscriptionService {
                     throw new Error('Mihomo服务不可用，请检查服务是否启动');
                 }
                 
-                const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
-                logger.info(`开始生成Clash配置，使用订阅URL: ${localSubscriptionUrl}`);
+                logger.info(`开始生成Clash配置，使用订阅内容直接转换，内容长度: ${subscriptionContent.length} 字符`);
                 
-                let clashContent: string;
+                // 使用 mihomoService 将订阅内容转换为 Clash 配置
+                const clashContent = await this.mihomoService.convertToClashByContent(subscriptionContent);
                 
-                // 首先尝试直接使用订阅内容转换（避免网络访问问题）
-                try {
-                    // 使用原始的订阅内容（非base64编码）
-                    logger.info(`开始直接内容转换，内容长度: ${subscriptionContent.length} 字符`);
-                    logger.info(`内容协议统计: ${JSON.stringify(protocolStats, null, 2)}`);
-                    
-                    clashContent = await this.mihomoService.convertToClashByContent(subscriptionContent);
-                    
-                    // 验证转换结果
-                    if (clashContent && clashContent.includes('proxies:')) {
-                        const proxyMatches = clashContent.match(/- name:/g);
-                        const proxyCount = proxyMatches ? proxyMatches.length : 0;
-                        logger.info(`使用订阅内容直接转换成功，生成 ${proxyCount} 个代理节点`);
-                        
-                        // 详细分析转换结果
-                        const lines = clashContent.split('\n');
-                        const outputProtocols: { [key: string]: number } = {};
-                        
-                        for (const line of lines) {
-                            const trimmedLine = line.trim();
-                            if (trimmedLine.startsWith('type:')) {
-                                const type = trimmedLine.replace('type:', '').trim();
-                                outputProtocols[type] = (outputProtocols[type] || 0) + 1;
-                            }
-                        }
-                        
-                        logger.info(`Clash输出协议分布: ${JSON.stringify(outputProtocols, null, 2)}`);
-                        
-                        // 检查是否所有协议都被转换
-                        const totalInputNodes = Object.values(protocolStats).reduce((sum, count) => sum + count, 0);
-                        if (proxyCount < totalInputNodes) {
-                            logger.warn(`转换节点数量不匹配: 输入 ${totalInputNodes} 个，输出 ${proxyCount} 个`);
-                            logger.warn(`输入协议: ${JSON.stringify(protocolStats)}`);
-                            logger.warn(`输出协议: ${JSON.stringify(outputProtocols)}`);
-                            
-                            // 检查哪些协议可能被忽略
-                            for (const [inputProtocol, inputCount] of Object.entries(protocolStats)) {
-                                const found = Object.keys(outputProtocols).some(outputType => 
-                                    outputType.toLowerCase().includes(inputProtocol.toLowerCase()) ||
-                                    inputProtocol.toLowerCase().includes(outputType.toLowerCase())
-                                );
-                                
-                                if (!found) {
-                                    logger.error(`协议 ${inputProtocol} (${inputCount}个) 可能未被转换或不受支持`);
-                                }
-                            }
-                            
-                            // 输出部分转换内容用于调试
-                            logger.warn(`Clash配置预览 (前1000字符): ${clashContent.substring(0, 1000)}`);
-                        }
-                    } else {
-                        throw new Error('转换结果不包含有效的代理配置');
-                    }
-                } catch (contentError: any) {
-                    logger.warn(`直接内容转换失败: ${contentError.message}，尝试使用URL方式`);
-                    logger.warn(`输入内容预览: ${subscriptionContent.substring(0, 200)}...`);
-                    
-                    // 如果直接内容转换失败，回退到 URL 方式
-                    // 优先使用 Nginx 代理端口（通常可用）
-                    const proxyPort = process.env.NGINX_PROXY_PORT || '3888';
-                    const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-                    let subscriptionUrl = `http://${externalHost}:${proxyPort}/subscription.txt`;
-                    
-                    try {
-                        const axios = require('axios');
-                        await axios.get(subscriptionUrl, { timeout: 3000 });
-                        logger.info(`使用外部代理URL: ${subscriptionUrl}`);
-                    } catch (proxyError: any) {
-                        // 如果代理端口也不行，尝试原来的静态文件端口
-                        const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
-                        try {
-                            const axios2 = require('axios');
-                            await axios2.get(localSubscriptionUrl, { timeout: 3000 });
-                            subscriptionUrl = localSubscriptionUrl;
-                            logger.info(`回退到本地静态URL: ${subscriptionUrl}`);
-                        } catch (localError: any) {
-                            logger.warn(`代理端口错误: ${proxyError.message}, 本地端口错误: ${localError.message}`);
-                            logger.info(`使用外部代理URL: ${subscriptionUrl}`);
-                        }
-                    }
-                    
-                    clashContent = await this.mihomoService.convertToClash(subscriptionUrl);
+                // 验证转换结果
+                if (!clashContent || !clashContent.includes('proxies:')) {
+                    throw new Error('转换结果不包含有效的代理配置');
                 }
                 
-                if (!clashContent || clashContent.trim().length === 0) {
-                    throw new Error('转换返回空内容');
-                }
+                const proxyMatches = clashContent.match(/- name:/g);
+                const proxyCount = proxyMatches ? proxyMatches.length : 0;
+                logger.info(`使用 mihomo 转换成功，生成 ${proxyCount} 个代理节点`);
                 
+                // 保存 Clash 配置文件
                 const clashFile = path.join(config.staticDir, config.clashFilename);
                 await fs.writeFile(clashFile, clashContent, 'utf8');
                 
@@ -358,189 +283,48 @@ export class SubscriptionService {
     }
 
     /**
-     * 诊断 Clash 配置生成问题
+     * 生成 YAML 文件
+     * 使用 yamlService 生成指定的 YAML 配置文件
      */
-    async diagnoseClashGeneration(): Promise<any> {
-        const diagnosis: any = {
-            timestamp: new Date().toISOString(),
-            checks: {}
-        };
-
+    async generateYamlFile(templatePath: string, outputPath: string): Promise<boolean> {
         try {
-            // 1. 检查文件存在性
-            const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
-            const clashFile = path.join(config.staticDir, config.clashFilename);
+            logger.info(`开始生成 YAML 文件: ${outputPath}`);
             
-            diagnosis.checks.subscriptionFileExists = await fs.pathExists(subscriptionFile);
-            diagnosis.checks.clashFileExists = await fs.pathExists(clashFile);
+            const result = this.yamlService.generateConfig(templatePath, outputPath);
             
-            if (diagnosis.checks.subscriptionFileExists) {
-                const stats = await fs.stat(subscriptionFile);
-                diagnosis.checks.subscriptionFileSize = stats.size;
-                diagnosis.checks.subscriptionLastModified = stats.mtime.toISOString();
+            if (result) {
+                logger.info(`YAML 文件生成成功: ${outputPath}`);
+            } else {
+                logger.error(`YAML 文件生成失败: ${outputPath}`);
             }
             
-            if (diagnosis.checks.clashFileExists) {
-                const stats = await fs.stat(clashFile);
-                diagnosis.checks.clashFileSize = stats.size;
-                diagnosis.checks.clashLastModified = stats.mtime.toISOString();
-            }
-
-            // 2. 检查 mihomo 服务
-            diagnosis.checks.mihomoHealthy = await this.mihomoService.checkHealth();
-            
-            if (diagnosis.checks.mihomoHealthy) {
-                try {
-                    const versionInfo = await this.mihomoService.getVersion();
-                    diagnosis.checks.mihomoVersion = versionInfo?.version || 'unknown';
-                } catch (error) {
-                    diagnosis.checks.mihomoVersionError = (error as Error).message;
-                }
-            }
-
-            // 3. 检查订阅 URL 访问（测试多个端点）
-            const localSubscriptionUrl = `http://localhost:${config.nginxPort}/subscription.txt`;
-            const proxyPort = process.env.NGINX_PROXY_PORT || '3888';
-            const externalHost = process.env.EXTERNAL_HOST || 'localhost';
-            const externalSubscriptionUrl = `http://${externalHost}:${proxyPort}/subscription.txt`;
-            
-            diagnosis.checks.localSubscriptionUrl = localSubscriptionUrl;
-            diagnosis.checks.externalSubscriptionUrl = externalSubscriptionUrl;
-            
-            // 测试本地 URL
-            try {
-                const axios = require('axios');
-                const response = await axios.get(localSubscriptionUrl, { timeout: 5000 });
-                diagnosis.checks.localSubscriptionAccessible = true;
-                diagnosis.checks.localSubscriptionStatus = response.status;
-                diagnosis.checks.localSubscriptionContentLength = response.data ? response.data.length : 0;
-            } catch (error: any) {
-                diagnosis.checks.localSubscriptionAccessible = false;
-                diagnosis.checks.localSubscriptionError = error.message;
-            }
-            
-            // 测试外部代理 URL
-            try {
-                const axios = require('axios');
-                const response = await axios.get(externalSubscriptionUrl, { timeout: 5000 });
-                diagnosis.checks.externalSubscriptionAccessible = true;
-                diagnosis.checks.externalSubscriptionStatus = response.status;
-                diagnosis.checks.externalSubscriptionContentLength = response.data ? response.data.length : 0;
-            } catch (error: any) {
-                diagnosis.checks.externalSubscriptionAccessible = false;
-                diagnosis.checks.externalSubscriptionError = error.message;
-            }
-
-            // 4. 如果 mihomo 可用，尝试转换
-            if (diagnosis.checks.mihomoHealthy) {
-                // 优先使用外部代理 URL 进行测试
-                const testUrl = diagnosis.checks.externalSubscriptionAccessible ? 
-                    externalSubscriptionUrl : localSubscriptionUrl;
-                
-                try {
-                    const clashContent = await this.mihomoService.convertToClash(testUrl);
-                    diagnosis.checks.conversionTest = {
-                        success: true,
-                        testUrl: testUrl,
-                        contentLength: clashContent ? clashContent.length : 0,
-                        hasContent: clashContent && clashContent.trim().length > 0
-                    };
-                } catch (error: any) {
-                    diagnosis.checks.conversionTest = {
-                        success: false,
-                        testUrl: testUrl,
-                        error: error.message
-                    };
-                    
-                    // 如果URL转换失败，尝试直接内容转换
-                    if (diagnosis.checks.subscriptionFileExists) {
-                        try {
-                            const rawFile = path.join(config.staticDir, 'raw.txt');
-                            if (await fs.pathExists(rawFile)) {
-                                const rawContent = await fs.readFile(rawFile, 'utf8');
-                                const directClashContent = await this.mihomoService.convertToClashByContent(rawContent);
-                                diagnosis.checks.directContentConversionTest = {
-                                    success: true,
-                                    contentLength: directClashContent ? directClashContent.length : 0,
-                                    hasContent: directClashContent && directClashContent.trim().length > 0
-                                };
-                            }
-                        } catch (directError: any) {
-                            diagnosis.checks.directContentConversionTest = {
-                                success: false,
-                                error: directError.message
-                            };
-                        }
-                    }
-                }
-            }
-
-            // 5. 检查目录权限
-            try {
-                const testFile = path.join(config.staticDir, '.test_write');
-                await fs.writeFile(testFile, 'test', 'utf8');
-                await fs.remove(testFile);
-                diagnosis.checks.directoryWritable = true;
-            } catch (error: any) {
-                diagnosis.checks.directoryWritable = false;
-                diagnosis.checks.directoryWriteError = error.message;
-            }
-
-            return diagnosis;
+            return result;
         } catch (error: any) {
-            diagnosis.error = error.message;
-            return diagnosis;
+            logger.error(`生成 YAML 文件失败: ${error.message}`);
+            return false;
         }
     }
 
     /**
-     * 测试单个节点or多个节点的转换 - 使用 mihomo
+     * 验证 YAML 文件
+     * 使用 yamlService 验证 YAML 配置文件语法
      */
-    async testSingleNodeConversion(nodeContent: string): Promise<string> {
-        return await this.mihomoService.convertToClashByContent(nodeContent);
-    }
-
-    /**
-     * 检查mihomo服务详细状态
-     */
-    async checkMihomoService(): Promise<{ healthy: boolean; version?: string; error?: string; testResults?: any }> {
-        const result: any = {
-            healthy: false
-        };
-
+    async validateYamlFile(): Promise<boolean> {
         try {
-            // 1. 检查基本健康状态
-            const healthCheck = await this.mihomoService.checkHealth();
-            if (!healthCheck) {
-                result.error = '健康检查失败';
-                return result;
+            logger.info('开始验证 YAML 文件语法');
+            
+            const isValid = this.yamlService.validateConfig();
+            
+            if (isValid) {
+                logger.info('YAML 文件语法验证通过');
+            } else {
+                logger.error('YAML 文件语法验证失败');
             }
-
-            // 2. 尝试获取版本信息
-            try {
-                const versionInfo = await this.mihomoService.getVersion();
-                result.version = versionInfo?.version || 'unknown';
-            } catch (versionError: any) {
-                result.versionError = versionError.message;
-            }
-
-            // 3. 运行测试转换
-            try {
-                const testResult = await this.mihomoService.testConversion();
-                result.testResults = testResult;
-                result.healthy = testResult.success;
-                
-                if (!testResult.success) {
-                    result.error = testResult.message;
-                }
-            } catch (testError: any) {
-                result.error = `测试转换失败: ${testError.message}`;
-            }
-
-            return result;
+            
+            return isValid;
         } catch (error: any) {
-            result.error = error.message;
-            return result;
+            logger.error(`验证 YAML 文件失败: ${error.message}`);
+            return false;
         }
     }
 }

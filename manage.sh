@@ -225,9 +225,13 @@ show_api_help() {
     # 读取端口配置
     local port="3000"
     local external_host="localhost"
-    if [ -f ".env" ]; then
-        port=$(grep "^PORT=" .env | cut -d'=' -f2 | tr -d '"' || echo "3000")
-        external_host=$(grep "^EXTERNAL_HOST=" .env | cut -d'=' -f2 | tr -d '"' || echo "localhost")
+    
+    # 尝试从 config.yaml 读取配置
+    if [ -f "config.yaml" ]; then
+        if command -v yq >/dev/null 2>&1; then
+            port=$(yq eval '.server.port' config.yaml 2>/dev/null || echo "3000")
+            external_host=$(yq eval '.server.external_host' config.yaml 2>/dev/null || echo "localhost")
+        fi
     fi
     
     echo -e "${WHITE}🌐 基础信息:${NC}"
@@ -346,10 +350,10 @@ show_project_overview() {
     fi
     
     # 配置文件
-    if [ -f ".env" ]; then
-        echo -e "${WHITE}配置:${NC} ${GREEN}✅ .env 存在${NC}"
+    if [ -f "config.yaml" ]; then
+        echo -e "${WHITE}配置:${NC} ${GREEN}✅ config.yaml 存在${NC}"
     else
-        echo -e "${WHITE}配置:${NC} ${RED}❌ .env 缺失${NC}"
+        echo -e "${WHITE}配置:${NC} ${RED}❌ config.yaml 缺失${NC}"
     fi
     
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
@@ -372,8 +376,16 @@ show_service_status() {
             echo -e "  详细状态: $(systemctl is-active "$service_name")"
             
             # 显示端口信息
-            local port=$(grep "PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "3000")
-            local external_host=$(grep "EXTERNAL_HOST=" .env 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "localhost")
+            local port="3000"
+            local external_host="localhost"
+            
+            # 尝试从 config.yaml 读取配置
+            if [ -f "config.yaml" ]; then
+                if command -v yq >/dev/null 2>&1; then
+                    port=$(yq eval '.server.port' config.yaml 2>/dev/null || echo "3000")
+                    external_host=$(yq eval '.server.external_host' config.yaml 2>/dev/null || echo "localhost")
+                fi
+            fi
             echo -e "  访问地址: ${BLUE}http://${external_host}:${port}${NC}"
             
             # 检查端口是否被监听

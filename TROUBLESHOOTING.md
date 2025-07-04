@@ -329,7 +329,7 @@ netstat -tlnp | grep -E ":300[0-9]" >> debug-info.txt
 
 ## 🔗 相关资源
 
-- [环境变量配置](./ENVIRONMENT_VARIABLES.md) - 配置说明和环境变量
+- [配置文件说明](./config.yaml.example) - 配置说明和参数详解
 - [项目结构](./PROJECT_STRUCTURE.md) - 文件组织和架构
 - [API 使用帮助](./manage.sh) - 运行 `./manage.sh api-help` 查看详细 API 说明
 

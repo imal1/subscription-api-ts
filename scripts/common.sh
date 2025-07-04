@@ -241,40 +241,215 @@ ensure_dir_exists() {
     fi
 }
 
-# 加载环境变量文件
-load_env_file() {
-    local env_file="${1:-.env}"
+# 检测并安装 yq 工具
+ensure_yq_available() {
+    local project_root="${1:-$(get_project_root)}"
+    local base_dir="${BASE_DIR:-$HOME/.config/subscription}"
+    local bin_dir="$base_dir/bin"
+    local yq_path="$bin_dir/yq"
     
-    if [ -f "$env_file" ]; then
-        print_status "info" "加载环境变量文件: $env_file"
-        # 读取 .env 文件，忽略注释和空行
-        while IFS='=' read -r key value; do
-            # 跳过注释和空行
-            [[ $key =~ ^[[:space:]]*# ]] && continue
-            [[ -z $key ]] && continue
-            
-            # 移除值中的内联注释（# 之后的内容）
-            value="${value%%#*}"
-            
-            # 移除前后空格
-            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            
-            # 移除引号
-            value="${value#\"}"
-            value="${value%\"}"
-            value="${value#\'}"
-            value="${value%\'}"
-            
-            # 再次移除前后空格（防止引号内有空格）
-            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            
-            # 设置环境变量（只有当值不为空时）
-            if [ -n "$value" ]; then
-                export "$key"="$value"
-            fi
-        done < <(grep -v '^[[:space:]]*#' "$env_file" | grep -v '^[[:space:]]*$')
+    # 检查系统是否已安装 yq
+    if command -v yq >/dev/null 2>&1; then
+        print_status "debug" "系统已安装 yq 工具"
+        return 0
+    fi
+    
+    # 检查 BASE_DIR/bin 目录是否有 yq
+    if [ -f "$yq_path" ] && [ -x "$yq_path" ]; then
+        print_status "debug" "BASE_DIR/bin 目录已有 yq 工具"
+        export PATH="$bin_dir:$PATH"
+        return 0
+    fi
+    
+    # 检查项目 bin 目录是否有 yq（向后兼容）
+    local project_yq_path="$project_root/bin/yq"
+    if [ -f "$project_yq_path" ] && [ -x "$project_yq_path" ]; then
+        print_status "debug" "项目 bin 目录已有 yq 工具，正在迁移到 BASE_DIR"
+        mkdir -p "$bin_dir"
+        cp "$project_yq_path" "$yq_path"
+        chmod +x "$yq_path"
+        export PATH="$bin_dir:$PATH"
+        return 0
+    fi
+    
+    print_status "info" "yq 工具不存在，正在下载到 BASE_DIR/bin..."
+    
+    # 创建 bin 目录
+    mkdir -p "$bin_dir"
+    
+    # 检测系统架构
+    local os=$(detect_os)
+    local arch=$(uname -m)
+    local yq_url=""
+    
+    case "$os" in
+        "Linux")
+            case "$arch" in
+                "x86_64"|"amd64")
+                    yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64"
+                    ;;
+                "aarch64"|"arm64")
+                    yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64"
+                    ;;
+                "armv7l")
+                    yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm"
+                    ;;
+                *)
+                    print_status "error" "不支持的 Linux 架构: $arch"
+                    return 1
+                    ;;
+            esac
+            ;;
+        "Mac")
+            case "$arch" in
+                "x86_64"|"amd64")
+                    yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_darwin_amd64"
+                    ;;
+                "arm64")
+                    yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_darwin_arm64"
+                    ;;
+                *)
+                    print_status "error" "不支持的 macOS 架构: $arch"
+                    return 1
+                    ;;
+            esac
+            ;;
+        *)
+            print_status "error" "不支持的操作系统: $os"
+            return 1
+            ;;
+    esac
+    
+    print_status "info" "下载 yq 工具: $yq_url"
+    
+    # 下载 yq
+    if command -v curl >/dev/null 2>&1; then
+        curl -L -o "$yq_path" "$yq_url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -O "$yq_path" "$yq_url"
     else
-        print_status "warning" "环境变量文件不存在: $env_file"
+        print_status "error" "需要 curl 或 wget 来下载 yq 工具"
+        return 1
+    fi
+    
+    # 检查下载是否成功
+    if [ ! -f "$yq_path" ]; then
+        print_status "error" "yq 工具下载失败"
+        return 1
+    fi
+    
+    # 设置执行权限
+    chmod +x "$yq_path"
+    
+    # 验证 yq 工具是否可用
+    if "$yq_path" --version >/dev/null 2>&1; then
+        print_status "success" "yq 工具安装成功"
+        export PATH="$bin_dir:$PATH"
+        return 0
+    else
+        print_status "error" "yq 工具安装后无法执行"
+        rm -f "$yq_path"
+        return 1
+    fi
+}
+
+# YAML 配置解析说明：
+# 该脚本使用 yq 工具解析 YAML 配置文件
+# yq 工具会自动下载到 bin/yq（如果系统未安装）
+# 支持 Linux/macOS 多架构自动检测下载
+
+# 加载 YAML 配置文件（更高效的版本）
+load_yaml_config() {
+    local config_file="${1:-config.yaml}"
+    
+    if [ ! -f "$config_file" ]; then
+        print_status "warning" "YAML 配置文件不存在: $config_file"
+        return 1
+    fi
+    
+    print_status "info" "加载 YAML 配置文件: $config_file"
+    
+    # 确保 yq 工具可用
+    local project_root=$(get_project_root)
+    local base_dir="${BASE_DIR:-$HOME/.config/subscription}"
+    
+    if ! command -v yq >/dev/null 2>&1; then
+        if ! ensure_yq_available "$project_root"; then
+            print_status "error" "无法获取 yq 工具，无法解析 YAML 配置"
+            return 1
+        fi
+    fi
+    
+    # 如果 yq 在 BASE_DIR/bin 目录，确保 PATH 包含该目录
+    if [ -f "$base_dir/bin/yq" ] && [ -x "$base_dir/bin/yq" ]; then
+        export PATH="$base_dir/bin:$PATH"
+    # 向后兼容：如果 yq 在项目 bin 目录，确保 PATH 包含该目录
+    elif [ -f "$project_root/bin/yq" ] && [ -x "$project_root/bin/yq" ]; then
+        export PATH="$project_root/bin:$PATH"
+    fi
+    
+    # 使用 yq 逐个读取配置（更加可靠的方式）
+    print_status "debug" "使用 yq 工具解析 YAML"
+    
+    export APP_NAME=$(yq eval '.app.name' "$config_file" 2>/dev/null | sed 's/null//')
+    export APP_VERSION=$(yq eval '.app.version' "$config_file" 2>/dev/null | sed 's/null//')
+    export PORT=$(yq eval '.app.port' "$config_file" 2>/dev/null | sed 's/null//')
+    export NODE_ENV=$(yq eval '.app.environment' "$config_file" 2>/dev/null | sed 's/null//')
+    
+    export SING_BOX_CONFIGS=$(yq eval '.protocols.sing_box_configs | join(",")' "$config_file" 2>/dev/null | sed 's/null//')
+    export MIHOMO_PATH=$(yq eval '.binaries.mihomo_path' "$config_file" 2>/dev/null | sed 's/null//')
+    export BUN_PATH=$(yq eval '.binaries.bun_path' "$config_file" 2>/dev/null | sed 's/null//')
+    
+    export BASE_DIR=$(yq eval '.directories.base_dir' "$config_file" 2>/dev/null | sed 's/null//')
+    export DATA_DIR=$(yq eval '.directories.data_dir' "$config_file" 2>/dev/null | sed 's/null//')
+    export LOG_DIR=$(yq eval '.directories.log_dir' "$config_file" 2>/dev/null | sed 's/null//')
+    export BACKUP_DIR=$(yq eval '.directories.backup_dir' "$config_file" 2>/dev/null | sed 's/null//')
+    export DIST_DIR=$(yq eval '.directories.dist_dir' "$config_file" 2>/dev/null | sed 's/null//')
+    
+    export AUTO_UPDATE_CRON=$(yq eval '.automation.auto_update_cron' "$config_file" 2>/dev/null | sed 's/null//')
+    export NGINX_PORT=$(yq eval '.network.nginx_port' "$config_file" 2>/dev/null | sed 's/null//')
+    export NGINX_PROXY_PORT=$(yq eval '.network.nginx_proxy_port' "$config_file" 2>/dev/null | sed 's/null//')
+    export MAX_RETRIES=$(yq eval '.network.max_retries' "$config_file" 2>/dev/null | sed 's/null//')
+    export REQUEST_TIMEOUT=$(yq eval '.network.request_timeout' "$config_file" 2>/dev/null | sed 's/null//')
+    
+    export EXTERNAL_HOST=$(yq eval '.external.host' "$config_file" 2>/dev/null | sed 's/null//')
+    export CORS_ORIGIN=$(yq eval '.cors.origin' "$config_file" 2>/dev/null | sed 's/null//')
+    export LOG_LEVEL=$(yq eval '.logging.level' "$config_file" 2>/dev/null | sed 's/null//')
+    
+    # 验证是否成功读取了一些关键配置
+    if [ -n "$APP_NAME" ] || [ -n "$PORT" ]; then
+        print_status "success" "YAML 配置加载成功"
+        return 0
+    else
+        print_status "error" "YAML 配置解析失败，请检查配置文件格式"
+        return 1
+    fi
+}
+
+# 加载 YAML 配置文件
+load_config() {
+    local config_loaded=false
+    local project_root="${PROJECT_ROOT:-$(get_project_root)}"
+    local base_dir="${BASE_DIR:-$HOME/.config/subscription}"
+    local config_file="$base_dir/config.yaml"
+    
+    # 尝试加载 BASE_DIR 的 YAML 配置
+    if [ -f "$config_file" ]; then
+        if load_yaml_config "$config_file"; then
+            config_loaded=true
+        fi
+    # 向后兼容：如果 BASE_DIR 没有配置文件，尝试项目根目录
+    elif [ -f "$project_root/config.yaml" ]; then
+        print_status "warning" "在项目根目录找到 config.yaml，建议迁移到 $base_dir/config.yaml"
+        if load_yaml_config "$project_root/config.yaml"; then
+            config_loaded=true
+        fi
+    fi
+    
+    if [ "$config_loaded" = false ]; then
+        print_status "error" "未找到配置文件: $config_file"
+        print_status "info" "请确保配置文件存在于: $config_file"
+        return 1
     fi
 }
 
@@ -393,52 +568,43 @@ read_package_name() {
     fi
 }
 
-# 更新 .env 文件中的版本信息
-update_env_version() {
-    local env_file="${1:-.env}"
+# 更新 YAML 配置文件中的版本信息
+update_yaml_version() {
+    local config_file="${1:-config.yaml}"
     local project_root="${2:-$(get_project_root)}"
-    local env_path="$project_root/$env_file"
+    local config_path="$project_root/$config_file"
     
     # 读取 package.json 中的版本和名称
     local version=$(read_package_version "package.json" "$project_root")
     local name=$(read_package_name "package.json" "$project_root")
     
-    print_status "info" "更新 .env 文件中的版本信息..."
+    print_status "info" "更新 YAML 配置文件中的版本信息..."
     print_status "info" "应用名称: $name"
     print_status "info" "应用版本: $version"
     
-    # 创建临时文件来处理 .env 更新
-    local temp_env=$(mktemp)
-    local version_updated=false
-    local name_updated=false
-    
-    # 如果 .env 文件存在，读取并更新
-    if [ -f "$env_path" ]; then
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^APP_VERSION= ]]; then
-                echo "APP_VERSION=$version" >> "$temp_env"
-                version_updated=true
-            elif [[ "$line" =~ ^APP_NAME= ]]; then
-                echo "APP_NAME=$name" >> "$temp_env"
-                name_updated=true
-            else
-                echo "$line" >> "$temp_env"
-            fi
-        done < "$env_path"
+    if [ -f "$config_path" ] && [ -f "$yq_path" ]; then
+        # 使用 yq 工具更新 YAML 文件
+        print_status "info" "使用 yq 工具更新配置文件版本..."
+        
+        # 更新版本
+        "$yq_path" eval '.app.version = "'$version'"' -i "$config_path"
+        
+        # 更新名称
+        "$yq_path" eval '.app.name = "'$name'"' -i "$config_path"
+        
+        print_status "success" "已更新 YAML 配置文件: version=$version, name=$name"
+    else
+        print_status "warning" "无法更新 YAML 配置文件（文件不存在或缺少 yq 工具）"
     fi
+}
+
+# 更新配置文件中的版本信息
+update_config_version() {
+    local project_root="${1:-$(get_project_root)}"
     
-    # 如果没有找到版本行，添加新行
-    if [ "$version_updated" = false ]; then
-        echo "APP_VERSION=$version" >> "$temp_env"
+    if [ -f "$project_root/config.yaml" ]; then
+        update_yaml_version "config.yaml" "$project_root"
     fi
-    if [ "$name_updated" = false ]; then
-        echo "APP_NAME=$name" >> "$temp_env"
-    fi
-    
-    # 移动临时文件到目标位置
-    mv "$temp_env" "$env_path"
-    
-    print_status "success" "已更新 .env 文件: APP_VERSION=$version, APP_NAME=$name"
 }
 
 # 显示版本信息

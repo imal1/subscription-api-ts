@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/common.sh"
 show_header "Nginx 配置"
 
 # 加载环境变量
-load_env_file "$PROJECT_ROOT/.env"
+load_config
 
 # 检测操作系统
 OS=$(detect_os)

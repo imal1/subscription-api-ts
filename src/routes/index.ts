@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { SubscriptionController } from "../controllers/subscriptionController";
+import yamlRoutes from "./yaml";
 
 const router = Router();
 const subscriptionController = new SubscriptionController();
+
+// YAML 解析服务（统一配置解析接口）
+router.use("/api/yaml", yamlRoutes);
 
 // API文档
 router.get("/", subscriptionController.index);
@@ -17,7 +21,6 @@ router.get("/api/configs", subscriptionController.getConfigs);
 router.post("/api/configs", subscriptionController.updateConfigs);
 
 // 诊断
-router.get("/api/diagnose/clash", subscriptionController.diagnoseClash);
 router.get("/api/diagnose/mihomo", subscriptionController.checkMihomo);
 router.get(
   "/api/test/protocols",

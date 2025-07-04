@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/common.sh"
 show_header "二进制文件安装"
 
 # 加载环境变量
-load_env_file "$PROJECT_ROOT/.env"
+load_config
 
 # 检测操作系统和架构
 OS=$(detect_os)

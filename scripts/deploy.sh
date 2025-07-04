@@ -78,7 +78,7 @@ deploy_project() {
         print_status "success" "服务部署成功！"
         
         # 显示服务信息
-        load_env_file "$PROJECT_ROOT/.env"
+        load_config
         local api_port="${PORT:-3000}"
         local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
         local external_host="${EXTERNAL_HOST:-localhost}"

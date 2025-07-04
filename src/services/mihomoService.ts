@@ -3,7 +3,6 @@ import * as fs from 'fs-extra';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
-import * as yaml from 'js-yaml';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 
@@ -27,8 +26,8 @@ export class MihomoService {
     private configPath: string;
 
     private constructor() {
-        // 从环境变量读取 mihomo 路径，默认为 $HOME/.config/subscription/bin
-        const basePath = process.env.MIHOMO_PATH || path.join(os.homedir(), '.config', 'subscription', 'mihomo');
+        // 使用默认路径
+        const basePath = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
         this.mihomoPath = path.join(basePath, 'mihomo');
         this.configPath = path.join(basePath, 'config.yaml');
         
@@ -681,17 +680,70 @@ export class MihomoService {
             ]
         };
 
-        return `# Clash 配置文件
+        return this.convertObjectToYaml(clashConfig, proxies.length);
+    }
+    
+    /**
+     * 将配置对象转换为 YAML 字符串
+     */
+    private convertObjectToYaml(config: any, proxyCount: number): string {
+        try {
+            // 创建临时 JSON 文件
+            const tempJsonPath = path.join(path.dirname(this.configPath), 'temp-config.json');
+            fs.writeFileSync(tempJsonPath, JSON.stringify(config, null, 2));
+            
+            try {
+                // 获取 yq 工具路径
+                const yqPath = this.getYqPath();
+                
+                // 使用 yq 将 JSON 转换为 YAML
+                const yamlResult = execSync(`${yqPath} eval -P '.' "${tempJsonPath}"`, {
+                    encoding: 'utf8',
+                    timeout: 10000
+                });
+                
+                // 添加注释头
+                const header = `# Clash 配置文件
 # 由 subscription-api-ts 使用 mihomo 内核生成
 # 生成时间: ${new Date().toISOString()}
-# 节点数量: ${proxies.length}
+# 节点数量: ${proxyCount}
 
-${yaml.dump(clashConfig, { 
-    flowLevel: -1, 
-    styles: { 
-        '!!null': 'canonical' 
-    } 
-})}`;
+`;
+                
+                return header + yamlResult;
+            } finally {
+                // 清理临时文件
+                if (fs.existsSync(tempJsonPath)) {
+                    fs.removeSync(tempJsonPath);
+                }
+            }
+        } catch (error) {
+            logger.error('转换配置为 YAML 失败:', error);
+            throw new Error('配置转换失败');
+        }
+    }
+    
+    /**
+     * 获取 yq 工具路径
+     */
+    private getYqPath(): string {
+        const baseDir = path.join(os.homedir(), '.config', 'subscription');
+        const yqPath = path.join(baseDir, 'bin', 'yq');
+        
+        // 检查 BASE_DIR/bin/yq 是否存在
+        if (fs.existsSync(yqPath)) {
+            return yqPath;
+        }
+        
+        // 向后兼容：检查项目根目录的 bin/yq
+        const projectRoot = path.resolve(__dirname, '../../');
+        const fallbackYqPath = path.join(projectRoot, 'bin', 'yq');
+        if (fs.existsSync(fallbackYqPath)) {
+            return fallbackYqPath;
+        }
+        
+        // 最后尝试系统 yq
+        return 'yq';
     }
 
     /**

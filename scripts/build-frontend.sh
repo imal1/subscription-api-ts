@@ -16,8 +16,8 @@ source "$SCRIPT_DIR/common.sh"
 # 显示标题
 show_header "前端构建"
 
-# 加载环境变量
-load_env_file "$PROJECT_ROOT/.env"
+# 加载配置
+load_config
 
 # 检测操作系统
 OS=$(detect_os)

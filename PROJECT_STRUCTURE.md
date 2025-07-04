@@ -45,8 +45,7 @@ subscription-api-ts/
 ├── logs/                             # Log files (runtime)
 ├── dist/                             # Compiled output (generated)
 ├── node_modules/                     # Dependencies (generated)
-├── .env                              # Environment variables (local)
-├── .env.example                      # Environment template
+├── config.yaml.example              # Configuration template
 ├── .gitignore                        # Git ignore rules
 ├── package.json                      # Node.js package definition
 ├── package-lock.json                # Dependency lock file
@@ -54,7 +53,7 @@ subscription-api-ts/
 ├── tsconfig.json                     # TypeScript configuration
 ├── README.md                         # Project documentation
 ├── LICENSE                           # License file
-├── ENVIRONMENT_VARIABLES.md          # Environment variables docs
+├── config.yaml.example              # Configuration template
 └── PROJECT_STRUCTURE.md              # This file
 ```
 

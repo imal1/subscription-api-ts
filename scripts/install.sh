@@ -56,23 +56,23 @@ setup_default_env() {
 # 清理旧配置
 cleanup_old_config() {
     print_status "info" "清理旧配置文件..."
-    
-    # 检查 .env 文件是否存在，如果存在则询问用户
-    if [ -f "$PROJECT_ROOT/.env" ]; then
-        print_status "warning" "发现现有的 .env 配置文件"
+
+    # 检查 config.yaml 文件是否存在，如果存在则询问用户
+    if [ -f "$BASE_DIR/config.yaml" ]; then
+        print_status "warning" "发现现有的 config.yaml 配置文件"
         echo ""
         echo "删除现有配置文件将重置所有自定义设置为默认值。"
         echo "如果你有重要的自定义配置，请先手动备份。"
         echo ""
         
-        read -p "是否删除现有的 .env 文件并创建新配置？(y/N): " -n 1 -r
+        read -p "是否删除现有的 config.yaml 文件并创建新配置？(y/N): " -n 1 -r
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -f "$PROJECT_ROOT/.env"
-            print_status "success" ".env 文件已删除，将创建新的配置文件"
+            rm -f "$BASE_DIR/config.yaml"
+            print_status "success" "config.yaml 文件已删除，将创建新的配置文件"
         else
-            print_status "info" "保留现有的 .env 文件"
+            print_status "info" "保留现有的 config.yaml 文件"
             print_status "warning" "注意: 现有配置可能与新版本不兼容，如遇问题请手动更新配置"
         fi
     fi
@@ -93,60 +93,117 @@ cleanup_old_config() {
     print_status "success" "旧配置清理完成"
 }
 
-# 创建环境配置文件
-create_env_config() {
-    print_status "info" "创建环境配置文件..."
+# 创建 YAML 配置文件
+create_yaml_config() {
+    print_status "info" "创建 YAML 配置文件..."
     
-    if [ ! -f "$PROJECT_ROOT/.env" ]; then
-        if [ -f "$PROJECT_ROOT/.env.example" ]; then
-            cp "$PROJECT_ROOT/.env.example" "$PROJECT_ROOT/.env"
+    local config_path="$BASE_DIR/config.yaml"
+    
+    if [ ! -f "$config_path" ]; then
+        # 确保 BASE_DIR 存在
+        mkdir -p "$BASE_DIR"
+        
+        if [ -f "$PROJECT_ROOT/config.yaml.example" ]; then
+            cp "$PROJECT_ROOT/config.yaml.example" "$config_path"
             
-            # 根据操作系统调整配置文件中的路径
-            if [ "$OS" = "Linux" ]; then
-                sed -i "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i "s|DIST_DIR=.*|DIST_DIR=${DIST_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_PATH}|g" "$PROJECT_ROOT/.env"
-                sed -i "s|BUN_PATH=.*|BUN_PATH=${BUN_PATH}|g" "$PROJECT_ROOT/.env"
-            elif [ "$OS" = "Mac" ]; then
-                sed -i '' "s|BASE_DIR=.*|BASE_DIR=${BASE_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i '' "s|DATA_DIR=.*|DATA_DIR=${DATA_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i '' "s|LOG_DIR=.*|LOG_DIR=${LOG_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i '' "s|DIST_DIR=.*|DIST_DIR=${DIST_DIR}|g" "$PROJECT_ROOT/.env"
-                sed -i '' "s|MIHOMO_PATH=.*|MIHOMO_PATH=${MIHOMO_PATH}|g" "$PROJECT_ROOT/.env"
-                sed -i '' "s|BUN_PATH=.*|BUN_PATH=${BUN_PATH}|g" "$PROJECT_ROOT/.env"
+            # 使用 yq 工具更新 YAML 配置文件
+            if [ -f "$yq_path" ]; then
+                print_status "info" "使用 yq 工具更新配置文件..."
+                
+                # 更新配置
+                if [ -n "$BASE_DIR" ]; then
+                    "$yq_path" eval '.directories.base_dir = "'$BASE_DIR'"' -i "$config_path"
+                fi
+                if [ -n "$DATA_DIR" ]; then
+                    "$yq_path" eval '.directories.data_dir = "'$DATA_DIR'"' -i "$config_path"
+                fi
+                if [ -n "$LOG_DIR" ]; then
+                    "$yq_path" eval '.directories.log_dir = "'$LOG_DIR'"' -i "$config_path"
+                fi
+                if [ -n "$DIST_DIR" ]; then
+                    "$yq_path" eval '.directories.dist_dir = "'$DIST_DIR'"' -i "$config_path"
+                fi
+                if [ -n "$MIHOMO_PATH" ]; then
+                    "$yq_path" eval '.binaries.mihomo_path = "'$MIHOMO_PATH'"' -i "$config_path"
+                fi
+                if [ -n "$BUN_PATH" ]; then
+                    "$yq_path" eval '.binaries.bun_path = "'$BUN_PATH'"' -i "$config_path"
+                fi
+                
+                # 更新版本信息
+                update_config_version
+                
+                print_status "success" "YAML 配置文件已创建并更新到 $config_path"
+            else
+                print_status "warning" "未找到 yq 工具，无法自动更新 YAML 配置文件"
+                print_status "info" "请手动编辑 $config_path 文件"
             fi
-            
-            print_status "success" "环境配置文件创建完成"
         else
-            print_status "warning" "未找到 .env.example 文件"
+            print_status "error" "找不到 config.yaml.example 文件"
+            return 1
         fi
     else
-        print_status "info" "使用现有的 .env 配置文件"
+        print_status "warning" "发现现有的 config.yaml 配置文件"
+        echo ""
+        echo "删除现有配置文件将重置所有自定义设置为默认值。"
+        echo "如果你有重要的自定义配置，请先手动备份。"
+        echo ""
         
-        # 验证现有配置文件是否包含必要的变量
-        local required_vars=("BASE_DIR" "DATA_DIR" "LOG_DIR" "DIST_DIR")
-        local missing_vars=()
+        read -p "是否删除现有配置文件并创建新的配置？(y/N): " -n 1 -r
+        echo
         
-        for var in "${required_vars[@]}"; do
-            if ! grep -q "^${var}=" "$PROJECT_ROOT/.env"; then
-                missing_vars+=("$var")
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -f "$config_path"
+            print_status "success" "现有配置文件已删除，将创建新的配置文件"
+            
+            # 创建新的配置文件
+            if [ -f "$PROJECT_ROOT/config.yaml.example" ]; then
+                cp "$PROJECT_ROOT/config.yaml.example" "$config_path"
+                
+                # 使用 yq 工具更新 YAML 配置文件
+                if [ -f "$yq_path" ]; then
+                    print_status "info" "使用 yq 工具更新配置文件..."
+                    
+                    # 更新配置
+                    if [ -n "$BASE_DIR" ]; then
+                        "$yq_path" eval '.directories.base_dir = "'$BASE_DIR'"' -i "$config_path"
+                    fi
+                    if [ -n "$DATA_DIR" ]; then
+                        "$yq_path" eval '.directories.data_dir = "'$DATA_DIR'"' -i "$config_path"
+                    fi
+                    if [ -n "$LOG_DIR" ]; then
+                        "$yq_path" eval '.directories.log_dir = "'$LOG_DIR'"' -i "$config_path"
+                    fi
+                    if [ -n "$DIST_DIR" ]; then
+                        "$yq_path" eval '.directories.dist_dir = "'$DIST_DIR'"' -i "$config_path"
+                    fi
+                    if [ -n "$MIHOMO_PATH" ]; then
+                        "$yq_path" eval '.binaries.mihomo_path = "'$MIHOMO_PATH'"' -i "$config_path"
+                    fi
+                    if [ -n "$BUN_PATH" ]; then
+                        "$yq_path" eval '.binaries.bun_path = "'$BUN_PATH'"' -i "$config_path"
+                    fi
+                    
+                    # 更新版本信息
+                    update_config_version
+                    
+                    print_status "success" "YAML 配置文件已创建并更新到 $config_path"
+                else
+                    print_status "warning" "未找到 yq 工具，无法自动更新 YAML 配置文件"
+                    print_status "info" "请手动编辑 $config_path 文件"
+                fi
+            else
+                print_status "error" "找不到 config.yaml.example 文件"
+                return 1
             fi
-        done
-        
-        if [ ${#missing_vars[@]} -gt 0 ]; then
-            print_status "warning" "检测到缺少的环境变量: ${missing_vars[*]}"
-            print_status "info" "建议手动检查并更新 .env 文件，或重新运行安装脚本并选择删除现有配置"
         else
-            print_status "success" "现有配置文件验证通过"
+            print_status "info" "保留现有配置文件"
+            print_status "warning" "注意: 现有配置可能与新版本不兼容，如遇问题请手动更新配置"
         fi
     fi
-    
-    # 在 .env 文件创建或验证完成后，更新版本信息
-    print_status "info" "更新环境变量中的版本信息..."
-    update_env_version ".env" "$PROJECT_ROOT"
 }
+
+
 
 # 执行安装步骤
 run_install_step() {
@@ -186,8 +243,8 @@ run_optional_step() {
 
 # 显示安装完成信息
 show_completion_info() {
-    # 加载环境变量
-    load_env_file "$PROJECT_ROOT/.env"
+    # 加载配置
+    load_config
     
     # 设置主机地址
     local external_host="${EXTERNAL_HOST:-localhost}"
@@ -235,7 +292,7 @@ show_completion_info() {
     
     echo ""
     print_status "info" "📋 配置文件："
-    echo "   环境配置: $PROJECT_ROOT/.env"
+    echo "   YAML 配置: $BASE_DIR/config.yaml"
     echo "   数据目录: $DATA_DIR"
     echo "   日志目录: $LOG_DIR"
     echo "   构建目录: $DIST_DIR"
@@ -245,7 +302,7 @@ show_completion_info() {
     echo "   如遇到问题，请检查："
     echo "   1. 权限问题: bash scripts/verify-permissions.sh"
     echo "   2. 服务日志: journalctl -u subscription-api-ts -f"
-    echo "   3. 环境配置: cat $PROJECT_ROOT/.env"
+    echo "   3. 配置文件: cat $BASE_DIR/config.yaml"
     echo "   4. 端口占用: netstat -tlnp | grep :$NGINX_PROXY_PORT"
 }
 
@@ -274,8 +331,8 @@ main() {
     
     print_status "success" "环境设置和目录创建 完成"
     
-    # 创建环境配置文件
-    create_env_config
+    # 创建 YAML 配置文件
+    create_yaml_config
     
     # 步骤2: 安装二进制文件
     run_install_step "2" "install-binaries.sh" "二进制文件安装"

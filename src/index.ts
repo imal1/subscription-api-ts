@@ -1,16 +1,12 @@
-import dotenv from 'dotenv';
-
-// 首先加载环境变量
-dotenv.config();
-
 import { App } from './app';
 import { logger } from './utils/logger';
+import { getAppVersion, getAppEnvironment } from './config';
 
 async function bootstrap(): Promise<void> {
     try {
         logger.info('🚀 正在启动 Subscription API 服务...');
-        logger.info(`📦 当前版本: ${process.env.APP_VERSION || '1.0.0'}`);
-        logger.info(`🔧 运行环境: ${process.env.NODE_ENV || 'development'}`);
+        logger.info(`📦 当前版本: ${getAppVersion()}`);
+        logger.info(`🔧 运行环境: ${getAppEnvironment()}`);
         logger.info(`📝 Node.js 版本: ${process.version}`);
         
         const app = new App();

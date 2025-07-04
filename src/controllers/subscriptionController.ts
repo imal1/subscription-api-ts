@@ -2,16 +2,19 @@ import { Request, Response } from "express";
 import { config } from "../config";
 import { SingBoxService } from "../services/singBoxService";
 import { SubscriptionService } from "../services/subscriptionService";
+import { MihomoService } from "../services/mihomoService";
 import { ApiResponse, ConfigUpdateRequest } from "../types";
 import { logger } from "../utils/logger";
 
 export class SubscriptionController {
   private subscriptionService: SubscriptionService;
   private singBoxService: SingBoxService;
+  private mihomoService: MihomoService;
 
   constructor() {
     this.subscriptionService = SubscriptionService.getInstance();
     this.singBoxService = SingBoxService.getInstance();
+    this.mihomoService = MihomoService.getInstance();
   }
 
   /**
@@ -37,7 +40,6 @@ export class SubscriptionController {
           endpoints: {
             "GET /api/update": "更新订阅",
             "GET /api/status": "获取状态",
-            "GET /api/diagnose/clash": "诊断Clash生成问题",
             "GET /api/diagnose/mihomo": "检查Mihomo服务状态",
             "GET /api/test/protocols": "测试多协议转换",
             "GET /subscription.txt": "获取Base64编码的订阅",
@@ -45,6 +47,7 @@ export class SubscriptionController {
             "GET /raw.txt": "获取原始链接",
             "GET /api/configs": "获取可用配置列表",
             "POST /api/configs": "更新配置列表",
+            "POST /api/convert": "转换内容为Clash配置",
             "GET /health": "健康检查",
           },
         },
@@ -272,35 +275,6 @@ export class SubscriptionController {
   };
 
   /**
-   * 诊断Clash配置生成问题
-   */
-  diagnoseClash = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const diagnosis =
-        await this.subscriptionService.diagnoseClashGeneration();
-
-      const response: ApiResponse = {
-        success: true,
-        data: diagnosis,
-        message: "Clash诊断完成",
-        timestamp: new Date().toISOString(),
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      logger.error("Clash诊断API错误:", error);
-
-      const response: ApiResponse = {
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      };
-
-      res.status(500).json(response);
-    }
-  };
-
-  /**
    * 测试多协议转换
    */
   testProtocolConversion = async (
@@ -309,11 +283,11 @@ export class SubscriptionController {
   ): Promise<void> => {
     try {
       // 首先检查mihomo服务状态
-      const mihomoHealthy = await this.subscriptionService.checkMihomoService();
-      if (!mihomoHealthy.healthy) {
+      const mihomoHealthy = await this.mihomoService.checkHealth();
+      if (!mihomoHealthy) {
         const response: ApiResponse = {
           success: false,
-          error: `Mihomo服务不可用: ${mihomoHealthy.error}`,
+          error: "Mihomo服务不可用",
           message: "请检查mihomo服务配置和状态",
           timestamp: new Date().toISOString(),
         };
@@ -331,7 +305,7 @@ export class SubscriptionController {
 
       const results: any = {
         timestamp: new Date().toISOString(),
-        mihomoStatus: mihomoHealthy,
+        mihomoStatus: { healthy: mihomoHealthy },
         tests: [],
       };
 
@@ -341,8 +315,7 @@ export class SubscriptionController {
         logger.info(`测试单独转换协议: ${protocol}`);
 
         try {
-          const clashContent =
-            await this.subscriptionService.testSingleNodeConversion(testNode);
+          const clashContent = await this.mihomoService.convertToClashByContent(testNode);
 
           const proxyMatches = clashContent.match(/- name:/g);
           const proxyCount = proxyMatches ? proxyMatches.length : 0;
@@ -387,10 +360,7 @@ export class SubscriptionController {
       // 测试所有协议一起转换
       try {
         const allNodesContent = testNodes.join("\n");
-        const allClashContent =
-          await this.subscriptionService.testSingleNodeConversion(
-            allNodesContent
-          );
+        const allClashContent = await this.mihomoService.convertToClashByContent(allNodesContent);
 
         const allProxyMatches = allClashContent.match(/- name:/g);
         const allProxyCount = allProxyMatches ? allProxyMatches.length : 0;
@@ -457,20 +427,41 @@ export class SubscriptionController {
    */
   checkMihomo = async (req: Request, res: Response): Promise<void> => {
     try {
-      const status = await this.subscriptionService.checkMihomoService();
+      const healthy = await this.mihomoService.checkHealth();
+      let version = 'unknown';
+      let testResults = null;
+      
+      if (healthy) {
+        try {
+          const versionInfo = await this.mihomoService.getVersion();
+          version = versionInfo?.version || 'unknown';
+        } catch (error) {
+          logger.warn('获取 mihomo 版本失败:', error);
+        }
+        
+        try {
+          testResults = await this.mihomoService.testConversion();
+        } catch (error) {
+          logger.warn('mihomo 转换测试失败:', error);
+        }
+      }
 
       const response: ApiResponse = {
-        success: status.healthy,
+        success: healthy,
         data: {
-          status: status,
-          version: status.version,
-          testResults: status.testResults,
+          status: {
+            healthy,
+            version,
+            testResults
+          },
+          version: version,
+          testResults: testResults,
         },
-        message: status.healthy ? "Mihomo服务正常" : "Mihomo服务异常",
+        message: healthy ? "Mihomo服务正常" : "Mihomo服务异常",
         timestamp: new Date().toISOString(),
       };
 
-      res.status(status.healthy ? 200 : 503).json(response);
+      res.status(healthy ? 200 : 503).json(response);
     } catch (error: any) {
       logger.error("检查Mihomo服务API错误:", error);
 

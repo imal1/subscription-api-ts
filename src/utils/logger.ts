@@ -2,6 +2,13 @@ import winston from 'winston';
 import * as path from 'path';
 import { config } from '../config';
 
+// 获取日志级别
+const getLogLevel = (): string => {
+    // 从配置模块获取日志级别
+    const { getLogLevel } = require('../config/index');
+    return getLogLevel();
+};
+
 const logFormat = winston.format.combine(
     winston.format.timestamp({
         format: 'YYYY-MM-DD HH:mm:ss'
@@ -13,7 +20,7 @@ const logFormat = winston.format.combine(
 );
 
 export const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
+    level: getLogLevel(),
     format: logFormat,
     defaultMeta: { service: 'subscription-api' },
     transports: [
@@ -31,7 +38,19 @@ export const logger = winston.createLogger({
     ]
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// 获取应用环境
+const getAppEnvironment = (): string => {
+    try {
+        // 延迟导入以避免循环依赖
+        const { getAppEnvironment } = require('../config/index');
+        return getAppEnvironment();
+    } catch {
+        return 'production';
+    }
+};
+
+const appEnvironment = getAppEnvironment();
+if (appEnvironment !== 'production') {
     logger.add(new winston.transports.Console({
         format: winston.format.combine(
             winston.format.colorize(),

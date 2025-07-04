@@ -39,7 +39,7 @@ update_code() {
             print_status "success" "代码更新完成"
             
             # 更新环境变量中的版本信息
-            update_env_version ".env" "$PROJECT_ROOT"
+            update_config_version "$PROJECT_ROOT"
         else
             print_status "warning" "Git pull 失败，继续使用本地代码"
         fi
@@ -149,8 +149,8 @@ restart_services() {
 verify_update() {
     print_status "info" "验证更新结果..."
     
-    # 加载环境变量
-    load_env_file "$PROJECT_ROOT/.env"
+    # 加载配置文件
+    load_config
     
     local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
     local api_port="${PORT:-3000}"
@@ -184,7 +184,7 @@ verify_update() {
 
 # 显示更新完成信息
 show_completion_info() {
-    load_env_file "$PROJECT_ROOT/.env"
+    load_config
     
     local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
     local api_port="${PORT:-3000}"

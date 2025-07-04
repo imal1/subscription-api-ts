@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as cron from 'node-cron';
 
-import { config, validateConfig } from './config';
+import { config, validateConfig, getCorsOrigin, getAppEnvironment, getAppVersion, getLogLevel } from './config';
 import { logger } from './utils/logger';
 import { SubscriptionService } from './services/subscriptionService';
 import { MihomoService } from './services/mihomoService';
@@ -37,7 +37,7 @@ export class App {
         
         // CORS中间件
         this.app.use(cors({
-            origin: process.env.CORS_ORIGIN || '*',
+            origin: getCorsOrigin(),
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
@@ -106,7 +106,7 @@ export class App {
             res.status(500).json({
                 success: false,
                 error: '内部服务器错误',
-                message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+                message: getAppEnvironment() === 'development' ? error.message : undefined,
                 timestamp: new Date().toISOString()
             });
         });
@@ -206,9 +206,9 @@ export class App {
             logger.info(`  ⚔️  Clash配置: http://localhost:${config.port}/clash.yaml`);
             logger.info(`  🔗 原始链接: http://localhost:${config.port}/raw.txt`);
             logger.info('');
-            logger.info(`�🔧 环境: ${process.env.NODE_ENV || 'development'}`);
-            logger.info(`📝 日志级别: ${process.env.LOG_LEVEL || 'info'}`);
-            logger.info(`🏷️  服务版本: ${process.env.APP_VERSION || '1.0.0'}`);
+            logger.info(`🔧 环境: ${getAppEnvironment()}`);
+            logger.info(`📝 日志级别: ${getLogLevel()}`);
+            logger.info(`🏷️  服务版本: ${getAppVersion()}`);
             logger.info('');
             logger.info('✨ 服务已就绪，等待请求...');
             logger.info('💡 按 Ctrl+C 停止服务');

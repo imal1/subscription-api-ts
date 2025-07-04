@@ -74,36 +74,8 @@ setup_environment() {
 setup_directories() {
     echo "📁 设置目录结构..."
     
-    # 读取环境变量文件
-    if [ -f "$PROJECT_ROOT/.env" ]; then
-        echo "📋 加载环境变量..."
-        # 读取 .env 文件，忽略注释和空行
-        while IFS='=' read -r key value; do
-            # 跳过注释和空行
-            [[ $key =~ ^[[:space:]]*# ]] && continue
-            [[ -z $key ]] && continue
-            
-            # 移除值中的内联注释（# 之后的内容）
-            value="${value%%#*}"
-            
-            # 移除前后空格
-            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            
-            # 移除引号
-            value="${value#\"}"
-            value="${value%\"}"
-            value="${value#\'}"
-            value="${value%\'}"
-            
-            # 再次移除前后空格（防止引号内有空格）
-            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            
-            # 设置环境变量（只有当值不为空时）
-            if [ -n "$value" ]; then
-                export "$key"="$value"
-            fi
-        done < <(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/.env" | grep -v '^[[:space:]]*$')
-    fi
+    # 加载配置文件
+    load_config
 
     # 设置默认值 - 统一使用 $HOME/.config/subscription 下的目录
     export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"

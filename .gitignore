@@ -1,7 +1,13 @@
 # Dependencies
 node_modules/
 
-# Bun files
+# Environment files (legacy, no longer used)
+# .env files are deprecated in favor of config.yaml
+# .env
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.localfiles
 bun.lock
 bun.lockb
 
@@ -38,6 +44,9 @@ dist/
 # Generated configuration files
 config/nginx.conf
 config/subscription-api-ts.service
+
+# Legacy project root config (to be migrated)
+config.yaml
 
 # Logs
 logs
