@@ -6,6 +6,9 @@
 # - 检测操作系统和用户权限
 # - 设置环境变量和目录结构
 # - 创建基础目录并设置权限
+# 
+# 参数:
+# --skip-confirm  跳过用户确认（用于脚本间调用）
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,62 +17,58 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # 引入公共函数库
 source "$SCRIPT_DIR/common.sh"
 
+# 显示帮助信息
+show_help() {
+    echo "环境检测和基础设置脚本"
+    echo ""
+    echo "用法:"
+    echo "  bash scripts/setup-env.sh [选项]"
+    echo ""
+    echo "选项:"
+    echo "  --skip-confirm   跳过用户确认（用于脚本间调用）"
+    echo "  --help, -h       显示此帮助信息"
+    echo ""
+}
+
+# 处理参数
+SKIP_CONFIRM=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-confirm)
+            SKIP_CONFIRM=true
+            shift
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "未知参数: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
 setup_environment() {
     echo "🔍 环境检测和设置..."
     
-    # 检测操作系统
-    OS=""
-    case "$(uname -s)" in
-        Linux*)     OS=Linux;;
-        Darwin*)    OS=Mac;;
-        *)          OS="UNKNOWN";;
-    esac
-
-    echo "🖥️  操作系统: $OS"
-
-    if [ "$OS" = "UNKNOWN" ]; then
-        echo "❌ 不支持的操作系统"
-        exit 1
-    fi
-
-    # 检查用户权限
-    CURRENT_USER=$(whoami)
-    if [[ $EUID -eq 0 ]]; then
-        echo "⚠️  检测到 root 用户执行"
-        if [ "$OS" = "Linux" ]; then
-            echo "✅ Linux 环境下允许 root 用户执行"
-            # 在 Linux 下以 root 执行时，检查是否指定了目标用户
-            if [ -z "$SUDO_USER" ]; then
-                echo "⚠️  建议使用 sudo 执行此脚本以保留原用户信息"
-                echo "   例如: sudo bash scripts/install.sh"
-                read -p "是否继续以 root 用户安装? (y/N): " -n 1 -r
-                echo
-                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                    echo "❌ 安装已取消"
-                    exit 1
-                fi
-                TARGET_USER="root"
-                TARGET_GROUP="root"
-            else
-                # 使用 sudo 执行时，使用原用户
-                TARGET_USER="$SUDO_USER"
-                TARGET_GROUP="$(id -gn $SUDO_USER)"
-                echo "🎯 目标用户: $TARGET_USER"
-            fi
-        else
-            echo "❌ macOS 环境下请不要使用 root 用户运行此脚本"
+    # 使用公共函数检查用户权限
+    if [ "$SKIP_CONFIRM" = true ]; then
+        if ! check_user_permissions --skip-confirm; then
+            echo "❌ 用户权限检查失败"
             exit 1
         fi
     else
-        TARGET_USER="$CURRENT_USER"
-        TARGET_GROUP="$(id -gn $CURRENT_USER)"
+        if ! check_user_permissions; then
+            echo "❌ 用户权限检查失败"
+            exit 1
+        fi
     fi
-
+    
+    echo "🖥️  操作系统: $OS"
     echo "👤 当前用户: $CURRENT_USER"
     echo "🎯 目标用户: $TARGET_USER"
-    
-    # 导出变量供其他脚本使用
-    export OS TARGET_USER TARGET_GROUP CURRENT_USER
 }
 
 setup_directories() {

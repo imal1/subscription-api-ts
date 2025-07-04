@@ -286,3 +286,76 @@ show_header() {
     echo -e "${PURPLE}╚════════════════════════════════════════════╝${NC}"
     echo ""
 }
+
+# 用户身份确认函数
+# 统一处理用户权限检查和确认逻辑，避免重复代码
+# 参数：--skip-confirm 跳过用户确认（用于脚本间调用）
+check_user_permissions() {
+    local skip_confirm=false
+    
+    # 处理参数
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --skip-confirm)
+                skip_confirm=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    # 检测操作系统
+    local os=$(detect_os)
+    if [ "$os" = "Unknown" ]; then
+        print_status "error" "不支持的操作系统"
+        return 1
+    fi
+    
+    # 获取用户信息
+    local current_user=$(whoami)
+    local target_user target_group
+    
+    if [[ $EUID -eq 0 ]]; then
+        print_status "warning" "检测到 root 用户执行"
+        if [ "$os" = "Linux" ]; then
+            print_status "success" "Linux 环境下允许 root 用户执行"
+            if [ -z "$SUDO_USER" ]; then
+                if [ "$skip_confirm" = false ]; then
+                    print_status "warning" "建议使用 sudo 执行此脚本以保留原用户信息"
+                    echo "   例如: sudo bash scripts/install.sh"
+                    read -p "是否继续以 root 用户安装? (y/N): " -n 1 -r
+                    echo
+                    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                        print_status "info" "操作已取消"
+                        return 1
+                    fi
+                fi
+                target_user="root"
+                target_group="root"
+            else
+                target_user="$SUDO_USER"
+                target_group="$(id -gn $SUDO_USER)"
+                print_status "info" "目标用户: $target_user"
+            fi
+        else
+            print_status "error" "macOS 环境下请不要使用 root 用户运行此脚本"
+            return 1
+        fi
+    else
+        target_user="$current_user"
+        target_group="$(id -gn $current_user)"
+    fi
+    
+    print_status "info" "当前用户: $current_user"
+    print_status "info" "目标用户: $target_user"
+    
+    # 导出用户信息供子脚本使用
+    export TARGET_USER="$target_user"
+    export TARGET_GROUP="$target_group"
+    export CURRENT_USER="$current_user"
+    export OS="$os"
+    
+    return 0
+}

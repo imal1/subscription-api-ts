@@ -24,52 +24,12 @@ show_header "Subscription API TypeScript 安装"
 VERSION="2.0.0"
 print_status "info" "安装脚本版本: $VERSION (模块化重构版)"
 
-# 检测操作系统
-OS=$(detect_os)
-print_status "info" "操作系统: $OS"
+# 检查用户权限和环境
 print_status "info" "项目目录: $PROJECT_ROOT"
-
-if [ "$OS" = "Unknown" ]; then
-    print_status "error" "不支持的操作系统"
+if ! check_user_permissions; then
+    print_status "error" "用户权限检查失败"
     exit 1
 fi
-
-# 获取用户信息
-CURRENT_USER=$(whoami)
-if [[ $EUID -eq 0 ]]; then
-    print_status "warning" "检测到 root 用户执行"
-    if [ "$OS" = "Linux" ]; then
-        print_status "success" "Linux 环境下允许 root 用户执行"
-        if [ -z "$SUDO_USER" ]; then
-            print_status "warning" "建议使用 sudo 执行此脚本以保留原用户信息"
-            echo "   例如: sudo bash scripts/install.sh"
-            read -p "是否继续以 root 用户安装? (y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                print_status "info" "安装已取消"
-                exit 0
-            fi
-            TARGET_USER="root"
-            TARGET_GROUP="root"
-        else
-            TARGET_USER="$SUDO_USER"
-            TARGET_GROUP="$(id -gn $SUDO_USER)"
-            print_status "info" "目标用户: $TARGET_USER"
-        fi
-    else
-        print_status "error" "macOS 环境下请不要使用 root 用户运行此脚本"
-        exit 1
-    fi
-else
-    TARGET_USER="$CURRENT_USER"
-    TARGET_GROUP="$(id -gn $CURRENT_USER)"
-fi
-
-print_status "info" "当前用户: $CURRENT_USER"
-print_status "info" "目标用户: $TARGET_USER"
-
-# 导出用户信息供子脚本使用
-export TARGET_USER TARGET_GROUP
 
 # 设置默认环境变量
 setup_default_env() {
@@ -297,7 +257,19 @@ main() {
     cleanup_old_config
     
     # 步骤1: 环境设置
-    run_install_step "1" "setup-env.sh" "环境设置和目录创建"
+    print_status "info" "第 1 步: 环境设置和目录创建"
+    local script_path="$SCRIPT_DIR/setup-env.sh"
+    if [ ! -f "$script_path" ]; then
+        print_status "error" "脚本不存在: $script_path"
+        exit 1
+    fi
+    
+    if ! bash "$script_path" --skip-confirm; then
+        print_status "error" "环境设置和目录创建 失败"
+        exit 1
+    fi
+    
+    print_status "success" "环境设置和目录创建 完成"
     
     # 创建环境配置文件
     create_env_config
