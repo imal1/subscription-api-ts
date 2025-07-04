@@ -10,7 +10,6 @@ import { SubscriptionService } from './services/subscriptionService';
 import { MihomoService } from './services/mihomoService';
 import { SingBoxService } from './services/singBoxService';
 import routes from './routes';
-import * as packageJson from '../package.json';
 
 export class App {
     public app: Application;
@@ -209,7 +208,7 @@ export class App {
             logger.info('');
             logger.info(`�🔧 环境: ${process.env.NODE_ENV || 'development'}`);
             logger.info(`📝 日志级别: ${process.env.LOG_LEVEL || 'info'}`);
-            logger.info(`🏷️  服务版本: ${packageJson.version}`);
+            logger.info(`🏷️  服务版本: ${process.env.APP_VERSION || '1.0.0'}`);
             logger.info('');
             logger.info('✨ 服务已就绪，等待请求...');
             logger.info('💡 按 Ctrl+C 停止服务');

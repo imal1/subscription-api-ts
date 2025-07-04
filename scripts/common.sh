@@ -359,3 +359,95 @@ check_user_permissions() {
     
     return 0
 }
+
+# 版本管理函数
+# 从 package.json 读取版本信息
+read_package_version() {
+    local package_json_path="${1:-package.json}"
+    local project_root="${2:-$(get_project_root)}"
+    local full_path="$project_root/$package_json_path"
+    
+    if [ -f "$full_path" ]; then
+        # 使用 grep 和 sed 提取版本信息，避免依赖 jq
+        local version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$full_path" | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        echo "${version:-1.0.0}"
+    else
+        print_status "warning" "package.json 文件不存在: $full_path"
+        echo "1.0.0"
+    fi
+}
+
+# 从 package.json 读取应用名称
+read_package_name() {
+    local package_json_path="${1:-package.json}"
+    local project_root="${2:-$(get_project_root)}"
+    local full_path="$project_root/$package_json_path"
+    
+    if [ -f "$full_path" ]; then
+        # 使用 grep 和 sed 提取名称信息
+        local name=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "$full_path" | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        echo "${name:-subscription-api}"
+    else
+        print_status "warning" "package.json 文件不存在: $full_path"
+        echo "subscription-api"
+    fi
+}
+
+# 更新 .env 文件中的版本信息
+update_env_version() {
+    local env_file="${1:-.env}"
+    local project_root="${2:-$(get_project_root)}"
+    local env_path="$project_root/$env_file"
+    
+    # 读取 package.json 中的版本和名称
+    local version=$(read_package_version "package.json" "$project_root")
+    local name=$(read_package_name "package.json" "$project_root")
+    
+    print_status "info" "更新 .env 文件中的版本信息..."
+    print_status "info" "应用名称: $name"
+    print_status "info" "应用版本: $version"
+    
+    # 创建临时文件来处理 .env 更新
+    local temp_env=$(mktemp)
+    local version_updated=false
+    local name_updated=false
+    
+    # 如果 .env 文件存在，读取并更新
+    if [ -f "$env_path" ]; then
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^APP_VERSION= ]]; then
+                echo "APP_VERSION=$version" >> "$temp_env"
+                version_updated=true
+            elif [[ "$line" =~ ^APP_NAME= ]]; then
+                echo "APP_NAME=$name" >> "$temp_env"
+                name_updated=true
+            else
+                echo "$line" >> "$temp_env"
+            fi
+        done < "$env_path"
+    fi
+    
+    # 如果没有找到版本行，添加新行
+    if [ "$version_updated" = false ]; then
+        echo "APP_VERSION=$version" >> "$temp_env"
+    fi
+    if [ "$name_updated" = false ]; then
+        echo "APP_NAME=$name" >> "$temp_env"
+    fi
+    
+    # 移动临时文件到目标位置
+    mv "$temp_env" "$env_path"
+    
+    print_status "success" "已更新 .env 文件: APP_VERSION=$version, APP_NAME=$name"
+}
+
+# 显示版本信息
+show_version_info() {
+    local project_root="${1:-$(get_project_root)}"
+    local version=$(read_package_version "package.json" "$project_root")
+    local name=$(read_package_name "package.json" "$project_root")
+    
+    print_status "info" "项目信息:"
+    print_status "info" "  应用名称: $name"
+    print_status "info" "  应用版本: $version"
+}

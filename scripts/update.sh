@@ -12,9 +12,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # 引入公共函数库
 source "$SCRIPT_DIR/common.sh"
 
-# 显示标题
-show_header "服务更新"
-
 # 检测操作系统
 OS=$(detect_os)
 print_status "info" "操作系统: $OS"
@@ -40,6 +37,9 @@ update_code() {
            git pull origin main 2>/dev/null || 
            git pull origin master 2>/dev/null; then
             print_status "success" "代码更新完成"
+            
+            # 更新环境变量中的版本信息
+            update_env_version ".env" "$PROJECT_ROOT"
         else
             print_status "warning" "Git pull 失败，继续使用本地代码"
         fi

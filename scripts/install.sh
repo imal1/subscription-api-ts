@@ -21,8 +21,7 @@ source "$SCRIPT_DIR/common.sh"
 show_header "Subscription API TypeScript 安装"
 
 # 版本信息
-VERSION="2.0.0"
-print_status "info" "安装脚本版本: $VERSION (模块化重构版)"
+show_version_info "$PROJECT_ROOT"
 
 # 检查用户权限和环境
 print_status "info" "项目目录: $PROJECT_ROOT"
@@ -143,6 +142,10 @@ create_env_config() {
             print_status "success" "现有配置文件验证通过"
         fi
     fi
+    
+    # 在 .env 文件创建或验证完成后，更新版本信息
+    print_status "info" "更新环境变量中的版本信息..."
+    update_env_version ".env" "$PROJECT_ROOT"
 }
 
 # 执行安装步骤
