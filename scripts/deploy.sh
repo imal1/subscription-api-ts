@@ -1,70 +1,157 @@
 #!/bin/bash
 
 # 部署脚本
+# 用于生产环境部署
+
 set -e
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # 引入公共函数库
 source "$SCRIPT_DIR/common.sh"
 
-echo "🚀 开始部署 Subscription API..."
+# 显示标题
+show_header "生产环境部署"
 
-# 读取环境变量
-if [ -f ".env" ]; then
-    # 读取 .env 文件，忽略注释和空行
-    while IFS='=' read -r key value; do
-        [[ $key =~ ^[[:space:]]*# ]] && continue
-        [[ -z $key ]] && continue
-        value="${value#\"}"
-        value="${value%\"}"
-        value="${value#\'}"
-        value="${value%\'}"
-        export "$key"="$value"
-    done < <(grep -v '^[[:space:]]*#' .env | grep -v '^[[:space:]]*$')
-fi
+# 检测操作系统
+OS=$(detect_os)
+print_status "info" "操作系统: $OS"
 
-# 服务名称，可通过环境变量覆盖
+# 服务名称
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 
-# 确保subconverter运行
-if ! safe_sudo systemctl is-active --quiet subconverter; then
-    echo "启动 subconverter..."
-    safe_sudo systemctl start subconverter
-fi
+# 部署前检查
+pre_deploy_check() {
+    print_status "info" "部署前检查..."
+    
+    # 检查是否为 Linux 系统
+    if [ "$OS" != "Linux" ]; then
+        print_status "error" "生产环境部署仅支持 Linux 系统"
+        exit 1
+    fi
+    
+    # 检查必要服务
+    if ! systemctl list-unit-files subconverter.service >/dev/null 2>&1; then
+        print_status "warning" "未找到 subconverter 服务，请先运行 scripts/install.sh"
+    fi
+    
+    print_status "success" "部署前检查完成"
+}
 
-# 构建项目
-echo "🏗️ 构建项目..."
-# 检测 bun 路径
-if command -v bun >/dev/null 2>&1; then
-    BUN_CMD="bun"
-elif [ -f "$HOME/.local/bin/bun" ]; then
-    BUN_CMD="$HOME/.local/bin/bun"
-elif [ -f "/usr/local/bin/bun" ]; then
-    BUN_CMD="/usr/local/bin/bun"
-else
-    echo "❌ 未找到 bun，请先运行 bash scripts/install.sh"
-    exit 1
-fi
-"$BUN_CMD" run build
+# 确保依赖服务运行
+ensure_dependencies() {
+    print_status "info" "确保依赖服务运行..."
+    
+    # 启动 subconverter 服务
+    if systemctl list-unit-files subconverter.service >/dev/null 2>&1; then
+        if ! service_is_active subconverter; then
+            print_status "info" "启动 subconverter 服务..."
+            service_start subconverter
+        else
+            print_status "info" "subconverter 服务已在运行"
+        fi
+    fi
+    
+    print_status "success" "依赖服务检查完成"
+}
 
-# 重启服务
-echo "🔄 重启服务..."
-safe_sudo systemctl restart "$SERVICE_NAME"
+# 部署项目
+deploy_project() {
+    print_status "info" "开始部署项目..."
+    
+    cd "$PROJECT_ROOT"
+    
+    # 构建项目
+    print_status "info" "构建项目..."
+    if ! bash "$SCRIPT_DIR/build-all.sh"; then
+        print_status "error" "项目构建失败"
+        exit 1
+    fi
+    
+    # 重启服务
+    print_status "info" "重启服务..."
+    if service_is_active "$SERVICE_NAME"; then
+        service_restart "$SERVICE_NAME"
+    else
+        service_start "$SERVICE_NAME"
+    fi
+    
+    # 等待服务启动
+    sleep 3
+    
+    # 检查服务状态
+    if service_is_active "$SERVICE_NAME"; then
+        print_status "success" "服务部署成功！"
+        
+        # 显示服务信息
+        load_env_file "$PROJECT_ROOT/.env"
+        local api_port="${PORT:-3000}"
+        local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
+        
+        print_status "info" "服务信息:"
+        echo "  - 服务状态: $(systemctl is-active "$SERVICE_NAME")"
+        echo "  - API 端口: $api_port"
+        echo "  - Nginx 代理端口: $nginx_proxy_port"
+        echo "  - 访问地址: http://localhost:$nginx_proxy_port"
+    else
+        print_status "error" "服务启动失败"
+        service_status "$SERVICE_NAME"
+        exit 1
+    fi
+}
 
-# 等待服务启动
-sleep 3
+# 主函数
+main() {
+    print_status "info" "开始生产环境部署..."
+    
+    # 1. 部署前检查
+    pre_deploy_check
+    
+    # 2. 确保依赖服务运行
+    ensure_dependencies
+    
+    # 3. 部署项目
+    deploy_project
+    
+    print_status "success" "🎉 生产环境部署完成！"
+}
 
-# 检查服务状态
-if safe_sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-    echo "✅ 服务部署成功！"
-    echo "📊 服务状态: $(safe_sudo systemctl is-active "$SERVICE_NAME")"
-    # 从环境变量读取端口号
-    PORT="${PORT:-3000}"
-    echo "🌐 访问地址: http://localhost:${PORT}"
-else
-    echo "❌ 服务启动失败"
-    safe_sudo systemctl status "$SERVICE_NAME"
-    exit 1
-fi
+# 显示帮助信息
+show_help() {
+    echo "生产环境部署脚本"
+    echo ""
+    echo "用法:"
+    echo "  bash scripts/deploy.sh [选项]"
+    echo ""
+    echo "选项:"
+    echo "  -h, --help     显示帮助信息"
+    echo ""
+    echo "功能:"
+    echo "  1. 部署前环境检查"
+    echo "  2. 确保依赖服务运行"
+    echo "  3. 构建和部署项目"
+    echo "  4. 重启相关服务"
+    echo ""
+    echo "注意:"
+    echo "  - 仅支持 Linux 生产环境"
+    echo "  - 需要先运行 scripts/install.sh 完成初始化"
+}
+
+# 参数解析
+case "${1:-}" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    "")
+        # 默认执行主流程
+        main
+        ;;
+    *)
+        print_status "error" "未知参数: $1"
+        echo "使用 --help 查看帮助信息"
+        exit 1
+        ;;
+esac

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Subscription API TypeScript 管理脚本
+# Subscription API TypeScr    echo -e "  ${YELLOW}deploy${NC}           部署到服务器"t 管理脚本
 # 功能：提供项目管理、诊断、部署等功能的统一入口
 # 作者：subscription-api-ts 项目组
 # 版本：1.0.0
@@ -38,7 +38,6 @@ show_help() {
     echo ""
     echo -e "${WHITE}🛠️ 诊断修复:${NC}"
     echo -e "  ${YELLOW}deploy${NC}           部署项目"
-    echo -e "  ${YELLOW}deploy-dashboard${NC} 构建并部署 Dashboard"
     echo -e "  ${YELLOW}check${NC}            全面服务状态检测"
     echo ""
     echo -e "${WHITE}📋 信息查看:${NC}"
@@ -439,9 +438,6 @@ main() {
         "deploy")
             run_script "deploy.sh" "$@"
             ;;
-        "deploy-dashboard")
-            run_script "deploy-dashboard.sh" "$@"
-            ;;
         "check")
             show_service_status
             ;;
@@ -471,8 +467,8 @@ main() {
             ;;
         "build-frontend")
             echo -e "${BLUE}🎨 构建前端 Dashboard...${NC}"
-            if [ -f "frontend/build.sh" ]; then
-                bash frontend/build.sh
+            if [ -f "scripts/build-frontend.sh" ]; then
+                bash scripts/build-frontend.sh
             else
                 echo -e "${RED}❌ 前端构建脚本不存在${NC}"
                 exit 1
