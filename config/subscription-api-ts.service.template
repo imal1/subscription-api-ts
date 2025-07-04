@@ -24,9 +24,9 @@ SyslogIdentifier=subscription-api-ts
 # 安全设置
 NoNewPrivileges=yes
 PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=${DATA_DIR} ${LOG_DIR}
+ProtectSystem=false
+ProtectHome=false
+ReadWritePaths=${DATA_DIR} ${LOG_DIR} ${BASE_DIR} ${DIST_DIR}
 
 [Install]
 WantedBy=multi-user.target
