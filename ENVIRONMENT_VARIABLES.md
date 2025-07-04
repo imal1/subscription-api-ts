@@ -1,8 +1,7 @@
 # 环境变量配置指南
 
-本文档列出了项目中所有支持的环境变量，确保所有配置都可通过 `.env` 文件读取。
-
-## 🛠️ 安装和管理脚本
+本文档列出了项目中所有支持的环境变量，确保所有配置都可通过 `.env` 文件读取。### 🛠️ Sing-box配置
+- `SING_BOX_CONFIGS` - sing-box配置名称，逗号分隔 (默认: vless,hysteria2,trojan,tuic,vmess)🛠️ 安装和管理脚本
 
 项目采用模块化脚本架构，提供以下管理工具：
 
@@ -55,10 +54,7 @@ bash scripts/deploy.sh
 ### � Sing-box配置
 - `SING_BOX_CONFIGS` - sing-box配置名称，逗号分隔 (默认: vless,hysteria2,trojan,tuic,vmess)
 
-### 🔄 Subconverter配置
-- `SUBCONVERTER_URL` - subconverter服务地址 (默认: http://localhost:25500)
-
-### 📁 文件路径配置
+###  文件路径配置
 - `BASE_DIR` - 工作区基础目录 (默认: $HOME/.config/subscription)
 - `DATA_DIR` - 数据文件目录 (默认: $BASE_DIR/www)
 - `LOG_DIR` - 日志文件目录 (默认: $BASE_DIR/log)
@@ -151,9 +147,6 @@ CORS_ORIGIN=*
 
 # 日志配置
 LOG_LEVEL=info
-
-# 外部服务
-SUBCONVERTER_URL=http://localhost:25500
 ```
 
 ## ⚙️ 配置管理
@@ -259,7 +252,6 @@ grep -r "/var/www\|/var/log" src/ --exclude-dir=node_modules
 2. **权限配置**: 确保服务用户对所有目录有适当的读写权限
 3. **端口配置**: 确保配置的端口不与其他服务冲突
 4. **安全配置**: 生产环境中请修改默认的配置
-5. **依赖服务**: 确保subconverter服务在配置的地址可用
 
 ## 🔍 故障排除
 

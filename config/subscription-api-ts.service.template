@@ -1,14 +1,13 @@
 [Unit]
 Description=TypeScript Subscription API Service
-After=network.target subconverter.service
-Requires=subconverter.service
+After=network.target
 Documentation=https://github.com/imal1/subscription-api-ts
 
 [Service]
 Type=simple
 User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
-WorkingDirectory=${INSTALL_DIR}
+WorkingDirectory=${BASE_DIR}
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin:${BASE_DIR}/bin
 EnvironmentFile=${INSTALL_DIR}/.env

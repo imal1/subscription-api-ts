@@ -69,7 +69,6 @@ bun run build
 - Ubuntu 18.04+ / Debian 10+ / CentOS 8+ / macOS 10.15+
 - **Node.js 18+** （推荐使用官方安装包，避免版本管理器）
 - sing-box (已安装配置)
-- ~~subconverter 服务~~ (v2.0.0+ 不再需要)
 
 ### 💡 Node.js 安装建议
 
@@ -322,9 +321,6 @@ PORT=3000
 # sing-box 配置名称 (逗号分隔)
 SING_BOX_CONFIGS=vless-reality,hysteria2,trojan,tuic,vmess
 
-# subconverter 地址
-SUBCONVERTER_URL=http://localhost:25500
-
 # 定时更新 (cron 格式)
 AUTO_UPDATE_CRON=0 */2 * * *
 
@@ -543,15 +539,7 @@ sing-box
 # 验证配置名称
 sing-box info your-config-name
 ```
-3. subconverter 不可用
 
-```bash
-# 检查 subconverter 服务
-sudo systemctl status subconverter
-
-# 测试连接
-curl http://localhost:25500/version
-```
 ### 日志查看
 ```bash
 # 系统日志
@@ -684,7 +672,7 @@ bash scripts/fix-systemd-workdir.sh
 
 ## 🙏 致谢
 - [sing-box](https://github.com/233boy/sing-box) - 通用代理工具
-- [subconverter](https://github.com/tindy2013/subconverter) - 订阅转换工具
+- [mihomo (clash-meta)](https://github.com/MetaCubeX/mihomo) - 规则处理引擎
 - [Express.js](https://github.com/expressjs/express) - Web 框架
 ## 📞 支持
 如果您遇到任何问题，请：

@@ -14,8 +14,8 @@ subscription-api-ts/
 │   ├── utils/                        # Utility functions
 │   │   └── logger.ts
 │   ├── services/                     # Business logic services
+│   │   ├── mihomoService.ts
 │   │   ├── singBoxService.ts
-│   │   ├── subconverterService.ts
 │   │   └── subscriptionService.ts
 │   ├── controllers/                  # API controllers
 │   │   └── subscriptionController.ts
@@ -29,17 +29,9 @@ subscription-api-ts/
 ├── scripts/                          # Automation scripts
 │   ├── install.sh                    # Installation script
 │   └── deploy.sh                     # Deployment script
-├── etc/                              # System configuration examples
-│   ├── nginx/
-│   │   └── sites-available/
-│   │       ├── subscription-api
-│   │       └── subscription-api-ts
-│   └── systemd/
-│       └── system/
-│           ├── subscription-api.service
-│           ├── subscription-api-node.service
-│           ├── subscription-api-ts-compiled.service
-│           └── subconverter.service
+├── config/                           # Configuration templates
+│   ├── nginx.conf.template          # Nginx configuration template
+│   └── subscription-api-ts.service.template # Systemd service template
 ├── opt/                              # Legacy/alternative implementations
 │   └── subscription-api/
 │       ├── src/                      # TypeScript source (mirror)

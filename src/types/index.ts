@@ -60,7 +60,7 @@ export interface HealthStatus {
     status: 'healthy' | 'unhealthy';
     checks: {
         database: boolean;
-        subconverter: boolean;
+        mihomo: boolean;
         filesystem: boolean;
         singbox: boolean;
     };

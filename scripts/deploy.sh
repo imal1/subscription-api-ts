@@ -32,11 +32,6 @@ pre_deploy_check() {
         exit 1
     fi
     
-    # 检查必要服务
-    if ! systemctl list-unit-files subconverter.service >/dev/null 2>&1; then
-        print_status "warning" "未找到 subconverter 服务，请先运行 scripts/install.sh"
-    fi
-    
     print_status "success" "部署前检查完成"
 }
 
@@ -44,14 +39,11 @@ pre_deploy_check() {
 ensure_dependencies() {
     print_status "info" "确保依赖服务运行..."
     
-    # 启动 subconverter 服务
-    if systemctl list-unit-files subconverter.service >/dev/null 2>&1; then
-        if ! service_is_active subconverter; then
-            print_status "info" "启动 subconverter 服务..."
-            service_start subconverter
-        else
-            print_status "info" "subconverter 服务已在运行"
-        fi
+    # 检查网络连接
+    if ! ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
+        print_status "warning" "网络连接检查失败，请检查网络状态"
+    else
+        print_status "success" "网络连接正常"
     fi
     
     print_status "success" "依赖服务检查完成"

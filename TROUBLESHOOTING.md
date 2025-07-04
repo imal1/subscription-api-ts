@@ -92,42 +92,9 @@ pgrep -f "node.*dist/index.js"
 bun run dev
 ```
 
-### 3. Subconverter 服务不可用
-
-**错误信息：**
-```json
-{
-  "success": false,
-  "error": "Subconverter服务未运行或不可访问"
-}
-```
-
-**诊断步骤：**
-```bash
-# 检查 subconverter 服务状态
-sudo systemctl status subconverter
-
-# 测试连接
-curl http://localhost:25500/sub
-curl http://localhost:25500/version
-```
-
-**解决方案：**
-```bash
-# 启动 subconverter 服务
-sudo systemctl start subconverter
-sudo systemctl enable subconverter
-
-# 检查配置
-grep SUBCONVERTER_URL .env
-
-# 手动启动 subconverter（如果服务不存在）
-# 参考 subconverter 官方文档
-```
-
 ## ⚙️ 配置和文件问题
 
-### 4. 配置文件错误
+### 3. 配置文件错误
 
 **错误信息：**
 ```json
@@ -255,15 +222,14 @@ curl -I http://localhost:3000/clash.yaml
 
 #### 依赖服务测试
 ```bash
-# 1. Subconverter 连通性
-curl -v http://localhost:25500/sub
+# 1. Mihomo 可用性检查
+curl -v http://localhost:9090/  # Mihomo 控制接口
 
 # 2. Nginx 状态（如果使用）
 curl -v http://localhost:3080/health
 
 # 3. 系统服务状态
 sudo systemctl status subscription-api-ts
-sudo systemctl status subconverter
 ```
 
 ### 深度调试
@@ -461,7 +427,7 @@ telnet localhost 3000
    bun --version
    
    # 检查系统服务
-   sudo systemctl status subconverter
+   sudo systemctl status subscription-api-ts
    sudo systemctl status nginx
    ```
 
