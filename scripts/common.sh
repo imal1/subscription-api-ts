@@ -252,13 +252,26 @@ load_env_file() {
             # 跳过注释和空行
             [[ $key =~ ^[[:space:]]*# ]] && continue
             [[ -z $key ]] && continue
+            
+            # 移除值中的内联注释（# 之后的内容）
+            value="${value%%#*}"
+            
+            # 移除前后空格
+            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            
             # 移除引号
             value="${value#\"}"
             value="${value%\"}"
             value="${value#\'}"
             value="${value%\'}"
-            # 设置环境变量
-            export "$key"="$value"
+            
+            # 再次移除前后空格（防止引号内有空格）
+            value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            
+            # 设置环境变量（只有当值不为空时）
+            if [ -n "$value" ]; then
+                export "$key"="$value"
+            fi
         done < <(grep -v '^[[:space:]]*#' "$env_file" | grep -v '^[[:space:]]*$')
     else
         print_status "warning" "环境变量文件不存在: $env_file"
