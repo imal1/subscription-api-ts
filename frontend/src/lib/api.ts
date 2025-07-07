@@ -1,7 +1,28 @@
+import ky, { HTTPError } from 'ky';
+
 const API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "" // 在生产环境中使用相对路径
     : "http://localhost:3000"; // 开发环境中使用完整URL
+
+// 创建 ky 实例
+const apiClient = ky.create({
+  prefixUrl: API_BASE_URL,
+  timeout: 30000,
+  retry: {
+    limit: 3,
+    methods: ['get', 'post'],
+    statusCodes: [408, 413, 429, 500, 502, 503, 504],
+  },
+  hooks: {
+    beforeError: [
+      (error) => {
+        console.error('API 请求失败:', error);
+        return error;
+      }
+    ]
+  }
+});
 
 export interface ApiStatus {
   subscriptionExists: boolean;
@@ -50,52 +71,82 @@ export interface ConvertResult {
   timestamp: string;
 }
 
-class ApiService {
-  private async request<T>(url: string, options?: RequestInit): Promise<T> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${url}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
-        ...options,
-      });
+// 自定义错误类
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public statusText: string,
+    public data?: any
+  ) {
+    super(`API Error ${status}: ${statusText}`);
+    this.name = 'ApiError';
+  }
+}
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+class ApiService {
+  // 处理 API 错误
+  private async handleError(error: unknown): Promise<never> {
+    if (error instanceof HTTPError) {
+      const status = error.response.status;
+      const statusText = error.response.statusText;
+      
+      let errorData;
+      try {
+        errorData = await error.response.json();
+      } catch {
+        errorData = null;
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error(`API请求失败: ${url}`, error);
-      throw error;
+      throw new ApiError(status, statusText, errorData);
     }
+
+    throw error;
   }
 
   // 获取API状态
   async getStatus(): Promise<ApiStatus> {
-    return this.request<ApiStatus>("/api/status");
+    try {
+      return await apiClient.get('api/status').json<ApiStatus>();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // 更新订阅
   async updateSubscription(): Promise<UpdateResult> {
-    return this.request<UpdateResult>("/api/update");
+    try {
+      return await apiClient.get('api/update').json<UpdateResult>();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // 获取健康状态
   async getHealth(): Promise<{ status: string; timestamp: string }> {
-    return this.request("/health");
+    try {
+      return await apiClient.get('health').json();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // 获取配置列表
   async getConfigs(): Promise<string[]> {
-    const response = await this.request<ApiResponse<string[]>>("/api/configs");
-    return response.data || [];
+    try {
+      const response = await apiClient.get('api/configs').json<ApiResponse<string[]>>();
+      return response.data || [];
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // 诊断Clash生成
   async diagnoseClash(): Promise<any> {
-    return this.request("/api/diagnose/clash");
+    try {
+      return await apiClient.get('api/diagnose/clash').json();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // 下载文件URL生成器
@@ -105,10 +156,11 @@ class ApiService {
 
   // 转换订阅内容为Clash配置
   async convertContent(content: string): Promise<ConvertResult> {
-    return this.request<ConvertResult>("/api/convert", {
-      method: "POST",
-      body: JSON.stringify({ content }),
-    });
+    try {
+      return await apiClient.post('api/convert', { json: { content } }).json<ConvertResult>();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 }
 
