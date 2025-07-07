@@ -1,37 +1,40 @@
 #!/bin/bash
 
-# Subscription API TypeScript 主安装脚本
-# 重构后的模块化安装脚本，负责调度各个功能模块
-# 
-# 支持的执行方式:
-# 1. 普通用户: bash scripts/install.sh
-# 2. sudo执行: sudo bash scripts/install.sh (推荐)
-# 3. root用户: bash scripts/install.sh (仅Linux)
+# 快速安装脚本
+# 这是一个简化的安装入口，调用统一管理脚本
 
 set -e
 
-# 获取脚本所在目录
+# 获取脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# 引入公共函数库
-source "$SCRIPT_DIR/common.sh"
-
-# 显示标题
-show_header "Subscription API TypeScript 安装"
-
-# 版本信息
-show_version_info "$PROJECT_ROOT"
-
-# 检查用户权限和环境
-print_status "info" "项目目录: $PROJECT_ROOT"
-if ! check_user_permissions; then
-    print_status "error" "用户权限检查失败"
+# 检查管理脚本是否存在
+MANAGE_SCRIPT="$SCRIPT_DIR/manage.sh"
+if [ ! -f "$MANAGE_SCRIPT" ]; then
+    echo "❌ 错误：管理脚本不存在: $MANAGE_SCRIPT"
     exit 1
 fi
 
-# 设置默认环境变量（需要在其他操作之前设置）
-setup_default_env
+# 显示欢迎信息
+echo "🚀 Subscription API TypeScript 快速安装"
+echo "版本: $(cd "$SCRIPT_DIR/.." && grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' package.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || echo "未知")"
+echo ""
+
+# 执行完整安装
+echo "正在执行完整安装..."
+bash "$MANAGE_SCRIPT" setup
+
+echo ""
+echo "✅ 安装完成！"
+echo ""
+echo "使用 'bash scripts/manage.sh help' 查看所有可用命令"
+
+# 检查是否有旧脚本需要清理
+if [ -f "$SCRIPT_DIR/common.sh" ] && [ $(wc -l < "$SCRIPT_DIR/common.sh") -gt 100 ]; then
+    echo ""
+    echo "⚠️  检测到旧版本脚本文件"
+    echo "运行 'bash scripts/migrate.sh' 进行清理和迁移"
+fi
 
 # 清理旧配置
 cleanup_old_config() {

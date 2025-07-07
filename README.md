@@ -27,31 +27,7 @@
 - 📊 **状态监控**: 实时监控服务状态和健康检查
 - 📝 **日志系统**: 完善的日志记录和错误处理
 - 🔧 **无外部依赖**: 不再需要 subconverter 服务
-- 🔧**常见问题解决**
-
-**1. TypeScript 编译错误**（找不到模块声明文件）：
-```bash
-# 自动诊断和修复
-./manage.sh fix-ts
-
-# 或手动清理重装
-rm -rf node_modules bun.lockb
-bun install
-bun run build
-```
-
-**2. SystemD 服务工作目录错误**：
-```bash
-# 错误信息：Changing to the requested working directory failed
-./manage.sh diagnose-workdir    # 诊断问题
-./manage.sh fix-workdir         # 自动修复
-```
-
-**3. Node.js 路径问题**：
-```bash
-# 修复用户环境路径问题
-./manage.sh fix-systemd-workdir
-```持 systemd 服务管理
+- �️ **支持 systemd 服务管理**
 - 🐳 **容器化**: 支持 Docker 部署
 
 ## 🏗️ 技术栈
@@ -115,18 +91,20 @@ cd subscription-api-ts
 
 ### 2. 自动安装
 ```bash
-# 方法1：使用管理脚本（推荐）
-./manage.sh install
+# 方法1：使用快速安装脚本（推荐）
+bash scripts/install.sh
 
-# 方法2：直接使用安装脚本
-chmod +x scripts/install.sh
-./scripts/install.sh
+# 方法2：使用管理脚本
+bash scripts/manage.sh setup
+
+# 方法3：分步安装
+bash scripts/manage.sh init   # 初始化环境
+bash scripts/manage.sh build  # 构建项目
 ```
 
 ### 3. 配置环境
 ```bash
-# 复制配置文件
-cp .env.example .env
+# 配置文件会自动创建在 ~/.config/subscription/config.yaml
 
 # 编辑配置 (修改为您的实际配置)
 nano .env
@@ -169,35 +147,42 @@ pm2 start dist/index.js --name subscription-api-ts
 
 ## 🎮 管理脚本
 
-项目提供了统一的管理入口脚本 `manage.sh`，集成了所有常用功能：
+项目提供了重构后的统一管理脚本 `scripts/manage.sh`，集成了所有常用功能：
 
 ### 🚀 核心管理命令
 ```bash
-./manage.sh install          # 完整项目安装和配置
-./manage.sh update           # 更新代码并重启服务  
-./manage.sh start            # 启动服务
-./manage.sh stop             # 停止服务
-./manage.sh restart          # 重启服务
-./manage.sh status           # 查看服务状态（快速检查）
-./manage.sh check            # 全面服务状态检测
+# 环境管理
+bash scripts/manage.sh init    # 初始化项目环境
+bash scripts/manage.sh setup   # 完整安装配置
+bash scripts/manage.sh env     # 显示环境信息
+bash scripts/manage.sh config  # 显示配置信息
+
+# 服务管理 (Linux)
+sudo bash scripts/manage.sh start    # 启动服务
+sudo bash scripts/manage.sh stop     # 停止服务
+sudo bash scripts/manage.sh restart  # 重启服务
+sudo bash scripts/manage.sh status   # 查看服务状态
+sudo bash scripts/manage.sh logs     # 查看服务日志
+sudo bash scripts/manage.sh logs-f   # 实时跟踪日志
 ```
 
-### 🔧 开发工具
+### 🔧 构建工具
 ```bash
-./manage.sh build           # 编译 TypeScript 项目
-./manage.sh build-frontend  # 构建前端 Dashboard
-./manage.sh dev              # 启动开发模式
-./manage.sh test             # 运行测试
-./manage.sh clean            # 清理编译文件
+bash scripts/manage.sh build          # 构建项目 (后端+前端)
+bash scripts/manage.sh build-backend  # 仅构建后端
+bash scripts/manage.sh build-frontend # 仅构建前端
+bash scripts/manage.sh clean          # 清理构建文件
 ```
 
-### 🛠️ 诊断修复
+### 🛠️ 维护工具
 ```bash
-./manage.sh deploy           # 部署项目
-./manage.sh deploy-dashboard # 构建并部署 Dashboard
+bash scripts/manage.sh check    # 系统检查
+bash scripts/manage.sh verify   # 验证权限
+bash scripts/manage.sh update   # 更新项目 (开发中)
+bash scripts/manage.sh backup   # 备份配置 (开发中)
 ```
 
-### 📋 信息查看
+### 📋 快速开始
 ```bash
 ./manage.sh logs             # 查看服务日志
 ./manage.sh version          # 显示版本信息
