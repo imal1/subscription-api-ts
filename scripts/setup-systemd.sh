@@ -59,7 +59,13 @@ check_service_requirements() {
     check_required_dir "$PROJECT_ROOT" "项目根目录"
     
     # 检查构建文件（最终部署位置）
-    check_required_file "$DIST_DIR/backend/index.js" "后端构建文件"
+    if [ ! -f "$DIST_DIR/backend/index.js" ]; then
+        print_status "error" "后端构建文件不存在: $DIST_DIR/backend/index.js"
+        print_status "info" "请先运行构建脚本："
+        print_status "info" "  bash scripts/build-all.sh"
+        return 1
+    fi
+    print_status "success" "后端构建文件检查通过"
     
     # 检查配置文件
     if [ ! -f "$BASE_DIR/config.yaml" ]; then
@@ -68,18 +74,27 @@ check_service_requirements() {
         print_status "info" "  bash scripts/install.sh"
         return 1
     fi
+    print_status "success" "配置文件检查通过"
     
     # 检查服务模板文件
-    check_required_file "$PROJECT_ROOT/config/subscription-api-ts.service.template" "服务模板文件"
+    if [ ! -f "$PROJECT_ROOT/config/subscription-api-ts.service.template" ]; then
+        print_status "error" "服务模板文件不存在: $PROJECT_ROOT/config/subscription-api-ts.service.template"
+        return 1
+    fi
+    print_status "success" "服务模板文件检查通过"
     
     # 检查 Node.js
     if ! command_exists node; then
         print_status "error" "未找到 Node.js"
-        exit 1
+        print_status "info" "请安装 Node.js："
+        print_status "info" "  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -"
+        print_status "info" "  sudo apt-get install -y nodejs"
+        return 1
     fi
     
     local node_path=$(which node)
     print_status "info" "Node.js 路径: $node_path"
+    print_status "info" "Node.js 版本: $(node --version)"
     
     # 检查并修复 Node.js 路径问题
     if [[ "$node_path" == *".local"* ]] || [[ "$node_path" == *"/run/user/"* ]]; then
@@ -96,21 +111,15 @@ check_service_requirements() {
         
         if [ -z "$system_node" ]; then
             print_status "info" "复制 Node.js 到系统路径..."
-            if [[ $EUID -eq 0 ]]; then
-                safe_sudo cp "$node_path" /usr/local/bin/node
-                safe_sudo chmod +x /usr/local/bin/node
+            if safe_sudo cp "$node_path" /usr/local/bin/node && safe_sudo chmod +x /usr/local/bin/node; then
                 print_status "success" "Node.js 已复制到 /usr/local/bin/node"
+                export NODE_PATH="/usr/local/bin/node"
             else
-                if safe_sudo cp "$node_path" /usr/local/bin/node && safe_sudo chmod +x /usr/local/bin/node; then
-                    print_status "success" "Node.js 已复制到 /usr/local/bin/node"
-                else
-                    print_status "error" "复制失败，请手动执行："
-                    echo "  sudo cp $node_path /usr/local/bin/node"
-                    echo "  sudo chmod +x /usr/local/bin/node"
-                    exit 1
-                fi
+                print_status "error" "复制失败，请手动执行："
+                echo "  sudo cp $node_path /usr/local/bin/node"
+                echo "  sudo chmod +x /usr/local/bin/node"
+                return 1
             fi
-            export NODE_PATH="/usr/local/bin/node"
         else
             print_status "success" "使用系统 Node.js: $system_node"
             export NODE_PATH="$system_node"
@@ -119,6 +128,8 @@ check_service_requirements() {
         export NODE_PATH="$node_path"
         print_status "success" "使用系统 Node.js 路径"
     fi
+    
+    print_status "success" "所有要求检查通过"
 }
 
 # 检查用户权限
@@ -180,11 +191,19 @@ generate_service_file() {
     # 检查并安装 envsubst
     if ! command_exists envsubst; then
         print_status "info" "安装 envsubst 工具..."
-        if [[ $EUID -eq 0 ]]; then
-            safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+        if safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base; then
+            print_status "success" "envsubst 工具安装成功"
         else
-            safe_sudo apt-get update && safe_sudo apt-get install -y gettext-base
+            print_status "error" "envsubst 工具安装失败"
+            return 1
         fi
+    fi
+    
+    # 检查服务模板文件
+    local service_template="$PROJECT_ROOT/config/subscription-api-ts.service.template"
+    if [ ! -f "$service_template" ]; then
+        print_status "error" "服务模板文件不存在: $service_template"
+        return 1
     fi
     
     # 设置环境变量供 envsubst 使用
@@ -196,10 +215,27 @@ generate_service_file() {
     export LOG_DIR
     export DIST_DIR
     export BASE_DIR
-    export BUN_PATH
+    export BUN_PATH="${BUN_PATH:-$BASE_DIR/bin/bun}"
+    
+    # 检查 BUN_PATH 是否正确
+    if [ ! -f "$BUN_PATH" ]; then
+        # 尝试从 BASE_DIR/bin/bun 查找
+        if [ -f "$BASE_DIR/bin/bun" ]; then
+            export BUN_PATH="$BASE_DIR/bin/bun"
+        else
+            print_status "warning" "Bun 可执行文件不存在: $BUN_PATH"
+            # 尝试使用系统 bun
+            if command_exists bun; then
+                export BUN_PATH="$(which bun)"
+                print_status "info" "使用系统 Bun: $BUN_PATH"
+            else
+                print_status "error" "未找到 Bun 可执行文件"
+                return 1
+            fi
+        fi
+    fi
     
     # 生成服务文件
-    local service_template="$PROJECT_ROOT/config/subscription-api-ts.service.template"
     local service_output="/tmp/${SERVICE_NAME}.service"
     
     print_status "info" "服务配置:"
@@ -210,15 +246,20 @@ generate_service_file() {
     echo "  - Node.js 路径: $NODE_PATH"
     echo "  - 数据目录: $DATA_DIR"
     echo "  - 日志目录: $LOG_DIR"
+    echo "  - 构建目录: $DIST_DIR"
+    echo "  - Bun 路径: $BUN_PATH"
     
     # 使用 envsubst 生成服务文件
-    envsubst '${SERVICE_USER} ${SERVICE_GROUP} ${INSTALL_DIR} ${NODE_PATH} ${DATA_DIR} ${LOG_DIR} ${DIST_DIR} ${BASE_DIR} ${BUN_PATH}' < "$service_template" > "$service_output"
-    
-    if [ -f "$service_output" ]; then
+    if envsubst '${SERVICE_USER} ${SERVICE_GROUP} ${INSTALL_DIR} ${NODE_PATH} ${DATA_DIR} ${LOG_DIR} ${DIST_DIR} ${BASE_DIR} ${BUN_PATH}' < "$service_template" > "$service_output"; then
         print_status "success" "服务文件已生成: $service_output"
+        
+        # 显示生成的服务文件内容（用于调试）
+        print_status "info" "生成的服务文件内容："
+        cat "$service_output"
+        echo ""
     else
         print_status "error" "服务文件生成失败"
-        exit 1
+        return 1
     fi
     
     export SERVICE_OUTPUT="$service_output"
@@ -228,14 +269,34 @@ generate_service_file() {
 install_service_file() {
     print_status "info" "安装服务文件..."
     
+    if [ ! -f "$SERVICE_OUTPUT" ]; then
+        print_status "error" "服务文件不存在: $SERVICE_OUTPUT"
+        return 1
+    fi
+    
     # 复制服务文件到系统目录
-    safe_sudo cp "$SERVICE_OUTPUT" "/etc/systemd/system/"
+    if safe_sudo cp "$SERVICE_OUTPUT" "/etc/systemd/system/"; then
+        print_status "success" "服务文件已复制到系统目录"
+    else
+        print_status "error" "复制服务文件失败"
+        return 1
+    fi
     
     # 重新加载 systemd 配置
-    systemd_reload
+    if systemd_reload; then
+        print_status "success" "systemd 配置重新加载完成"
+    else
+        print_status "error" "systemd 配置重新加载失败"
+        return 1
+    fi
     
     # 启用服务
-    service_enable "$SERVICE_NAME"
+    if service_enable "$SERVICE_NAME"; then
+        print_status "success" "服务已启用"
+    else
+        print_status "error" "服务启用失败"
+        return 1
+    fi
     
     print_status "success" "服务文件已安装: /etc/systemd/system/${SERVICE_NAME}.service"
 }
@@ -247,12 +308,24 @@ manage_service() {
     # 检查服务是否已在运行
     if service_is_active "$SERVICE_NAME"; then
         print_status "info" "服务正在运行，重启以加载新配置..."
-        service_restart "$SERVICE_NAME"
-        print_status "success" "服务重启成功"
+        if service_restart "$SERVICE_NAME"; then
+            print_status "success" "服务重启成功"
+        else
+            print_status "error" "服务重启失败"
+            print_status "info" "查看服务日志："
+            safe_sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager || true
+            return 1
+        fi
     else
         print_status "info" "服务未运行，启动服务..."
-        service_start "$SERVICE_NAME"
-        print_status "success" "服务启动成功"
+        if service_start "$SERVICE_NAME"; then
+            print_status "success" "服务启动成功"
+        else
+            print_status "error" "服务启动失败"
+            print_status "info" "查看服务日志："
+            safe_sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager || true
+            return 1
+        fi
     fi
 }
 
@@ -304,22 +377,40 @@ main() {
     print_status "info" "开始配置 systemd 服务..."
     
     # 检查服务配置要求
-    check_service_requirements
+    if ! check_service_requirements; then
+        print_status "error" "服务配置要求检查失败"
+        exit 1
+    fi
     
     # 检查用户权限
-    check_user_permissions
+    if ! check_user_permissions; then
+        print_status "error" "用户权限检查失败"
+        exit 1
+    fi
     
     # 生成服务文件
-    generate_service_file
+    if ! generate_service_file; then
+        print_status "error" "服务文件生成失败"
+        exit 1
+    fi
     
     # 安装服务文件
-    install_service_file
+    if ! install_service_file; then
+        print_status "error" "服务文件安装失败"
+        exit 1
+    fi
     
     # 管理服务状态
-    manage_service
+    if ! manage_service; then
+        print_status "error" "服务状态管理失败"
+        exit 1
+    fi
     
     # 验证服务状态
-    verify_service
+    if ! verify_service; then
+        print_status "error" "服务状态验证失败"
+        exit 1
+    fi
     
     # 显示管理命令
     show_management_commands
