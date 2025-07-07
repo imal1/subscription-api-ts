@@ -30,6 +30,9 @@ if ! check_user_permissions; then
     exit 1
 fi
 
+# 设置默认环境变量（需要在其他操作之前设置）
+setup_default_env
+
 # 清理旧配置
 cleanup_old_config() {
     print_status "info" "清理旧配置文件..."
@@ -76,111 +79,72 @@ create_yaml_config() {
     
     local config_path="$BASE_DIR/config.yaml"
     
+    # 确保 BASE_DIR 存在
+    mkdir -p "$BASE_DIR"
+    
     if [ ! -f "$config_path" ]; then
-        # 确保 BASE_DIR 存在
-        mkdir -p "$BASE_DIR"
-        
+        # 创建新的配置文件
         if [ -f "$PROJECT_ROOT/config.yaml.example" ]; then
             cp "$PROJECT_ROOT/config.yaml.example" "$config_path"
-            
-            # 使用 yq 工具更新 YAML 配置文件
-            if [ -f "$yq_path" ]; then
-                print_status "info" "使用 yq 工具更新配置文件..."
-                
-                # 更新配置
-                if [ -n "$BASE_DIR" ]; then
-                    "$yq_path" eval '.directories.base_dir = "'$BASE_DIR'"' -i "$config_path"
-                fi
-                if [ -n "$DATA_DIR" ]; then
-                    "$yq_path" eval '.directories.data_dir = "'$DATA_DIR'"' -i "$config_path"
-                fi
-                if [ -n "$LOG_DIR" ]; then
-                    "$yq_path" eval '.directories.log_dir = "'$LOG_DIR'"' -i "$config_path"
-                fi
-                if [ -n "$DIST_DIR" ]; then
-                    "$yq_path" eval '.directories.dist_dir = "'$DIST_DIR'"' -i "$config_path"
-                fi
-                if [ -n "$MIHOMO_PATH" ]; then
-                    "$yq_path" eval '.binaries.mihomo_path = "'$MIHOMO_PATH'"' -i "$config_path"
-                fi
-                if [ -n "$BUN_PATH" ]; then
-                    "$yq_path" eval '.binaries.bun_path = "'$BUN_PATH'"' -i "$config_path"
-                fi
-                
-                # 更新版本信息
-                update_config_version
-                
-                print_status "success" "YAML 配置文件已创建并更新到 $config_path"
-            else
-                print_status "warning" "未找到 yq 工具，无法自动更新 YAML 配置文件"
-                print_status "info" "请手动编辑 $config_path 文件"
-            fi
+            print_status "success" "已从示例文件创建配置文件: $config_path"
         else
             print_status "error" "找不到 config.yaml.example 文件"
             return 1
         fi
     else
-        print_status "warning" "发现现有的 config.yaml 配置文件"
-        echo ""
-        echo "删除现有配置文件将重置所有自定义设置为默认值。"
-        echo "如果你有重要的自定义配置，请先手动备份。"
-        echo ""
-        
-        read -p "是否删除现有配置文件并创建新的配置？(y/N): " -n 1 -r
-        echo
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -f "$config_path"
-            print_status "success" "现有配置文件已删除，将创建新的配置文件"
-            
-            # 创建新的配置文件
-            if [ -f "$PROJECT_ROOT/config.yaml.example" ]; then
-                cp "$PROJECT_ROOT/config.yaml.example" "$config_path"
-                
-                # 使用 yq 工具更新 YAML 配置文件
-                if [ -f "$yq_path" ]; then
-                    print_status "info" "使用 yq 工具更新配置文件..."
-                    
-                    # 更新配置
-                    if [ -n "$BASE_DIR" ]; then
-                        "$yq_path" eval '.directories.base_dir = "'$BASE_DIR'"' -i "$config_path"
-                    fi
-                    if [ -n "$DATA_DIR" ]; then
-                        "$yq_path" eval '.directories.data_dir = "'$DATA_DIR'"' -i "$config_path"
-                    fi
-                    if [ -n "$LOG_DIR" ]; then
-                        "$yq_path" eval '.directories.log_dir = "'$LOG_DIR'"' -i "$config_path"
-                    fi
-                    if [ -n "$DIST_DIR" ]; then
-                        "$yq_path" eval '.directories.dist_dir = "'$DIST_DIR'"' -i "$config_path"
-                    fi
-                    if [ -n "$MIHOMO_PATH" ]; then
-                        "$yq_path" eval '.binaries.mihomo_path = "'$MIHOMO_PATH'"' -i "$config_path"
-                    fi
-                    if [ -n "$BUN_PATH" ]; then
-                        "$yq_path" eval '.binaries.bun_path = "'$BUN_PATH'"' -i "$config_path"
-                    fi
-                    
-                    # 更新版本信息
-                    update_config_version
-                    
-                    print_status "success" "YAML 配置文件已创建并更新到 $config_path"
-                else
-                    print_status "warning" "未找到 yq 工具，无法自动更新 YAML 配置文件"
-                    print_status "info" "请手动编辑 $config_path 文件"
-                fi
-            else
-                print_status "error" "找不到 config.yaml.example 文件"
-                return 1
-            fi
-        else
-            print_status "info" "保留现有配置文件"
-            print_status "warning" "注意: 现有配置可能与新版本不兼容，如遇问题请手动更新配置"
-        fi
+        print_status "info" "配置文件已存在: $config_path"
     fi
 }
 
-
+# 更新 YAML 配置文件（在二进制文件安装后）
+update_yaml_config() {
+    print_status "info" "更新 YAML 配置文件..."
+    
+    local config_path="$BASE_DIR/config.yaml"
+    
+    if [ ! -f "$config_path" ]; then
+        print_status "warning" "配置文件不存在，跳过更新"
+        return 0
+    fi
+    
+    # 尝试使用 yq 工具更新配置文件
+    local yq_available=false
+    if command -v yq >/dev/null 2>&1; then
+        yq_available=true
+        print_status "info" "使用系统 yq 工具更新配置文件..."
+    elif [ -f "$BASE_DIR/bin/yq" ]; then
+        export PATH="$BASE_DIR/bin:$PATH"
+        yq_available=true
+        print_status "info" "使用本地 yq 工具更新配置文件..."
+    else
+        print_status "warning" "未找到 yq 工具，跳过配置更新"
+        return 0
+    fi
+    
+    if [ "$yq_available" = "true" ]; then
+        # 更新目录配置
+        if [ -n "$BASE_DIR" ]; then
+            yq eval '.directories.base_dir = "'$BASE_DIR'"' -i "$config_path" 2>/dev/null || true
+        fi
+        if [ -n "$DATA_DIR" ]; then
+            yq eval '.directories.data_dir = "'$DATA_DIR'"' -i "$config_path" 2>/dev/null || true
+        fi
+        if [ -n "$LOG_DIR" ]; then
+            yq eval '.directories.log_dir = "'$LOG_DIR'"' -i "$config_path" 2>/dev/null || true
+        fi
+        if [ -n "$DIST_DIR" ]; then
+            yq eval '.directories.dist_dir = "'$DIST_DIR'"' -i "$config_path" 2>/dev/null || true
+        fi
+        
+        # 更新二进制文件路径
+        if [ -n "$BASE_DIR" ]; then
+            yq eval '.binaries.mihomo_path = "'$BASE_DIR'/bin/mihomo"' -i "$config_path" 2>/dev/null || true
+            yq eval '.binaries.bun_path = "'$BASE_DIR'/bin/bun"' -i "$config_path" 2>/dev/null || true
+        fi
+        
+        print_status "success" "配置文件已更新"
+    fi
+}
 
 # 执行安装步骤
 run_install_step() {
@@ -225,6 +189,8 @@ show_completion_info() {
     
     # 设置主机地址
     local external_host="${EXTERNAL_HOST:-localhost}"
+    local api_port="${PORT:-3000}"
+    local nginx_proxy_port="${NGINX_PROXY_PORT:-3888}"
     
     print_status "success" "安装完成！"
     
@@ -232,8 +198,8 @@ show_completion_info() {
     print_status "info" "🚀 快速开始："
     
     if [ "$OS" = "Linux" ]; then
-        echo "1. 生成订阅文件: curl http://${external_host}:${NGINX_PROXY_PORT}/api/update"
-        echo "2. 访问控制面板: http://${external_host}:${NGINX_PROXY_PORT}/dashboard/"
+        echo "1. 生成订阅文件: curl http://${external_host}:${nginx_proxy_port}/api/update"
+        echo "2. 访问控制面板: http://${external_host}:${nginx_proxy_port}/dashboard/"
         
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
         echo ""
@@ -250,7 +216,6 @@ show_completion_info() {
             fi
         fi
     elif [ "$OS" = "Mac" ]; then
-        local api_port="${PORT:-3000}"
         echo "1. 启动服务: bun run dev"
         echo "2. 生成订阅: curl http://${external_host}:${api_port}/api/update"
         echo "3. 访问控制面板: http://${external_host}:${api_port}/dashboard/"
@@ -280,15 +245,12 @@ show_completion_info() {
     echo "   1. 权限问题: bash scripts/verify-permissions.sh"
     echo "   2. 服务日志: journalctl -u subscription-api-ts -f"
     echo "   3. 配置文件: cat $BASE_DIR/config.yaml"
-    echo "   4. 端口占用: netstat -tlnp | grep :$NGINX_PROXY_PORT"
+    echo "   4. 端口占用: netstat -tlnp | grep :$nginx_proxy_port"
 }
 
 # 主安装流程
 main() {
     print_status "info" "开始模块化安装流程..."
-    
-    # 设置默认环境变量
-    setup_default_env
     
     # 清理旧配置
     cleanup_old_config
@@ -308,11 +270,14 @@ main() {
     
     print_status "success" "环境设置和目录创建 完成"
     
-    # 创建 YAML 配置文件
+    # 创建初始 YAML 配置文件
     create_yaml_config
     
     # 步骤2: 安装二进制文件
     run_install_step "2" "install-binaries.sh" "二进制文件安装"
+    
+    # 更新 YAML 配置文件（在二进制文件安装后）
+    update_yaml_config
     
     # 步骤3: 安装依赖
     run_install_step "3" "install-deps.sh" "依赖安装"

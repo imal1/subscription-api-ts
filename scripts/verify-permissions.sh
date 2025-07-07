@@ -405,69 +405,6 @@ fix_permissions() {
 }
 
 # 生成权限报告
-generate_report() {
-    print_status "info" "生成权限报告..."
-    
-    local report_file="$PROJECT_ROOT/permission_report.txt"
-    
-    cat > "$report_file" << EOF
-权限检查报告
-生成时间: $(date)
-检查用户: $CURRENT_USER
-目标用户: $TARGET_USER
-操作系统: $OS
-
-目录权限检查:
-================
-基础目录: $BASE_DIR
-$(ls -ld "$BASE_DIR" 2>/dev/null || echo "目录不存在")
-
-数据目录: $DATA_DIR
-$(ls -ld "$DATA_DIR" 2>/dev/null || echo "目录不存在")
-
-日志目录: $LOG_DIR
-$(ls -ld "$LOG_DIR" 2>/dev/null || echo "目录不存在")
-
-构建目录: $DIST_DIR
-$(ls -ld "$DIST_DIR" 2>/dev/null || echo "目录不存在")
-
-二进制目录: $BIN_DIR
-$(ls -ld "$BIN_DIR" 2>/dev/null || echo "目录不存在")
-
-文件权限检查:
-================
-配置文件: $BASE_DIR/config.yaml
-$(ls -l "$BASE_DIR/config.yaml" 2>/dev/null || echo "文件不存在")
-
-后端构建文件: $DIST_DIR/backend/index.js
-$(ls -l "$DIST_DIR/backend/index.js" 2>/dev/null || echo "文件不存在")
-
-前端构建文件: $DIST_DIR/frontend/index.html
-$(ls -l "$DIST_DIR/frontend/index.html" 2>/dev/null || echo "文件不存在")
-
-二进制文件检查:
-================
-Bun: $BIN_DIR/bun
-$(ls -l "$BIN_DIR/bun" 2>/dev/null || echo "文件不存在")
-
-mihomo: $BIN_DIR/mihomo
-$(ls -l "$BIN_DIR/mihomo" 2>/dev/null || echo "文件不存在")
-
-权限问题:
-================
-EOF
-    
-    if [ ${#PERMISSION_ISSUES[@]} -eq 0 ]; then
-        echo "没有发现权限问题" >> "$report_file"
-    else
-        for issue in "${PERMISSION_ISSUES[@]}"; do
-            echo "- $issue" >> "$report_file"
-        done
-    fi
-    
-    print_status "success" "权限报告已生成: $report_file"
-}
-
 # 显示修复建议
 show_fix_commands() {
     print_status "info" "权限修复命令:"
@@ -503,9 +440,6 @@ main() {
     
     # 检查所有权限
     check_all_permissions
-    
-    # 生成报告
-    generate_report
     
     # 显示结果
     if [ ${#PERMISSION_ISSUES[@]} -eq 0 ]; then

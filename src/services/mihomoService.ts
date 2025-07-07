@@ -26,13 +26,41 @@ export class MihomoService {
     private configPath: string;
 
     private constructor() {
-        // 使用默认路径
-        const basePath = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
-        this.mihomoPath = path.join(basePath, 'mihomo');
-        this.configPath = path.join(basePath, 'config.yaml');
-        
-        // 确保目录存在
-        fs.ensureDirSync(path.dirname(this.mihomoPath));
+        // 从配置中获取 mihomo 路径
+        try {
+            const yamlService = require('./yamlService');
+            const fullConfig = yamlService.getFullConfig();
+            
+            // 使用配置中的路径
+            if (fullConfig.binaries?.mihomo_path) {
+                this.mihomoPath = fullConfig.binaries.mihomo_path;
+            } else {
+                // 使用默认路径
+                const basePath = path.join(os.homedir(), '.config', 'subscription', 'bin');
+                this.mihomoPath = path.join(basePath, 'mihomo');
+            }
+            
+            // 配置文件路径
+            const configDir = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
+            this.configPath = path.join(configDir, 'config.yaml');
+            
+            // 确保目录存在
+            fs.ensureDirSync(path.dirname(this.mihomoPath));
+            fs.ensureDirSync(path.dirname(this.configPath));
+        } catch (error) {
+            // 回退到默认路径
+            const basePath = path.join(os.homedir(), '.config', 'subscription', 'bin');
+            this.mihomoPath = path.join(basePath, 'mihomo');
+            const configDir = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
+            this.configPath = path.join(configDir, 'config.yaml');
+            
+            // 确保目录存在
+            fs.ensureDirSync(path.dirname(this.mihomoPath));
+            fs.ensureDirSync(path.dirname(this.configPath));
+            
+            // 记录错误但继续运行
+            console.warn('无法从配置文件获取 mihomo 路径，使用默认路径:', error);
+        }
     }
 
     public static getInstance(): MihomoService {

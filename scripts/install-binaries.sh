@@ -132,8 +132,19 @@ install_bun() {
             print_status "info" "解压文件..."
             unzip -q bun.zip
             
-            # 查找解压后的bun可执行文件
-            local bun_extracted=$(find . -name "bun" -type f -executable | head -1)
+            # 查找解压后的bun可执行文件（兼容 macOS 和 Linux）
+            local bun_extracted=""
+            if [ "$OS" = "Linux" ]; then
+                bun_extracted=$(find . -name "bun" -type f -executable | head -1)
+            else
+                # macOS 使用 -perm 来检查可执行权限
+                bun_extracted=$(find . -name "bun" -type f -perm +111 | head -1)
+                # 如果上面的方法失败，则直接找名为 bun 的文件
+                if [ -z "$bun_extracted" ]; then
+                    bun_extracted=$(find . -name "bun" -type f | head -1)
+                fi
+            fi
+            
             if [ -n "$bun_extracted" ]; then
                 cp "$bun_extracted" "$bun_binary"
                 chmod +x "$bun_binary"

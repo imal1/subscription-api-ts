@@ -210,62 +210,48 @@ setup_static_permissions() {
     fi
 }
 
-# 创建测试文件
-create_test_files() {
-    print_status "info" "创建测试文件..."
+# 修复 Nginx 权限问题
+fix_nginx_permissions() {
+    print_status "info" "修复 Nginx 权限配置..."
     
-    # 创建测试 HTML 文件
-    cat > "/tmp/test.html" << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Nginx 测试页面</title>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { color: #333; }
-        .success { color: #28a745; }
-        .info { color: #007bff; }
-        .timestamp { color: #666; font-size: 0.9em; }
-    </style>
-</head>
-<body>
-    <h1 class="success">🎉 Nginx 静态服务正常工作！</h1>
-    <p class="info">如果您看到这个页面，说明 Nginx 静态文件服务已经正确配置。</p>
-    <p class="timestamp">页面生成时间: <script>document.write(new Date().toLocaleString());</script></p>
-    <hr>
-    <h2>测试链接</h2>
-    <ul>
-        <li><a href="/subscription.txt">查看订阅文件</a></li>
-        <li><a href="/dashboard/">访问控制面板</a></li>
-        <li><a href="/api/health">API 健康检查</a></li>
-    </ul>
-</body>
-</html>
-EOF
-    
-    # 复制测试文件
-    safe_sudo cp "/tmp/test.html" "$DATA_DIR/test.html"
-    safe_sudo cp "/tmp/test.html" "$DATA_DIR/index.html"
-    
-    # 设置测试文件权限
-    if [ "$OS" = "Linux" ]; then
-        local nginx_user="www-data"
-        if ! id "$nginx_user" >/dev/null 2>&1; then
-            for user in nginx http; do
-                if id "$user" >/dev/null 2>&1; then
-                    nginx_user="$user"
-                    break
-                fi
-            done
-        fi
+    if [ "$OS" = "Mac" ]; then
+        # macOS 下修复 Nginx 权限
+        local nginx_conf="/opt/homebrew/etc/nginx/nginx.conf"
         
-        safe_sudo chown "$nginx_user:$nginx_user" "$DATA_DIR/test.html" "$DATA_DIR/index.html"
-        safe_sudo chmod 644 "$DATA_DIR/test.html" "$DATA_DIR/index.html"
+        if [ -f "$nginx_conf" ]; then
+            # 检查当前用户信息
+            local current_user=$(whoami)
+            local current_group=$(id -gn)
+            
+            # 检查是否已经配置了用户
+            if ! grep -q "^user.*$current_user" "$nginx_conf"; then
+                print_status "info" "配置 Nginx 运行用户为: $current_user $current_group"
+                
+                # 备份原配置
+                if [ ! -f "$nginx_conf.backup" ]; then
+                    safe_sudo cp "$nginx_conf" "$nginx_conf.backup"
+                fi
+                
+                # 修改用户配置
+                safe_sudo sed -i '' "s/^#user.*nobody;/user  $current_user $current_group;/" "$nginx_conf"
+                
+                # 重新加载 Nginx 配置
+                if pgrep nginx > /dev/null; then
+                    print_status "info" "重新加载 Nginx 配置..."
+                    safe_sudo nginx -s reload
+                fi
+                
+                print_status "success" "Nginx 用户权限配置完成"
+            else
+                print_status "info" "Nginx 用户权限已正确配置"
+            fi
+        else
+            print_status "warning" "未找到 Nginx 配置文件: $nginx_conf"
+        fi
+    elif [ "$OS" = "Linux" ]; then
+        # Linux 下的权限通过 setup_static_permissions 函数处理
+        print_status "info" "Linux 下的 Nginx 权限通过静态文件权限设置处理"
     fi
-    
-    rm -f "/tmp/test.html"
-    print_status "success" "测试文件创建完成"
 }
 
 # 安装 Nginx 配置
@@ -369,7 +355,6 @@ show_access_info() {
     echo "  - 静态文件服务: http://${external_host}:${NGINX_PORT}/"
     echo "  - API 代理服务: http://${external_host}:${NGINX_PROXY_PORT}/"
     echo "  - 控制面板: http://${external_host}:${NGINX_PROXY_PORT}/dashboard/"
-    echo "  - 测试页面: http://${external_host}:${NGINX_PORT}/test.html"
     echo "  - 数据目录: $DATA_DIR"
     echo "  - 日志目录: $LOG_DIR"
 }
@@ -423,11 +408,11 @@ main() {
     # 配置静态文件权限
     setup_static_permissions
     
-    # 创建测试文件
-    create_test_files
-    
     # 安装配置文件
     install_nginx_config
+    
+    # 修复 Nginx 权限配置
+    fix_nginx_permissions
     
     # 重载 Nginx 配置
     reload_nginx

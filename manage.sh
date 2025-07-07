@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Subscription API TypeScr    echo -e "  ${YELLOW}deploy${NC}           部署到服务器"t 管理脚本
+# Subscription API TypeScript 管理脚本
 # 功能：提供项目管理、诊断、部署等功能的统一入口
 # 作者：subscription-api-ts 项目组
 # 版本：1.0.0

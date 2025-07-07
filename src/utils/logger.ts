@@ -1,12 +1,26 @@
 import winston from 'winston';
 import * as path from 'path';
-import { config } from '../config';
 
-// 获取日志级别
+// 获取日志级别 - 使用默认值避免循环依赖
 const getLogLevel = (): string => {
-    // 从配置模块获取日志级别
-    const { getLogLevel } = require('../config/index');
-    return getLogLevel();
+    try {
+        // 延迟导入以避免循环依赖
+        const { getLogLevel } = require('../config/index');
+        return getLogLevel();
+    } catch {
+        return 'info'; // 默认日志级别
+    }
+};
+
+// 获取日志目录 - 使用默认值避免循环依赖
+const getLogDir = (): string => {
+    try {
+        const { config } = require('../config');
+        return config.logDir;
+    } catch {
+        const os = require('os');
+        return path.join(os.homedir(), '.config', 'subscription', 'log');
+    }
 };
 
 const logFormat = winston.format.combine(
@@ -25,13 +39,13 @@ export const logger = winston.createLogger({
     defaultMeta: { service: 'subscription-api' },
     transports: [
         new winston.transports.File({
-            filename: path.join(config.logDir, 'error.log'),
+            filename: path.join(getLogDir(), 'error.log'),
             level: 'error',
             maxsize: 5242880, // 5MB
             maxFiles: 5
         }),
         new winston.transports.File({
-            filename: path.join(config.logDir, 'combined.log'),
+            filename: path.join(getLogDir(), 'combined.log'),
             maxsize: 5242880, // 5MB
             maxFiles: 5
         })
