@@ -36,7 +36,7 @@ export class SingBoxService {
         try {
             const { stderr } = await execAsync(`sing-box info ${configName}`, { timeout: config.requestTimeout });
             return !stderr || !stderr.includes('not found');
-        } catch (error) {
+        } catch {
             return false;
         }
     }
@@ -114,8 +114,8 @@ export class SingBoxService {
         try {
             const { stdout } = await execAsync('sing-box', { timeout: config.requestTimeout });
             // 解析输出获取配置列表 (需要根据实际输出格式调整)
-            const lines = stdout.split('\n');
-            const configs: string[] = [];
+            const _lines = stdout.split('\n');
+            const _configs: string[] = [];
             
             // 这里需要根据sing-box的实际输出格式来解析
             // 临时返回配置的配置列表

@@ -71,7 +71,7 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
             button.textContent = originalText;
           }, 2000);
         }
-      } catch (err) {
+      } catch {
         setError("复制失败");
       }
     }
