@@ -249,8 +249,63 @@ fix_nginx_permissions() {
             print_status "warning" "未找到 Nginx 配置文件: $nginx_conf"
         fi
     elif [ "$OS" = "Linux" ]; then
-        # Linux 下的权限通过 setup_static_permissions 函数处理
-        print_status "info" "Linux 下的 Nginx 权限通过静态文件权限设置处理"
+        # Linux 下修复 Nginx 权限
+        local nginx_conf="/etc/nginx/nginx.conf"
+        
+        if [ -f "$nginx_conf" ]; then
+            # 检查当前用户信息
+            local current_user="$TARGET_USER"
+            local current_group="$TARGET_GROUP"
+            
+            print_status "info" "检查 Nginx 用户配置..."
+            
+            # 检查是否需要修改用户配置
+            local nginx_user_line=$(grep "^user" "$nginx_conf" || echo "")
+            
+            if [ -z "$nginx_user_line" ] || echo "$nginx_user_line" | grep -q "www-data\|nginx\|http"; then
+                print_status "info" "配置 Nginx 运行用户为: $current_user $current_group"
+                
+                # 备份原配置
+                if [ ! -f "$nginx_conf.backup" ]; then
+                    safe_sudo cp "$nginx_conf" "$nginx_conf.backup"
+                fi
+                
+                # 修改或添加用户配置
+                if grep -q "^user" "$nginx_conf"; then
+                    # 替换现有的用户配置
+                    safe_sudo sed -i "s/^user.*;/user $current_user $current_group;/" "$nginx_conf"
+                else
+                    # 在文件开头添加用户配置
+                    safe_sudo sed -i "1i user $current_user $current_group;" "$nginx_conf"
+                fi
+                
+                print_status "success" "Nginx 用户权限配置完成"
+            else
+                print_status "info" "Nginx 用户权限已正确配置: $nginx_user_line"
+            fi
+            
+            # 确保用户拥有访问权限的目录
+            local dirs_to_fix=(
+                "$DATA_DIR"
+                "$LOG_DIR"
+                "$DIST_DIR"
+                "$(dirname "$DATA_DIR")"
+                "$(dirname "$LOG_DIR")"
+                "$(dirname "$DIST_DIR")"
+            )
+            
+            for dir in "${dirs_to_fix[@]}"; do
+                if [ -d "$dir" ]; then
+                    # 给目录添加 execute 权限，让 nginx 用户可以访问
+                    safe_sudo chmod o+x "$dir"
+                fi
+            done
+            
+            print_status "success" "目录访问权限已修复"
+            
+        else
+            print_status "warning" "未找到 Nginx 配置文件: $nginx_conf"
+        fi
     fi
 }
 
@@ -313,6 +368,17 @@ reload_nginx() {
                 print_status "info" "启动 Nginx 服务..."
                 brew services start nginx
                 print_status "success" "Nginx 服务启动完成"
+            fi
+        fi
+        
+        # 重载后再次检查权限（针对 Linux）
+        if [ "$OS" = "Linux" ]; then
+            # 重载后可能需要重新检查进程用户
+            sleep 2
+            local nginx_processes=$(ps aux | grep nginx | grep -v grep || true)
+            if [ -n "$nginx_processes" ]; then
+                print_status "info" "Nginx 进程信息:"
+                echo "$nginx_processes" | head -3
             fi
         fi
     else
