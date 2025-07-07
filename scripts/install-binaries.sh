@@ -40,8 +40,10 @@ else
     TARGET_GROUP="$(id -gn $CURRENT_USER)"
 fi
 
-# 设置二进制文件目录
-BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
+# 设置目录变量（使用公共函数）
+setup_default_env
+
+# 二进制文件目录
 BIN_DIR="${BASE_DIR}/bin"
 
 # 确保二进制目录存在

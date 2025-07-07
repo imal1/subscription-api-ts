@@ -30,29 +30,6 @@ if ! check_user_permissions; then
     exit 1
 fi
 
-# 设置默认环境变量
-setup_default_env() {
-    print_status "info" "设置默认环境变量..."
-    
-    # 设置基础目录
-    export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
-    export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
-    export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
-    export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
-    export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-    export MIHOMO_PATH="${MIHOMO_PATH:-${BASE_DIR}/bin}"
-    export BUN_PATH="${BUN_PATH:-${BASE_DIR}/bin}"
-    
-    print_status "success" "环境变量设置完成"
-    print_status "info" "配置信息:"
-    echo "  - 基础目录: $BASE_DIR"
-    echo "  - 数据目录: $DATA_DIR"
-    echo "  - 日志目录: $LOG_DIR"
-    echo "  - 构建目录: $DIST_DIR"
-    echo "  - 二进制目录: ${BASE_DIR}/bin"
-    echo "  - 代理端口: $NGINX_PROXY_PORT"
-}
-
 # 清理旧配置
 cleanup_old_config() {
     print_status "info" "清理旧配置文件..."

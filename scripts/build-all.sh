@@ -37,9 +37,8 @@ else
     TARGET_GROUP="$(id -gn $CURRENT_USER)"
 fi
 
-# 设置构建目录
-BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
-DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+# 设置目录变量（使用公共函数）
+setup_default_env
 
 # 检查构建环境
 check_build_env() {

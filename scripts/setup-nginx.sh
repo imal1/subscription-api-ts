@@ -37,14 +37,12 @@ else
     TARGET_GROUP="$(id -gn $CURRENT_USER)"
 fi
 
-# 设置端口和目录变量
+# 设置端口和目录变量（使用公共函数）
+setup_default_env
+
+# 额外的配置变量
 API_PORT="${PORT:-3000}"
 NGINX_PORT="${NGINX_PORT:-3080}"
-NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
-BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
-DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
-LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
-DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
 SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
 
 # 检查 Nginx 安装

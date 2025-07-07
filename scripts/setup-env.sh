@@ -77,14 +77,8 @@ setup_directories() {
     # 加载配置文件
     load_config
 
-    # 设置默认值 - 统一使用 $HOME/.config/subscription 下的目录
-    export BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
-    export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
-    export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
-    export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
-    export MIHOMO_PATH="${MIHOMO_PATH:-${BASE_DIR}/bin}"
-    export BUN_PATH="${BUN_PATH:-${BASE_DIR}/bin}"
-    export NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+    # 设置默认环境变量（使用公共函数）
+    setup_default_env
 
     # 创建基础目录结构并设置权限
     echo "📁 创建基础目录结构..."

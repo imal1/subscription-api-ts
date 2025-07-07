@@ -617,3 +617,30 @@ show_version_info() {
     print_status "info" "  应用名称: $name"
     print_status "info" "  应用版本: $version"
 }
+
+# 设置默认环境变量（公共函数）
+# 为所有脚本提供统一的环境变量设置
+setup_default_env() {
+    print_status "info" "设置默认环境变量..."
+    
+    # 设置基础目录
+    BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
+    DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
+    LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
+    DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+    NGINX_PROXY_PORT="${NGINX_PROXY_PORT:-3888}"
+    MIHOMO_PATH="${MIHOMO_PATH:-${BASE_DIR}/bin}"
+    BUN_PATH="${BUN_PATH:-${BASE_DIR}/bin}"
+    
+    # 导出环境变量
+    export BASE_DIR DATA_DIR LOG_DIR DIST_DIR NGINX_PROXY_PORT MIHOMO_PATH BUN_PATH
+    
+    print_status "success" "环境变量设置完成"
+    print_status "info" "配置信息:"
+    echo "  - 基础目录: $BASE_DIR"
+    echo "  - 数据目录: $DATA_DIR"
+    echo "  - 日志目录: $LOG_DIR"
+    echo "  - 构建目录: $DIST_DIR"
+    echo "  - 二进制目录: ${BASE_DIR}/bin"
+    echo "  - 代理端口: $NGINX_PROXY_PORT"
+}

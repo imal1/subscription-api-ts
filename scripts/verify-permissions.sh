@@ -15,8 +15,8 @@ source "$SCRIPT_DIR/common.sh"
 # 显示标题
 show_header "权限验证"
 
-# 加载环境变量
-load_env_file "$PROJECT_ROOT/.env"
+# 配置变量（不再从环境文件加载）
+# 现在所有配置都基于 config.yaml
 
 # 检测操作系统
 OS=$(detect_os)
@@ -40,11 +40,10 @@ fi
 print_status "info" "当前用户: $CURRENT_USER"
 print_status "info" "目标用户: $TARGET_USER"
 
-# 设置目录变量
-BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
-DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
-LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
-DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
+# 设置目录变量（使用公共函数）
+setup_default_env
+
+# 额外的目录定义
 BIN_DIR="${BASE_DIR}/bin"
 
 # 权限检查结果
