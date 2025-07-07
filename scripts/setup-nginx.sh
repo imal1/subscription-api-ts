@@ -74,11 +74,11 @@ check_requirements() {
     check_required_file "$PROJECT_ROOT/config/nginx.conf.template" "Nginx 配置模板"
     
     # 检查前端构建文件（如果存在）
-    if [ -d "$PROJECT_ROOT/frontend/dist" ]; then
-        check_required_file "$PROJECT_ROOT/frontend/dist/index.html" "前端构建文件"
+    if [ -d "$DIST_DIR/frontend" ]; then
+        check_required_file "$DIST_DIR/frontend/index.html" "前端构建文件"
         print_status "info" "检测到前端构建文件"
     else
-        print_status "warning" "未检测到前端构建文件"
+        print_status "warning" "未检测到前端构建文件，请先运行构建脚本"
     fi
     
     # 检查数据目录
@@ -183,19 +183,11 @@ setup_static_permissions() {
         fi
         
         # 配置前端构建文件权限
-        if [ -d "$PROJECT_ROOT/frontend/dist" ]; then
-            safe_sudo chown -R "$nginx_user:$nginx_user" "$PROJECT_ROOT/frontend/dist"
-            safe_sudo chmod -R 755 "$PROJECT_ROOT/frontend/dist"
-            safe_sudo find "$PROJECT_ROOT/frontend/dist" -type f -exec chmod 644 {} \; 2>/dev/null || true
-            print_status "success" "前端文件权限设置完成"
-        fi
-        
-        # 配置统一构建目录权限
         if [ -d "$DIST_DIR/frontend" ]; then
             safe_sudo chown -R "$nginx_user:$nginx_user" "$DIST_DIR/frontend"
             safe_sudo chmod -R 755 "$DIST_DIR/frontend"
             safe_sudo find "$DIST_DIR/frontend" -type f -exec chmod 644 {} \; 2>/dev/null || true
-            print_status "success" "统一构建目录权限设置完成"
+            print_status "success" "前端构建文件权限设置完成"
         fi
         
         # 检查 SELinux（如果适用）

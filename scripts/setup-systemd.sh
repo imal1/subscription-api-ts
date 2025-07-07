@@ -58,11 +58,16 @@ check_service_requirements() {
     # 检查项目目录
     check_required_dir "$PROJECT_ROOT" "项目根目录"
     
-    # 检查构建文件
-    check_required_file "$PROJECT_ROOT/dist/index.js" "后端构建文件"
+    # 检查构建文件（最终部署位置）
+    check_required_file "$DIST_DIR/backend/index.js" "后端构建文件"
     
     # 检查配置文件
-    check_required_file "$PROJECT_ROOT/config.yaml" "配置文件"
+    if [ ! -f "$BASE_DIR/config.yaml" ]; then
+        print_status "error" "配置文件不存在: $BASE_DIR/config.yaml"
+        print_status "info" "请先运行安装脚本创建配置文件："
+        print_status "info" "  bash scripts/install.sh"
+        return 1
+    fi
     
     # 检查服务模板文件
     check_required_file "$PROJECT_ROOT/config/subscription-api-ts.service.template" "服务模板文件"

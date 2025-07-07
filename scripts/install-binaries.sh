@@ -261,39 +261,38 @@ install_mihomo() {
     rm -rf "$temp_dir"
 }
 
-# 设置环境变量
-setup_env_vars() {
-    print_status "info" "设置环境变量..."
+# 设置二进制文件路径到 config.yaml
+setup_binary_paths() {
+    print_status "info" "设置二进制文件路径..."
     
-    local env_file="$PROJECT_ROOT/.env"
+    # 使用 setup_default_env 中的 setup_yaml_config 来更新配置
+    local config_file="$BASE_DIR/config.yaml"
     
-    # 设置 mihomo 路径
-    if [ -f "$env_file" ]; then
-        if grep -q "MIHOMO_PATH=" "$env_file"; then
-            if [ "$OS" = "Linux" ]; then
-                sed -i "s|MIHOMO_PATH=.*|MIHOMO_PATH=${BIN_DIR}|g" "$env_file"
-            elif [ "$OS" = "Mac" ]; then
-                sed -i '' "s|MIHOMO_PATH=.*|MIHOMO_PATH=${BIN_DIR}|g" "$env_file"
-            fi
+    if [ -f "$config_file" ]; then
+        # 确保 yq 可用
+        if ! command -v yq >/dev/null 2>&1; then
+            print_status "warning" "yq 不可用，跳过配置文件更新"
+            return 0
+        fi
+        
+        # 更新 mihomo 路径
+        if yq eval '.mihomo.path' "$config_file" >/dev/null 2>&1; then
+            yq eval -i ".mihomo.path = \"${BIN_DIR}/mihomo\"" "$config_file"
         else
-            echo "MIHOMO_PATH=${BIN_DIR}" >> "$env_file"
+            print_status "warning" "配置文件中未找到 mihomo.path 字段"
         fi
-    else
-        echo "MIHOMO_PATH=${BIN_DIR}" > "$env_file"
-    fi
-    
-    # 设置 bun 路径
-    if grep -q "BUN_PATH=" "$env_file"; then
-        if [ "$OS" = "Linux" ]; then
-            sed -i "s|BUN_PATH=.*|BUN_PATH=${BIN_DIR}|g" "$env_file"
-        elif [ "$OS" = "Mac" ]; then
-            sed -i '' "s|BUN_PATH=.*|BUN_PATH=${BIN_DIR}|g" "$env_file"
+        
+        # 更新 bun 路径
+        if yq eval '.bun.path' "$config_file" >/dev/null 2>&1; then
+            yq eval -i ".bun.path = \"${BIN_DIR}/bun\"" "$config_file"
+        else
+            print_status "warning" "配置文件中未找到 bun.path 字段"
         fi
+        
+        print_status "success" "二进制文件路径设置完成"
     else
-        echo "BUN_PATH=${BIN_DIR}" >> "$env_file"
+        print_status "warning" "配置文件不存在，跳过路径更新: $config_file"
     fi
-    
-    print_status "success" "环境变量设置完成"
 }
 
 # 设置二进制文件权限
@@ -331,8 +330,8 @@ main() {
     # 安装 mihomo
     install_mihomo
     
-    # 设置环境变量
-    setup_env_vars
+    # 设置二进制文件路径到 config.yaml
+    setup_binary_paths
     
     # 设置文件权限
     setup_binary_permissions

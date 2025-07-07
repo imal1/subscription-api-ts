@@ -189,15 +189,15 @@ check_all_permissions() {
     check_directory_permissions "$BIN_DIR" "$TARGET_USER:$TARGET_GROUP" "755" "二进制目录"
     
     # 检查配置文件权限
-    check_file_permissions "$PROJECT_ROOT/.env" "$TARGET_USER:$TARGET_GROUP" "600" "环境配置文件"
+    check_file_permissions "$BASE_DIR/config.yaml" "$TARGET_USER:$TARGET_GROUP" "644" "配置文件"
     
     # 检查二进制文件权限
     check_binary_permissions "$BIN_DIR/bun" "Bun 二进制文件"
     check_binary_permissions "$BIN_DIR/mihomo" "mihomo 二进制文件"
     
-    # 检查构建文件权限
-    check_file_permissions "$PROJECT_ROOT/dist/index.js" "$TARGET_USER:$TARGET_GROUP" "644" "后端构建文件"
-    check_file_permissions "$PROJECT_ROOT/frontend/dist/index.html" "www-data:www-data" "644" "前端构建文件"
+    # 检查构建文件权限（最终部署位置）
+    check_file_permissions "$DIST_DIR/backend/index.js" "$TARGET_USER:$TARGET_GROUP" "644" "后端构建文件"
+    check_file_permissions "$DIST_DIR/frontend/index.html" "www-data:www-data" "644" "前端构建文件"
     
     # 检查 Nginx 相关目录权限（Linux）
     if [ "$OS" = "Linux" ]; then
@@ -213,12 +213,12 @@ check_all_permissions() {
         fi
         
         # 检查前端文件权限
-        if [ -d "$PROJECT_ROOT/frontend/dist" ]; then
+        if [ -d "$DIST_DIR/frontend" ]; then
             print_status "info" "检查前端文件 Nginx 权限..."
-            local frontend_owner=$(ls -ld "$PROJECT_ROOT/frontend/dist" | awk '{print $3":"$4}')
+            local frontend_owner=$(ls -ld "$DIST_DIR/frontend" | awk '{print $3":"$4}')
             if [ "$frontend_owner" != "$nginx_user:$nginx_user" ]; then
                 print_status "warning" "前端文件所有者不匹配 Nginx 用户"
-                PERMISSION_ISSUES+=("前端文件所有者不匹配: $PROJECT_ROOT/frontend/dist (期望: $nginx_user:$nginx_user, 实际: $frontend_owner)")
+                PERMISSION_ISSUES+=("前端文件所有者不匹配: $DIST_DIR/frontend (期望: $nginx_user:$nginx_user, 实际: $frontend_owner)")
             fi
         fi
         
@@ -231,10 +231,10 @@ check_all_permissions() {
     fi
     
     # 检查项目根目录权限
-    local project_owner=$(ls -ld "$PROJECT_ROOT" | awk '{print $3":"$4}')
+    local project_owner=$(ls -ld "$BASE_DIR" | awk '{print $3":"$4}')
     if [ "$project_owner" != "$TARGET_USER:$TARGET_GROUP" ]; then
         print_status "warning" "项目根目录所有者不匹配"
-        PERMISSION_ISSUES+=("项目根目录所有者不匹配: $PROJECT_ROOT (期望: $TARGET_USER:$TARGET_GROUP, 实际: $project_owner)")
+        PERMISSION_ISSUES+=("项目根目录所有者不匹配: $BASE_DIR (期望: $TARGET_USER:$TARGET_GROUP, 实际: $project_owner)")
     fi
     
     print_status "success" "权限检查完成"
@@ -355,20 +355,20 @@ fix_permissions() {
         fi
     fi
     
-    # 修复环境配置文件权限
-    if [ -f "$PROJECT_ROOT/.env" ]; then
-        print_status "info" "修复环境配置文件权限..."
+    # 修复配置文件权限
+    if [ -f "$BASE_DIR/config.yaml" ]; then
+        print_status "info" "修复配置文件权限..."
         if [[ $EUID -eq 0 ]]; then
-            chown "$TARGET_USER:$TARGET_GROUP" "$PROJECT_ROOT/.env"
-            chmod 600 "$PROJECT_ROOT/.env"
+            chown "$TARGET_USER:$TARGET_GROUP" "$BASE_DIR/config.yaml"
+            chmod 644 "$BASE_DIR/config.yaml"
         else
-            safe_sudo chown "$TARGET_USER:$TARGET_GROUP" "$PROJECT_ROOT/.env"
-            safe_sudo chmod 600 "$PROJECT_ROOT/.env"
+            safe_sudo chown "$TARGET_USER:$TARGET_GROUP" "$BASE_DIR/config.yaml"
+            safe_sudo chmod 644 "$BASE_DIR/config.yaml"
         fi
     fi
     
     # 修复前端构建文件权限（Linux）
-    if [ "$OS" = "Linux" ] && [ -d "$PROJECT_ROOT/frontend/dist" ]; then
+    if [ "$OS" = "Linux" ] && [ -d "$DIST_DIR/frontend" ]; then
         print_status "info" "修复前端构建文件权限..."
         local nginx_user="www-data"
         if ! id "$nginx_user" >/dev/null 2>&1; then
@@ -381,24 +381,24 @@ fix_permissions() {
         fi
         
         if [[ $EUID -eq 0 ]]; then
-            chown -R "$nginx_user:$nginx_user" "$PROJECT_ROOT/frontend/dist"
-            chmod -R 755 "$PROJECT_ROOT/frontend/dist"
-            find "$PROJECT_ROOT/frontend/dist" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            chown -R "$nginx_user:$nginx_user" "$DIST_DIR/frontend"
+            chmod -R 755 "$DIST_DIR/frontend"
+            find "$DIST_DIR/frontend" -type f -exec chmod 644 {} \; 2>/dev/null || true
         else
-            safe_sudo chown -R "$nginx_user:$nginx_user" "$PROJECT_ROOT/frontend/dist"
-            safe_sudo chmod -R 755 "$PROJECT_ROOT/frontend/dist"
-            safe_sudo find "$PROJECT_ROOT/frontend/dist" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            safe_sudo chown -R "$nginx_user:$nginx_user" "$DIST_DIR/frontend"
+            safe_sudo chmod -R 755 "$DIST_DIR/frontend"
+            safe_sudo find "$DIST_DIR/frontend" -type f -exec chmod 644 {} \; 2>/dev/null || true
         fi
     fi
     
     # 修复项目根目录权限
     print_status "info" "修复项目根目录权限..."
     if [[ $EUID -eq 0 ]]; then
-        chown -R "$TARGET_USER:$TARGET_GROUP" "$PROJECT_ROOT"
-        chmod -R u+rX "$PROJECT_ROOT"
+        chown -R "$TARGET_USER:$TARGET_GROUP" "$BASE_DIR"
+        chmod -R u+rX "$BASE_DIR"
     else
-        safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROJECT_ROOT"
-        safe_sudo chmod -R u+rX "$PROJECT_ROOT"
+        safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$BASE_DIR"
+        safe_sudo chmod -R u+rX "$BASE_DIR"
     fi
     
     print_status "success" "权限修复完成"
@@ -436,14 +436,14 @@ $(ls -ld "$BIN_DIR" 2>/dev/null || echo "目录不存在")
 
 文件权限检查:
 ================
-环境配置文件: $PROJECT_ROOT/.env
-$(ls -l "$PROJECT_ROOT/.env" 2>/dev/null || echo "文件不存在")
+配置文件: $BASE_DIR/config.yaml
+$(ls -l "$BASE_DIR/config.yaml" 2>/dev/null || echo "文件不存在")
 
-后端构建文件: $PROJECT_ROOT/dist/index.js
-$(ls -l "$PROJECT_ROOT/dist/index.js" 2>/dev/null || echo "文件不存在")
+后端构建文件: $DIST_DIR/backend/index.js
+$(ls -l "$DIST_DIR/backend/index.js" 2>/dev/null || echo "文件不存在")
 
-前端构建文件: $PROJECT_ROOT/frontend/dist/index.html
-$(ls -l "$PROJECT_ROOT/frontend/dist/index.html" 2>/dev/null || echo "文件不存在")
+前端构建文件: $DIST_DIR/frontend/index.html
+$(ls -l "$DIST_DIR/frontend/index.html" 2>/dev/null || echo "文件不存在")
 
 二进制文件检查:
 ================
@@ -485,11 +485,11 @@ show_fix_commands() {
     echo "  - 重置基础目录权限: ${cmd_prefix}chown -R $TARGET_USER:$TARGET_GROUP $BASE_DIR && ${cmd_prefix}chmod -R 755 $BASE_DIR"
     echo "  - 重置数据目录权限: ${cmd_prefix}chown -R $TARGET_USER:$TARGET_GROUP $DATA_DIR && ${cmd_prefix}chmod -R 755 $DATA_DIR"
     echo "  - 重置日志目录权限: ${cmd_prefix}chown -R $TARGET_USER:$TARGET_GROUP $LOG_DIR && ${cmd_prefix}chmod -R 750 $LOG_DIR"
-    echo "  - 重置配置文件权限: ${cmd_prefix}chown $TARGET_USER:$TARGET_GROUP $PROJECT_ROOT/.env && ${cmd_prefix}chmod 600 $PROJECT_ROOT/.env"
+    echo "  - 重置配置文件权限: ${cmd_prefix}chown $TARGET_USER:$TARGET_GROUP $BASE_DIR/config.yaml && ${cmd_prefix}chmod 644 $BASE_DIR/config.yaml"
     echo "  - 重置二进制权限: ${cmd_prefix}chmod 755 $BIN_DIR/bun $BIN_DIR/mihomo"
     
     if [ "$OS" = "Linux" ]; then
-        echo "  - 重置前端文件权限: ${cmd_prefix}chown -R www-data:www-data $PROJECT_ROOT/frontend/dist && ${cmd_prefix}chmod -R 755 $PROJECT_ROOT/frontend/dist"
+        echo "  - 重置前端文件权限: ${cmd_prefix}chown -R www-data:www-data $DIST_DIR/frontend && ${cmd_prefix}chmod -R 755 $DIST_DIR/frontend"
     fi
     
     echo ""

@@ -246,7 +246,7 @@ setup_build_permissions() {
     fi
     
     # 设置前端构建文件权限（Linux）
-    if [ "$OS" = "Linux" ] && [ -d "$PROJECT_ROOT/frontend/dist" ]; then
+    if [ "$OS" = "Linux" ] && [ -d "$DIST_DIR/frontend" ]; then
         # 检查 Nginx 用户
         local nginx_user="www-data"
         if ! id "$nginx_user" >/dev/null 2>&1; then
@@ -260,13 +260,13 @@ setup_build_permissions() {
         
         # 设置适当的权限
         if [[ $EUID -eq 0 ]]; then
-            safe_sudo chown -R "$nginx_user:$nginx_user" "$PROJECT_ROOT/frontend/dist/"
-            safe_sudo chmod -R 755 "$PROJECT_ROOT/frontend/dist/"
-            safe_sudo find "$PROJECT_ROOT/frontend/dist/" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            safe_sudo chown -R "$nginx_user:$nginx_user" "$DIST_DIR/frontend/"
+            safe_sudo chmod -R 755 "$DIST_DIR/frontend/"
+            safe_sudo find "$DIST_DIR/frontend/" -type f -exec chmod 644 {} \; 2>/dev/null || true
         else
-            safe_sudo chown -R "$nginx_user:$nginx_user" "$PROJECT_ROOT/frontend/dist/" 2>/dev/null || true
-            safe_sudo chmod -R 755 "$PROJECT_ROOT/frontend/dist/" 2>/dev/null || true
-            safe_sudo find "$PROJECT_ROOT/frontend/dist/" -type f -exec chmod 644 {} \; 2>/dev/null || true
+            safe_sudo chown -R "$nginx_user:$nginx_user" "$DIST_DIR/frontend/" 2>/dev/null || true
+            safe_sudo chmod -R 755 "$DIST_DIR/frontend/" 2>/dev/null || true
+            safe_sudo find "$DIST_DIR/frontend/" -type f -exec chmod 644 {} \; 2>/dev/null || true
         fi
     fi
     
@@ -318,6 +318,15 @@ show_build_info() {
     fi
     
     if [ -d "$DIST_DIR" ]; then
+        echo "  - 最终部署目录: $DIST_DIR"
+        if [ -f "$DIST_DIR/backend/index.js" ]; then
+            local backend_deploy_size=$(du -sh "$DIST_DIR/backend" | cut -f1)
+            echo "    后端文件: $backend_deploy_size"
+        fi
+        if [ -f "$DIST_DIR/frontend/index.html" ]; then
+            local frontend_deploy_size=$(du -sh "$DIST_DIR/frontend" | cut -f1)
+            echo "    前端文件: $frontend_deploy_size"
+        fi
         echo "  - 统一构建目录: $DIST_DIR"
         local total_size=$(du -sh "$DIST_DIR" | cut -f1)
         echo "    总大小: $total_size"

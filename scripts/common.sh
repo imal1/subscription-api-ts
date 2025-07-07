@@ -623,8 +623,19 @@ show_version_info() {
 setup_default_env() {
     print_status "info" "设置默认环境变量..."
     
+    # 确定正确的用户主目录
+    local user_home="$HOME"
+    if [[ $EUID -eq 0 ]] && [ -n "$SUDO_USER" ]; then
+        # 如果是通过 sudo 运行，使用原始用户的主目录
+        user_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        if [ -z "$user_home" ]; then
+            user_home="/home/$SUDO_USER"
+        fi
+        print_status "info" "检测到 sudo 执行，使用用户 $SUDO_USER 的主目录: $user_home"
+    fi
+    
     # 设置基础目录
-    BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
+    BASE_DIR="${BASE_DIR:-$user_home/.config/subscription}"
     DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
     LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
     DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"
@@ -637,6 +648,7 @@ setup_default_env() {
     
     print_status "success" "环境变量设置完成"
     print_status "info" "配置信息:"
+    echo "  - 用户主目录: $user_home"
     echo "  - 基础目录: $BASE_DIR"
     echo "  - 数据目录: $DATA_DIR"
     echo "  - 日志目录: $LOG_DIR"
