@@ -60,11 +60,17 @@ const StatusCard = ({
   );
 };
 
-const Dashboard = () => {
-  const [status, setStatus] = useState<ApiStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+interface DashboardProps {
+  initialStatus?: ApiStatus | null;
+  initialError?: string | null;
+}
+
+const Dashboard = ({ initialStatus = null, initialError = null }: DashboardProps) => {
+  const [status, setStatus] = useState<ApiStatus | null>(initialStatus);
+  // 首屏已由 SSR 注入数据，无需 loading 占位
+  const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
 

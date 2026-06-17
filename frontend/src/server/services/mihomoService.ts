@@ -28,8 +28,8 @@ export class MihomoService {
     private constructor() {
         // 从配置中获取 mihomo 路径
         try {
-            const yamlService = require('./yamlService');
-            const fullConfig = yamlService.getFullConfig();
+            const { yamlService } = require('./yamlService');
+            const fullConfig = yamlService.getFullConfig() || {};
             
             // 使用配置中的路径
             if (fullConfig.binaries?.mihomo_path) {
@@ -763,14 +763,13 @@ export class MihomoService {
             return yqPath;
         }
         
-        // 向后兼容：检查项目根目录的 bin/yq
-        const projectRoot = path.resolve(__dirname, '../../');
-        const fallbackYqPath = path.join(projectRoot, 'bin', 'yq');
+        // 向后兼容：检查进程工作目录下的 bin/yq
+        const fallbackYqPath = path.join(process.cwd(), 'bin', 'yq');
         if (fs.existsSync(fallbackYqPath)) {
             return fallbackYqPath;
         }
-        
-        // 最后尝试系统 yq
+
+        // 最后尝试系统 yq（依赖 PATH）
         return 'yq';
     }
 

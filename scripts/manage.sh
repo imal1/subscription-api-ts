@@ -111,26 +111,43 @@ setup_systemd_service() {
     fi
     
     print_status "info" "配置 systemd 服务..."
-    
+
     local service_name="subscription-api-ts"
     local service_file="/etc/systemd/system/${service_name}.service"
-    
-    # 创建服务文件
+
+    # 解析 node 路径（Next.js standalone 以 Node 运行）
+    local node_bin
+    node_bin="$(command -v node || true)"
+    if [ -z "$node_bin" ]; then
+        print_status "error" "未找到 node，请先安装 Node.js (>=18) 后重试"
+        return 1
+    fi
+    local node_dir
+    node_dir="$(dirname "$node_bin")"
+
+    # 监听端口（默认 3000）
+    load_config 2>/dev/null || true
+    local api_port="${PORT:-3000}"
+
+    # 创建服务文件：运行 Next standalone 入口 server.js
     safe_sudo tee "$service_file" > /dev/null << EOF
 [Unit]
-Description=Subscription API TypeScript Service
+Description=Subscription API TypeScript Service (Next.js SSR)
 After=network.target
 
 [Service]
 Type=simple
 User=$TARGET_USER
 Group=$TARGET_GROUP
-WorkingDirectory=$PROJECT_ROOT
-ExecStart=$BIN_DIR/bun run start
+WorkingDirectory=$DIST_DIR/frontend
+ExecStart=$node_bin $DIST_DIR/frontend/server.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=CONFIG_FILE=$CONFIG_FILE
+Environment=PORT=$api_port
+Environment=HOSTNAME=0.0.0.0
+Environment=PATH=$node_dir:/usr/local/bin:/usr/bin:/bin:$BIN_DIR
 
 [Install]
 WantedBy=multi-user.target
@@ -198,17 +215,20 @@ cmd_check() {
         print_status "warning" "mihomo 未安装"
     fi
     
-    # 检查构建文件
-    if [ -f "$PROJECT_ROOT/dist/index.js" ]; then
-        print_status "success" "后端构建文件存在"
+    # 检查构建文件（Next.js standalone）
+    if [ -f "$DIST_DIR/frontend/server.js" ]; then
+        print_status "success" "Next standalone 产物已部署 ($DIST_DIR/frontend/server.js)"
+    elif [ -f "$PROJECT_ROOT/frontend/.next/standalone/frontend/server.js" ]; then
+        print_status "success" "Next standalone 已构建（待部署）"
     else
-        print_status "warning" "后端构建文件不存在"
+        print_status "warning" "Next 构建产物不存在，请运行构建"
     fi
-    
-    if [ -f "$PROJECT_ROOT/frontend/dist/index.html" ]; then
-        print_status "success" "前端构建文件存在"
+
+    # 检查 node
+    if command_exists node; then
+        print_status "success" "node: $(node --version)"
     else
-        print_status "warning" "前端构建文件不存在"
+        print_status "warning" "node 未安装（运行 Next 服务必需）"
     fi
     
     # 检查服务状态 (Linux)
@@ -281,10 +301,12 @@ show_completion_info() {
         echo "  查看状态: sudo systemctl status subscription-api-ts"
         echo "  查看日志: sudo journalctl -u subscription-api-ts -f"
     else
-        echo "  启动服务: cd $PROJECT_ROOT && bun run start"
+        echo "  启动服务: cd $DIST_DIR/frontend && PORT=$api_port node server.js"
+        echo "  本地开发: cd $PROJECT_ROOT/frontend && bun run dev"
     fi
-    
-    echo "  访问 API: http://$host:$api_port"
+
+    echo "  仪表盘(SSR): http://$host:$api_port/"
+    echo "  访问 API: http://$host:$api_port/api/status"
     echo "  生成订阅: http://$host:$api_port/api/update"
     echo ""
     

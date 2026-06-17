@@ -202,7 +202,7 @@ show_completion_info() {
     
     if [ "$OS" = "Linux" ]; then
         echo "1. 生成订阅文件: curl http://${external_host}:${nginx_proxy_port}/api/update"
-        echo "2. 访问控制面板: http://${external_host}:${nginx_proxy_port}/dashboard/"
+        echo "2. 访问控制面板(SSR): http://${external_host}:${nginx_proxy_port}/"
         
         local service_name="${SERVICE_NAME:-subscription-api-ts}"
         echo ""
@@ -219,9 +219,9 @@ show_completion_info() {
             fi
         fi
     elif [ "$OS" = "Mac" ]; then
-        echo "1. 启动服务: bun run dev"
+        echo "1. 本地开发: cd frontend && bun run dev  (next dev :3001)"
         echo "2. 生成订阅: curl http://${external_host}:${api_port}/api/update"
-        echo "3. 访问控制面板: http://${external_host}:${api_port}/dashboard/"
+        echo "3. 访问控制面板(SSR): http://${external_host}:${api_port}/"
     fi
     
     echo ""

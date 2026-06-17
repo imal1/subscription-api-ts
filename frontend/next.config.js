@@ -1,20 +1,26 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
-  skipTrailingSlashRedirect: true,
-  distDir: 'dist',
-  images: {
-    unoptimized: true
-  },
-  // Next.js 15.x 配置更新
-  experimental: {
-    // esmExternals 在 Next.js 15.x 中已默认启用，移除此配置
-  },
+  // 以独立 Node 服务运行（生产: node .next/standalone/frontend/server.js），支持 SSR
+  output: 'standalone',
+  // monorepo（bun workspace）下依赖被提升到仓库根 node_modules，
+  // 显式指定 tracing 根，确保 standalone 正确打包依赖（否则会误选 ~ 目录）
+  outputFileTracingRoot: path.join(__dirname, '..'),
+  // 后端 service 层会 spawn 外部进程（mihomo/yq/sing-box），且 winston 等需在 Node 端运行
+  serverExternalPackages: ['winston', 'fs-extra', 'node-cron'],
   // React 19.x 兼容性配置
   compiler: {
-    // 启用 React 19.x 的编译器优化
     removeConsole: process.env.NODE_ENV === 'production'
+  },
+  // 保持对外文件下载 URL 不变，映射到内部 API 路由
+  async rewrites() {
+    return [
+      { source: '/subscription.txt', destination: '/api/file/subscription' },
+      { source: '/clash.yaml', destination: '/api/file/clash' },
+      { source: '/raw.txt', destination: '/api/file/raw' },
+      { source: '/health', destination: '/api/health' }
+    ]
   }
 }
 

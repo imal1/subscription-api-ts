@@ -46,46 +46,10 @@ clean_build() {
 }
 
 # 构建后端
+# 注：自迁移到 Next.js 全栈后，后端 API 已并入 Next（frontend/src/server + src/pages/api），
+# 不再单独编译。此函数保留为兼容占位，实际由 build_frontend 统一产出。
 build_backend() {
-    print_status "info" "构建后端项目..."
-    
-    local project_root=$(get_project_root)
-    
-    # 检查必要文件
-    check_file "$project_root/package.json" "package.json"
-    check_file "$project_root/tsconfig.json" "tsconfig.json"
-    check_dir "$project_root/src" "源代码目录"
-    
-    # 检查 bun
-    if ! check_bun; then
-        return 1
-    fi
-    
-    # 切换到项目目录
-    cd "$project_root"
-    
-    # 安装依赖
-    if [ ! -d "node_modules" ]; then
-        print_status "info" "安装后端依赖..."
-        if ! "$BUN_CMD" install; then
-            print_status "error" "后端依赖安装失败"
-            return 1
-        fi
-    fi
-    
-    # 执行构建
-    if ! "$BUN_CMD" run build; then
-        print_status "error" "后端构建失败"
-        return 1
-    fi
-    
-    # 验证构建结果
-    if [ ! -f "$project_root/dist/index.js" ]; then
-        print_status "error" "后端构建失败：未找到 dist/index.js"
-        return 1
-    fi
-    
-    print_status "success" "后端构建完成"
+    print_status "info" "后端已并入 Next.js 全栈，跳过独立后端构建"
     return 0
 }
 
@@ -120,44 +84,48 @@ build_frontend() {
         fi
     fi
     
-    # 执行构建
+    # 执行构建（Next.js standalone 产物）
     if ! "$BUN_CMD" run build; then
         print_status "error" "前端构建失败"
         return 1
     fi
-    
-    # 验证构建结果
-    if [ ! -f "$project_root/frontend/dist/index.html" ]; then
-        print_status "error" "前端构建失败：未找到 frontend/dist/index.html"
+
+    # 验证 standalone 入口
+    if [ ! -f "$project_root/frontend/.next/standalone/frontend/server.js" ]; then
+        print_status "error" "前端构建失败：未找到 .next/standalone/frontend/server.js"
         return 1
     fi
-    
-    print_status "success" "前端构建完成"
+
+    # standalone 不会自动包含静态资源与 public，需手动拷入运行目录
+    cp -r "$project_root/frontend/.next/static" \
+          "$project_root/frontend/.next/standalone/frontend/.next/static"
+    if [ -d "$project_root/frontend/public" ]; then
+        cp -r "$project_root/frontend/public" \
+              "$project_root/frontend/.next/standalone/frontend/public"
+    fi
+
+    print_status "success" "前端构建完成 (Next.js standalone)"
     return 0
 }
 
 # 复制构建文件
 copy_build_files() {
     print_status "info" "复制构建文件..."
-    
+
     local project_root=$(get_project_root)
-    
-    # 创建目标目录
-    ensure_dir "$DIST_DIR/backend" "后端构建目录"
-    ensure_dir "$DIST_DIR/frontend" "前端构建目录"
-    
-    # 复制后端文件
-    if [ -d "$project_root/dist" ]; then
-        cp -r "$project_root/dist"/* "$DIST_DIR/backend/"
-        print_status "success" "后端文件复制完成"
+    local standalone="$project_root/frontend/.next/standalone"
+
+    # 清空旧产物并复制 Next standalone 整棵树
+    # 结果：$DIST_DIR/frontend/server.js（入口）+ $DIST_DIR/node_modules（依赖）
+    rm -rf "$DIST_DIR/frontend" "$DIST_DIR/node_modules" "$DIST_DIR/backend"
+    if [ -d "$standalone" ]; then
+        cp -r "$standalone"/. "$DIST_DIR/"
+        print_status "success" "Next standalone 产物复制完成"
+    else
+        print_status "error" "未找到 standalone 产物: $standalone"
+        return 1
     fi
-    
-    # 复制前端文件
-    if [ -d "$project_root/frontend/dist" ]; then
-        cp -r "$project_root/frontend/dist"/* "$DIST_DIR/frontend/"
-        print_status "success" "前端文件复制完成"
-    fi
-    
+
     # 设置权限
     if [ "$OS" = "linux" ]; then
         safe_sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DIST_DIR" 2>/dev/null || true

@@ -6,46 +6,32 @@ server {
     error_log ${LOG_DIR}/nginx-error.log debug;
     access_log ${LOG_DIR}/nginx-access.log;
     
-    # Dashboard 静态文件服务
-    location /dashboard/ {
-        alias ${DIST_DIR}/frontend/;
-        index index.html;
-        try_files $uri $uri/ @dashboard;
-        expires 1h;
-        add_header Cache-Control "public, no-transform";
-    }
-    
-    # Next.js 静态资源 (_next目录)
-    location /_next/ {
-        alias ${DIST_DIR}/frontend/_next/;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-    
-    # Dashboard fallback for SPA routing
-    location @dashboard {
-        rewrite ^/dashboard/(.*)$ /dashboard/index.html last;
-    }
-    
-    # 根路径重定向到 dashboard
-    location = / {
-        return 301 /dashboard/;
-    }
-    
-    # API代理
-    location /api/ {
+    # 全部请求反代到 Next.js (SSR 仪表盘 + /api/* + /_next/* + 文件下载)
+    # Next 以 standalone 单进程运行在 127.0.0.1:${API_PORT}
+    location / {
         proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
+        proxy_send_timeout 150s;
+        proxy_read_timeout 150s;
     }
-    
-    # 订阅文件直接访问
+
+    # Next 构建的不可变静态资源加缓存
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_set_header Host $host;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # 订阅文件直接由 nginx 提供（比经 Next 更快；Next 内亦有同 URL 兜底）
     location ~ ^/(subscription\.txt|clash\.yaml|raw\.txt)$ {
         root ${DATA_DIR};
         add_header Content-Type "text/plain; charset=utf-8";

@@ -7,10 +7,13 @@ Documentation=https://github.com/imal1/subscription-api-ts
 Type=simple
 User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
-WorkingDirectory=${BASE_DIR}
+WorkingDirectory=${DIST_DIR}/frontend
 Environment=NODE_ENV=production
+Environment=PORT=${API_PORT}
+Environment=HOSTNAME=0.0.0.0
 Environment=PATH=/usr/bin:/usr/local/bin:${BASE_DIR}/bin
-ExecStart=${BUN_PATH} ${DIST_DIR}/backend/index.js
+# Next.js standalone 入口（SSR + API + 定时任务，单进程）
+ExecStart=${NODE_PATH} ${DIST_DIR}/frontend/server.js
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=3
