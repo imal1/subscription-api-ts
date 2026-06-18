@@ -51,17 +51,18 @@ run_sudo() {
     fi
 }
 
-# 从 config.yaml 读取端口（用于健康检查）。无 yq / 无 config 时回退默认 3000。
+# 从 config.yaml 读取端口（用于健康检查）。无 yq / 无 config 时回退 PORT 环境变量或默认 3001。
 detect_port() {
     local cfg="$BASE_DIR/config.yaml"
-    if [[ -f "$cfg" ]] && command -v yq >/dev/null 2>&1; then
+    local yq_bin="${BASE_DIR}/bin/yq"
+    if [[ -f "$cfg" ]] && [[ -x "$yq_bin" ]]; then
         local p
-        p="$(yq eval '.app.port // ""' "$cfg" 2>/dev/null || true)"
+        p="$("$yq_bin" eval '.app.port // ""' "$cfg" 2>/dev/null || true)"
         if [[ -n "$p" && "$p" != "null" ]]; then
             echo "$p"; return
         fi
     fi
-    echo "${PORT:-3000}"
+    echo "${PORT:-3001}"
 }
 
 # ---------- 主命令：apply ----------
