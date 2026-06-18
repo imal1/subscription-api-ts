@@ -59,3 +59,66 @@ bun run lint                # oxlint frontend/src
 ## 注意
 - 修改后端 service 后，dev 模式下若动到 `instrumentation*` 需重启 dev server。
 - `next build` 在 monorepo 下会因多 lockfile 警告而误选 tracing 根，已通过 `outputFileTracingRoot` 固定到仓库根，勿删。
+
+## Design System（2026-06：Botanical Garden）
+
+项目采用 **Botanical Garden** 主题（源自 theme-factory），扁平化设计，强调清爽、有机的视觉感受。
+
+### 色彩
+
+| Token | Hex | 用途 |
+|---|---|---|
+| `--fern` | `#4a7c59` | 主色、成功状态、活跃指示器 |
+| `--marigold` | `#f9a620` | 强调色、警告状态 |
+| `--terracotta` | `#b7472a` | 危险/错误状态 |
+| `--cream` | `#f5f3ed` | 浅色背景基色 |
+| `--ink` | `#1a1d1a` | 正文色（浅色模式） |
+
+CSS 变量以语义化 tokens 暴露（`--primary`, `--secondary`, `--accent`, `--destructive`, `--background` 等），分别映射到上述园艺色板。暗色模式通过 `.dark` class 激活（`--background: #1a221c`, `--card: #222b25`, `--primary: #8faa95` 等）。完整定义在 [globals.css](frontend/src/styles/globals.css)。
+
+### 排版
+
+| 角色 | 字体 |
+|---|---|
+| Display / 标题 | Georgia, Times New Roman, serif (`--font-display`) |
+| Body / UI | -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif (`--font-body`) |
+| 代码 / 数据 | JetBrains Mono, SF Mono, Cascadia Code, monospace (`--font-mono`) |
+
+### 组件约定
+
+- **Card**: 圆角 12px（`--radius-lg`），`1px solid var(--border)` 边框，`var(--shadow-card)` 阴影，hover 时阴影增强到 `var(--shadow-card-hover)`。使用 CSS class `garden-card`。
+- **Button**: 圆角 8px（`rounded-lg`），内置 `active:scale-[0.98]` 按压反馈。Primary 按钮使用 `backgroundColor: var(--primary), color: var(--primary-foreground)`（Tailwind 类可能被 CSS 变量压低特异性时用 inline style 兜底）。
+- **StatCard**: 卡片 + 左边 3px 彩色条（fern/marigold/terracotta/info），内用 `font-display` 显示大数值，`muted-foreground` 显示标签和副文本。
+- **SectionHeading**: 底部 `4px` fern 色短装饰线（`.section-rule`），标题用 `font-display` + `font-semibold`。
+- **StatusBadge**: 小圆角 chip，配 `live-dot`（8px 圆点，活跃时 fern 色带 `pulse-dot` 呼吸动画）。
+- **Alert/Toast**: `.garden-alert` + variant class（`garden-alert-success`/`danger`），`slideUp` 入场动画。
+- **Table**: `.garden-table`，左对齐，uppercase header，hover 行高亮。
+- **Dialog**: 圆角 16px（`rounded-2xl`），`var(--card)` 背景 + `var(--border)` 边框。
+
+### 动画
+
+- **入场编排**: `.stagger-slide-up` 父容器，子元素依次 `slideUp`（0.4s cubic-bezier，60ms stagger，最多 8 层）。
+- **呼吸**: `.animate-breathe`（3s ease-in-out opacity 循环），用于加载指示器。
+- **标题装饰线**: `.animate-grow-line`（从 `scaleX(0)` 滑入，0.6s cubic-bezier）。
+- **植物图标**: `animation: sway 4s ease-in-out infinite`（±1.5deg 轻摆）。
+- **活跃状态点**: `live-dot-active`（`pulse-dot` 2s 扩散动画）。
+- **按压反馈**: 所有按钮 `active:scale-[0.98]`。
+- 所有动画在 `prefers-reduced-motion: reduce` 时禁用。
+
+### 暗色模式
+
+- 自动检测 `prefers-color-scheme: dark`（通过 `ThemeProvider` 中的 `matchMedia` 监听）。
+- 手动切换按钮（`ThemeToggle`）：`ph:moon-bold` / `ph:sun-bold` 图标，旋转过渡。
+- 偏好持久化到 `localStorage` key `subscription-dashboard-theme`。
+- Monaco Editor 在 `ConvertModal` 中跟随主题切换 `vs` / `vs-dark`。
+
+### 图标
+
+使用 `@iconify/react` 的 Phosphor 图标集（`ph:` 前缀）。优先 Bold 变体（`ph:xxx-bold`）用于状态指示，Regular（`ph:xxx`）用于按钮和装饰。
+
+### 不做什么
+
+- 不使用 `bg-gray-50`、`text-gray-900` 等 Tailwind 颜色类——始终使用 CSS 变量（`var(--xxx)`）或语义 utility，确保暗色模式自动适配。
+- 不写 `shadow-sm`/`shadow-md`——使用 `var(--shadow-card)` 等 token。
+- 不引入第三方 CSS 框架之外的样式方案。
+- 不在组件中硬编码色值——使用 token 或 CSS 变量。

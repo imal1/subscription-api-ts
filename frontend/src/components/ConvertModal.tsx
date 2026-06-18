@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiService } from "@/lib/api";
 import { Icon } from "@iconify/react";
 import { Editor } from "@monaco-editor/react";
-import { useState } from "react";
+import { useTheme } from "@/components/ThemeProvider";
+import { useCallback, useState } from "react";
 
 interface ConvertModalProps {
   isOpen: boolean;
@@ -25,16 +26,16 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
   const [outputYaml, setOutputYaml] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const { theme } = useTheme();
 
-  const handleConvert = async () => {
+  const handleConvert = useCallback(async () => {
     if (!inputText.trim()) {
       setError("请输入原始订阅文本");
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const result = await apiService.convertContent(inputText);
       if (result.success && result.data?.clashConfig) {
@@ -47,113 +48,103 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [inputText]);
 
-  const handleClearInput = () => {
+  const handleClearInput = useCallback(() => {
     setInputText("");
     setError(null);
-  };
+  }, []);
 
-  const handleClearOutput = () => {
-    setOutputYaml("");
-  };
+  const handleClearOutput = useCallback(() => setOutputYaml(""), []);
 
-  const handleCopyOutput = async () => {
-    if (outputYaml) {
-      try {
-        await navigator.clipboard.writeText(outputYaml);
-        // 简单的成功提示
-        const button = document.querySelector("[data-copy-button]");
-        if (button) {
-          const originalText = button.textContent;
-          button.textContent = "已复制!";
-          setTimeout(() => {
-            button.textContent = originalText;
-          }, 2000);
-        }
-      } catch {
-        setError("复制失败");
-      }
+  const handleCopyOutput = useCallback(async () => {
+    if (!outputYaml) return;
+    try {
+      await navigator.clipboard.writeText(outputYaml);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("复制失败");
     }
-  };
+  }, [outputYaml]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setInputText("");
     setOutputYaml("");
     setError(null);
+    setCopied(false);
     onClose();
-  };
+  }, [onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Icon icon="mdi:code-braces" className="w-5 h-5" />
-            <span>订阅内容转换</span>
+          <DialogTitle className="flex items-center gap-2.5 text-lg" style={{ fontFamily: "var(--font-display)" }}>
+            <Icon icon="ph:code" className="w-5 h-5 text-[var(--fern)]" />
+            订阅内容转换
           </DialogTitle>
           <DialogDescription>
             输入原始订阅文本（raw.txt 格式），转换为 Clash YAML 配置
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
-          {/* 输入区域 */}
-          <div className="flex flex-col space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">原始订阅文本</label>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 flex-1 min-h-0">
+          {/* Input */}
+          <div className="flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2.5">
+              <label className="text-sm font-semibold text-[var(--foreground)]">原始订阅文本</label>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleClearInput}
                 disabled={!inputText}
+                className="gap-1.5 rounded-lg text-xs h-8"
               >
-                <Icon icon="mdi:eraser" className="w-4 h-4 mr-1" />
+                <Icon icon="ph:eraser" className="w-3.5 h-3.5" />
                 清空
               </Button>
             </div>
-
             <Textarea
-              className="flex-1 min-h-[500px] font-mono text-sm"
+              className="flex-1 min-h-[420px] font-mono text-sm resize-none rounded-xl"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="请粘贴包含节点链接的原始文本，支持 vmess://, ss://, trojan:// 等协议"
+              placeholder="粘贴包含节点链接的原始文本，支持 vmess://, ss://, trojan:// 等协议..."
             />
-
-            <div className="text-xs text-muted-foreground">
-              请粘贴包含节点链接的原始文本，支持 vmess://, ss://, trojan://
-              等协议
-            </div>
+            <p className="text-[11px] text-[var(--muted-foreground)] mt-1.5">
+              支持 vmess:// · ss:// · trojan:// · vless:// · hysteria2:// · tuic://
+            </p>
           </div>
 
-          {/* 输出区域 */}
-          <div className="flex flex-col space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Clash YAML 配置</label>
-              <div className="flex space-x-2">
+          {/* Output */}
+          <div className="flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2.5">
+              <label className="text-sm font-semibold text-[var(--foreground)]">Clash YAML 配置</label>
+              <div className="flex gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCopyOutput}
                   disabled={!outputYaml}
-                  data-copy-button
+                  className="gap-1.5 rounded-lg text-xs h-8"
                 >
-                  <Icon icon="mdi:content-copy" className="w-4 h-4 mr-1" />
-                  复制
+                  <Icon icon={copied ? "ph:check-bold" : "ph:copy-simple"} className="w-3.5 h-3.5" />
+                  {copied ? "已复制" : "复制"}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleClearOutput}
                   disabled={!outputYaml}
+                  className="gap-1.5 rounded-lg text-xs h-8"
                 >
-                  <Icon icon="mdi:eraser" className="w-4 h-4 mr-1" />
+                  <Icon icon="ph:eraser" className="w-3.5 h-3.5" />
                   清空
                 </Button>
               </div>
             </div>
 
-            <div className="flex-1 border rounded-md overflow-hidden">
+            <div className="flex-1 min-h-[420px] border border-[var(--border)] rounded-xl overflow-hidden">
               <Editor
                 height="100%"
                 defaultLanguage="yaml"
@@ -169,38 +160,43 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
                   folding: true,
                   renderWhitespace: "boundary",
                   automaticLayout: true,
+                  padding: { top: 12 },
                 }}
-                theme="vs"
+                theme={theme === "dark" ? "vs-dark" : "vs"}
               />
             </div>
-
-            <div className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-[var(--muted-foreground)] mt-1.5">
               生成的 YAML 配置可直接用于 Clash 客户端
-            </div>
+            </p>
           </div>
         </div>
 
-        {/* 错误提示 */}
+        {/* Error */}
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-            <div className="flex items-center space-x-2 text-destructive">
-              <Icon icon="mdi:alert-circle" className="w-4 h-4" />
-              <span className="text-sm font-medium">错误</span>
-            </div>
-            <p className="text-sm text-destructive mt-1">{error}</p>
+          <div className="garden-alert garden-alert-danger mt-2">
+            <Icon icon="ph:warning-circle-bold" className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={handleClose} className="rounded-lg text-sm h-9">
             关闭
           </Button>
           <Button
             onClick={handleConvert}
             disabled={loading || !inputText.trim()}
+            className="gap-2 rounded-lg text-sm h-9"
+            style={{
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              border: "none",
+            }}
           >
-            {loading && (
-              <Icon icon="mdi:loading" className="w-4 h-4 mr-2 animate-spin" />
+            {loading ? (
+              <Icon icon="ph:spinner" className="w-4 h-4 animate-spin" />
+            ) : (
+              <Icon icon="ph:arrows-left-right" className="w-4 h-4" />
             )}
             {loading ? "转换中..." : "转换"}
           </Button>

@@ -1,65 +1,106 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { apiService, ApiStatus, UpdateResult } from "@/lib/api";
+import ThemeToggle from "@/components/ThemeToggle";
+import { apiService, type ApiStatus, type UpdateResult } from "@/lib/api";
 import { Icon } from "@iconify/react";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import ConvertModal from "./ConvertModal";
 
-interface StatusCardProps {
-  title: string;
-  value: string | number;
-  description?: string;
-  icon?: React.ReactNode;
-  status?: "success" | "error" | "warning" | "info";
+/* ── Status badge ── */
+interface StatusBadgeProps {
+  label: string;
+  status: "success" | "warning" | "danger" | "info";
 }
 
-const StatusCard = ({
-  title,
-  value,
-  description,
-  icon,
-  status = "info",
-}: StatusCardProps) => {
-  const statusClasses = {
-    success: "status-success",
-    error: "status-error",
-    warning: "status-warning",
-    info: "status-info",
+const StatusBadge = ({ label, status }: StatusBadgeProps) => {
+  const variant = {
+    success: "stats-badge stats-badge-success",
+    warning: "stats-badge stats-badge-warning",
+    danger: "stats-badge stats-badge-danger",
+    info: "stats-badge stats-badge-info",
+  }[status];
+
+  return <span className={variant}>
+    <span className={`live-dot ${status === "success" || status === "info" ? "live-dot-active" : "live-dot-inactive"}`} />
+    {label}
+  </span>;
+};
+
+/* ── Stat card ── */
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: string;
+  status: "success" | "warning" | "danger" | "info";
+}
+
+const StatCard = ({ label, value, sub, icon, status }: StatCardProps) => {
+  const borderMap = {
+    success: "border-l-[var(--fern)]",
+    warning: "border-l-[var(--marigold)]",
+    danger: "border-l-[var(--terracotta)]",
+    info: "border-l-[var(--info)]",
   };
 
   return (
-    <Card className={`${statusClasses[status]} status-card`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-      </CardContent>
-    </Card>
+    <div className={`garden-card border-l-[3px] p-5 ${borderMap[status]}`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)] mb-2">
+            {label}
+          </p>
+          <p className="text-2xl font-bold text-[var(--foreground)] truncate" style={{ fontFamily: "var(--font-display)" }}>
+            {value}
+          </p>
+          {sub && (
+            <p className="text-xs text-[var(--muted-foreground)] mt-1.5 truncate">
+              {sub}
+            </p>
+          )}
+        </div>
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--muted)" }}>
+          <Icon icon={icon} className="w-[18px] h-[18px] text-[var(--foreground)]" />
+        </div>
+      </div>
+    </div>
   );
 };
 
+/* ── Info row ── */
+const InfoRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex items-center justify-between py-2.5">
+    <span className="text-sm text-[var(--muted-foreground)]">{label}</span>
+    <span className="text-sm font-medium text-[var(--foreground)]">{children}</span>
+  </div>
+);
+
+/* ── Section heading ── */
+const SectionHeading = ({ icon, title, desc }: { icon: string; title: string; desc: string }) => (
+  <div className="section-rule">
+    <div className="flex items-center gap-2.5">
+      <Icon icon={icon} className="w-[18px] h-[18px] text-[var(--fern)]" />
+      <h2 className="text-base font-semibold text-[var(--foreground)]" style={{ fontFamily: "var(--font-display)" }}>
+        {title}
+      </h2>
+    </div>
+    <p className="text-xs text-[var(--muted-foreground)] mt-1">{desc}</p>
+  </div>
+);
+
+/* ── API table method badge ── */
+const MethodBadge = ({ method }: { method: string }) => (
+  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+    method === "GET"
+      ? "bg-[var(--success-bg)] text-[var(--fern)] border border-[var(--success-border)]"
+      : "bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)]"
+  }`}>
+    {method}
+  </span>
+);
+
+/* ── Dashboard ── */
 interface DashboardProps {
   initialStatus?: ApiStatus | null;
   initialError?: string | null;
@@ -67,17 +108,14 @@ interface DashboardProps {
 
 const Dashboard = ({ initialStatus = null, initialError = null }: DashboardProps) => {
   const [status, setStatus] = useState<ApiStatus | null>(initialStatus);
-  // 首屏已由 SSR 注入数据，无需 loading 占位
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [, startTransition] = useTransition();
 
-  // React 19.x useTransition for better UX
-  const [_isPending, startTransition] = useTransition();
-
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       setError(null);
       const statusData = await apiService.getStatus();
@@ -87,10 +125,9 @@ const Dashboard = ({ initialStatus = null, initialError = null }: DashboardProps
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleUpdate = async () => {
-    // React 19.x useTransition for non-blocking updates
+  const handleUpdate = useCallback(async () => {
     startTransition(() => {
       setUpdating(true);
       setUpdateResult(null);
@@ -98,516 +135,388 @@ const Dashboard = ({ initialStatus = null, initialError = null }: DashboardProps
 
     try {
       const result = await apiService.updateSubscription();
-      startTransition(() => {
-        setUpdateResult(result);
-      });
-      // 更新完成后重新获取状态
+      startTransition(() => setUpdateResult(result));
       await fetchStatus();
     } catch (err) {
-      startTransition(() => {
-        setError(err instanceof Error ? err.message : "更新失败");
-      });
+      startTransition(() =>
+        setError(err instanceof Error ? err.message : "更新失败")
+      );
     } finally {
-      startTransition(() => {
-        setUpdating(false);
-      });
+      startTransition(() => setUpdating(false));
     }
-  };
+  }, [fetchStatus]);
 
-  const handleDownload = (filename: string) => {
-    const url = apiService.getDownloadUrl(filename);
-    window.open(url, "_blank");
-  };
+  const handleDownload = useCallback((filename: string) => {
+    window.open(apiService.getDownloadUrl(filename), "_blank");
+  }, []);
 
   useEffect(() => {
     fetchStatus();
-    // 设置定时刷新
-    const interval = setInterval(fetchStatus, 30000); // 每30秒刷新一次
-    return () => clearInterval(interval);
-  }, []);
+    const timer = setInterval(fetchStatus, 30000);
+    return () => clearInterval(timer);
+  }, [fetchStatus]);
 
-  const formatUptime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}小时 ${minutes}分钟`;
+  const formatUptime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return `${h}h ${m}m`;
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  const formatSize = (b: number) => {
+    if (!b) return "-";
+    const i = Math.floor(Math.log(b) / Math.log(1024));
+    return `${(b / Math.pow(1024, i)).toFixed(1)} ${["B", "KB", "MB", "GB"][i]}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("zh-CN");
-  };
+  const formatDate = (d: string) => new Date(d).toLocaleString("zh-CN");
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex items-center space-x-2">
-          <Icon icon="mdi:loading" className="w-4 h-4 animate-spin" />
-          <span>加载中...</span>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
+        <div className="flex items-center gap-3 animate-breathe">
+          <Icon icon="ph:plant" className="w-5 h-5 text-[var(--fern)]" />
+          <span className="text-sm text-[var(--muted-foreground)]">加载中…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Subscription API Dashboard
-          </h1>
-          <p className="text-gray-600">TypeScript 订阅转换服务控制面板</p>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Card className="mb-6 status-error">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2 status-text-error">
-                <Icon icon="mdi:alert-circle" className="w-5 h-5" />
-                <span className="font-medium">错误</span>
+    <div className="min-h-screen bg-[var(--background)]">
+      {/* ── Header ── */}
+      <header className="border-b border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon
+                  icon="ph:plant"
+                  className="w-7 h-7 text-[var(--fern)]"
+                  style={{ animation: "sway 4s ease-in-out infinite" }}
+                />
+                <h1 className="text-2xl font-bold text-[var(--foreground)]" style={{ fontFamily: "var(--font-display)" }}>
+                  Subscription Garden
+                </h1>
               </div>
-              <p className="status-text-error mt-2">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Update Result */}
-        {updateResult && (
-          <Card
-            className={`mb-6 ${
-              updateResult.success ? "status-success" : "status-error"
-            }`}
-          >
-            <CardContent className="pt-6">
-              <div
-                className={`flex items-center space-x-2 ${
-                  updateResult.success
-                    ? "status-text-success"
-                    : "status-text-error"
-                }`}
-              >
-                {updateResult.success ? (
-                  <Icon icon="mdi:check-circle" className="w-5 h-5" />
-                ) : (
-                  <Icon icon="mdi:close-circle" className="w-5 h-5" />
-                )}
-                <span className="font-medium">更新结果</span>
-              </div>
-              <p
-                className={`mt-2 ${
-                  updateResult.success
-                    ? "status-text-success"
-                    : "status-text-error"
-                }`}
-              >
-                {updateResult.message}
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                订阅转换服务控制面板 · 实时 SSR
               </p>
-              {updateResult.errors && updateResult.errors.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium status-text-error">
-                    错误详情：
-                  </p>
-                  <ul className="text-sm status-text-error mt-1">
-                    {updateResult.errors.map((error, index) => (
-                      <li key={index}>• {error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            <ThemeToggle />
+          </div>
+          <div className="mt-4 h-[3px] bg-[var(--fern)] rounded-full w-12 origin-left animate-grow-line" />
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {/* ── Error ── */}
+        {error && (
+          <div className="garden-alert garden-alert-danger">
+            <Icon icon="ph:warning-circle-bold" className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold">出错了</p>
+              <p className="text-sm mt-0.5 opacity-90">{error}</p>
+            </div>
+          </div>
         )}
 
-        {/* Quick Actions */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Icon icon="mdi:lightning-bolt" className="w-5 h-5" />
-              <span>快速操作</span>
-            </CardTitle>
-            <CardDescription>常用功能的快速入口</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
+        {/* ── Update result ── */}
+        {updateResult && (
+          <div className={`garden-alert ${updateResult.success ? "garden-alert-success" : "garden-alert-danger"}`}>
+            <Icon
+              icon={updateResult.success ? "ph:check-circle-bold" : "ph:x-circle-bold"}
+              className="w-5 h-5 flex-shrink-0 mt-0.5"
+            />
+            <div>
+              <p className="text-sm font-semibold">{updateResult.success ? "更新完成" : "更新失败"}</p>
+              <p className="text-sm mt-0.5 opacity-90">{updateResult.message}</p>
+              {updateResult.errors && updateResult.errors.length > 0 && (
+                <ul className="mt-2 space-y-0.5">
+                  {updateResult.errors.map((e, i) => (
+                    <li key={i} className="text-xs opacity-80">· {e}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Status overview ── */}
+        <section>
+          <SectionHeading
+            icon="ph:gauge"
+            title="状态概览"
+            desc="服务与订阅文件的实时状态"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-slide-up">
+            <StatCard
+              label="订阅文件"
+              value={status?.subscriptionExists ? "已生成" : "未生成"}
+              sub={status?.subscriptionExists && status?.subscriptionLastUpdated
+                ? formatDate(status.subscriptionLastUpdated) : "尚未更新"}
+              icon="ph:file-text"
+              status={status?.subscriptionExists ? "success" : "danger"}
+            />
+            <StatCard
+              label="Clash 配置"
+              value={status?.clashExists ? "已生成" : "未生成"}
+              sub={status?.clashExists && status?.clashLastUpdated
+                ? formatDate(status.clashLastUpdated) : "尚未更新"}
+              icon="ph:shield-check"
+              status={status?.clashExists ? "success" : "danger"}
+            />
+            <StatCard
+              label="节点数量"
+              value={status?.nodesCount ?? 0}
+              sub="可用节点"
+              icon="ph:tree-structure"
+              status={status?.nodesCount && status.nodesCount > 0 ? "success" : "warning"}
+            />
+            <StatCard
+              label="运行时间"
+              value={status ? formatUptime(status.uptime) : "-"}
+              sub="服务实例"
+              icon="ph:clock"
+              status="info"
+            />
+          </div>
+        </section>
+
+        {/* ── Services + Files ── */}
+        <section>
+          <SectionHeading
+            icon="ph:hard-drives"
+            title="服务与文件"
+            desc="依赖服务及生成文件详情"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-slide-up">
+            {/* Services */}
+            <div className="garden-card p-5">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)] mb-4">
+                核心服务
+              </h3>
+              <div className="space-y-1 divide-y divide-[var(--border)]">
+                <InfoRow label="Mihomo">
+                  <StatusBadge
+                    label={status?.mihomoAvailable ? "可用" : "不可用"}
+                    status={status?.mihomoAvailable ? "success" : "danger"}
+                  />
+                  {status?.mihomoVersion && (
+                    <span className="ml-2 text-xs text-[var(--muted-foreground)]">
+                      v{status.mihomoVersion}
+                    </span>
+                  )}
+                </InfoRow>
+                <InfoRow label="Sing-box">
+                  <StatusBadge
+                    label={status?.singBoxAccessible ? "可访问" : "不可访问"}
+                    status={status?.singBoxAccessible ? "success" : "danger"}
+                  />
+                </InfoRow>
+                <InfoRow label="API 版本">
+                  <span className="font-mono text-xs text-[var(--muted-foreground)]">
+                    {status?.version ?? "-"}
+                  </span>
+                </InfoRow>
+              </div>
+            </div>
+
+            {/* File info */}
+            <div className="garden-card p-5">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)] mb-4">
+                文件信息
+              </h3>
+              <div className="space-y-1 divide-y divide-[var(--border)]">
+                <InfoRow label="subscription.txt">
+                  {status?.subscriptionSize ? formatSize(status.subscriptionSize) : "-"}
+                </InfoRow>
+                <InfoRow label="clash.yaml">
+                  {status?.clashSize ? formatSize(status.clashSize) : "-"}
+                </InfoRow>
+                <InfoRow label="raw.txt">
+                  {status?.rawExists ? (
+                    <StatusBadge label="已生成" status="success" />
+                  ) : (
+                    <StatusBadge label="未生成" status="warning" />
+                  )}
+                </InfoRow>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Quick actions ── */}
+        <section>
+          <SectionHeading
+            icon="ph:lightning"
+            title="快速操作"
+            desc="常用功能的快捷入口"
+          />
+          <div className="garden-card p-5">
+            <div className="flex flex-wrap gap-2.5">
               <Button
                 onClick={handleUpdate}
                 disabled={updating}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
+                style={{
+                  backgroundColor: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  border: "none",
+                }}
               >
                 <Icon
-                  icon={updating ? "mdi:loading" : "mdi:refresh"}
+                  icon={updating ? "ph:spinner" : "ph:arrows-clockwise"}
                   className={`w-4 h-4 ${updating ? "animate-spin" : ""}`}
                 />
-                <span>{updating ? "更新中..." : "更新订阅"}</span>
+                {updating ? "更新中..." : "更新订阅"}
               </Button>
 
               <Button
                 variant="outline"
                 onClick={() => handleDownload("subscription.txt")}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
               >
-                <Icon icon="mdi:download" className="w-4 h-4" />
-                <span>下载订阅文件</span>
+                <Icon icon="ph:download-simple" className="w-4 h-4" />
+                订阅文件
               </Button>
 
               <Button
                 variant="outline"
                 onClick={() => handleDownload("clash.yaml")}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
               >
-                <Icon icon="mdi:download" className="w-4 h-4" />
-                <span>下载Clash配置</span>
+                <Icon icon="ph:download-simple" className="w-4 h-4" />
+                Clash 配置
               </Button>
 
               <Button
                 variant="outline"
                 onClick={() => handleDownload("raw.txt")}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
               >
-                <Icon icon="mdi:download" className="w-4 h-4" />
-                <span>下载原始链接</span>
+                <Icon icon="ph:download-simple" className="w-4 h-4" />
+                原始链接
               </Button>
 
               <Button
                 variant="outline"
                 onClick={fetchStatus}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
               >
-                <Icon icon="mdi:refresh" className="w-4 h-4" />
-                <span>刷新状态</span>
+                <Icon icon="ph:arrows-clockwise" className="w-4 h-4" />
+                刷新状态
               </Button>
 
               <Button
                 variant="outline"
                 onClick={() => setConvertModalOpen(true)}
-                className="flex items-center space-x-2"
+                className="gap-2 h-10 px-4 text-sm font-medium rounded-lg"
               >
-                <Icon icon="mdi:code-braces" className="w-4 h-4" />
-                <span>转换订阅</span>
+                <Icon icon="ph:code" className="w-4 h-4" />
+                转换订阅
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
+        {/* ── API docs ── */}
         {status && (
-          <>
-            {/* Status Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              <StatusCard
-                title="订阅文件"
-                value={status.subscriptionExists ? "✅ 已生成" : "❌ 未生成"}
-                description={
-                  status.subscriptionExists && status.subscriptionLastUpdated
-                    ? `更新于 ${formatDate(status.subscriptionLastUpdated)}`
-                    : "需要更新订阅"
-                }
-                icon={<Icon icon="mdi:file-document" className="w-4 h-4" />}
-                status={status.subscriptionExists ? "success" : "error"}
-              />
-
-              <StatusCard
-                title="Clash 配置"
-                value={status.clashExists ? "✅ 已生成" : "❌ 未生成"}
-                description={
-                  status.clashExists && status.clashLastUpdated
-                    ? `更新于 ${formatDate(status.clashLastUpdated)}`
-                    : "需要更新订阅"
-                }
-                icon={<Icon icon="mdi:shield-check" className="w-4 h-4" />}
-                status={status.clashExists ? "success" : "error"}
-              />
-
-              <StatusCard
-                title="节点数量"
-                value={status.nodesCount || 0}
-                description="当前可用节点数"
-                icon={<Icon icon="mdi:account-group" className="w-4 h-4" />}
-                status={
-                  status.nodesCount && status.nodesCount > 0
-                    ? "success"
-                    : "warning"
-                }
-              />
-
-              <StatusCard
-                title="服务运行时间"
-                value={formatUptime(status.uptime)}
-                description="当前服务实例运行时间"
-                icon={<Icon icon="mdi:clock-outline" className="w-4 h-4" />}
-                status="info"
-              />
+          <section>
+            <SectionHeading
+              icon="ph:globe"
+              title="API 端点"
+              desc="可用接口与快速测试"
+            />
+            <div className="garden-card overflow-hidden">
+              <table className="garden-table">
+                <thead>
+                  <tr>
+                    <th>方法</th>
+                    <th>端点</th>
+                    <th>描述</th>
+                    <th className="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/api/status</code></td>
+                    <td className="text-[var(--muted-foreground)]">获取服务状态</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={() => window.open("/api/status", "_blank")}>
+                        测试
+                      </Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/api/update</code></td>
+                    <td className="text-[var(--muted-foreground)]">更新订阅</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={handleUpdate}>
+                        执行
+                      </Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/subscription.txt</code></td>
+                    <td className="text-[var(--muted-foreground)]">下载订阅文件</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={() => handleDownload("subscription.txt")}>
+                        下载
+                      </Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/clash.yaml</code></td>
+                    <td className="text-[var(--muted-foreground)]">下载 Clash 配置</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={() => handleDownload("clash.yaml")}>
+                        下载
+                      </Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/raw.txt</code></td>
+                    <td className="text-[var(--muted-foreground)]">下载原始链接</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={() => handleDownload("raw.txt")}>
+                        下载
+                      </Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><MethodBadge method="GET" /></td>
+                    <td><code className="text-xs font-mono text-[var(--foreground)]">/health</code></td>
+                    <td className="text-[var(--muted-foreground)]">健康检查</td>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs h-8" onClick={() => window.open("/health", "_blank")}>
+                        测试
+                      </Button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-
-            {/* Service Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Icon icon="mdi:server" className="w-5 h-5" />
-                    <span>服务状态</span>
-                  </CardTitle>
-                  <CardDescription>依赖服务的运行状态</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Mihomo</span>
-                      <div className="flex items-center space-x-2">
-                        {status.mihomoAvailable ? (
-                          <Icon
-                            icon="mdi:check-circle"
-                            className="w-4 h-4 status-text-success"
-                          />
-                        ) : (
-                          <Icon
-                            icon="mdi:close-circle"
-                            className="w-4 h-4 status-text-error"
-                          />
-                        )}
-                        <span
-                          className={`text-sm ${
-                            status.mihomoAvailable
-                              ? "status-text-success"
-                              : "status-text-error"
-                          }`}
-                        >
-                          {status.mihomoAvailable ? "可用" : "不可用"}
-                        </span>
-                        {status.mihomoVersion && (
-                          <span className="text-xs text-gray-500">
-                            v{status.mihomoVersion}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Sing-box</span>
-                      <div className="flex items-center space-x-2">
-                        {status.singBoxAccessible ? (
-                          <Icon
-                            icon="mdi:check-circle"
-                            className="w-4 h-4 status-text-success"
-                          />
-                        ) : (
-                          <Icon
-                            icon="mdi:close-circle"
-                            className="w-4 h-4 status-text-error"
-                          />
-                        )}
-                        <span
-                          className={`text-sm ${
-                            status.singBoxAccessible
-                              ? "status-text-success"
-                              : "status-text-error"
-                          }`}
-                        >
-                          {status.singBoxAccessible ? "可访问" : "不可访问"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Icon icon="mdi:chart-line" className="w-5 h-5" />
-                    <span>文件信息</span>
-                  </CardTitle>
-                  <CardDescription>生成文件的详细信息</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {status.subscriptionExists && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          订阅文件大小
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          {status.subscriptionSize
-                            ? formatFileSize(status.subscriptionSize)
-                            : "N/A"}
-                        </span>
-                      </div>
-                    )}
-
-                    {status.clashExists && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          Clash 文件大小
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          {status.clashSize
-                            ? formatFileSize(status.clashSize)
-                            : "N/A"}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">API 版本</span>
-                      <span className="text-sm text-gray-600">
-                        {status.version}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* API Documentation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Icon icon="mdi:earth" className="w-5 h-5" />
-                  <span>API 接口文档</span>
-                </CardTitle>
-                <CardDescription>可用的 API 端点和使用说明</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>方法</TableHead>
-                      <TableHead>端点</TableHead>
-                      <TableHead>描述</TableHead>
-                      <TableHead>操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">/api/status</TableCell>
-                      <TableCell>获取服务状态</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open("/api/status", "_blank")}
-                        >
-                          测试
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">/api/update</TableCell>
-                      <TableCell>更新订阅</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleUpdate}
-                        >
-                          执行
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">
-                        /subscription.txt
-                      </TableCell>
-                      <TableCell>下载订阅文件</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownload("subscription.txt")}
-                        >
-                          下载
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">/clash.yaml</TableCell>
-                      <TableCell>下载 Clash 配置</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownload("clash.yaml")}
-                        >
-                          下载
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">/raw.txt</TableCell>
-                      <TableCell>下载原始链接</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownload("raw.txt")}
-                        >
-                          下载
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          GET
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">/health</TableCell>
-                      <TableCell>健康检查</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open("/health", "_blank")}
-                        >
-                          测试
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </>
+          </section>
         )}
 
-        {/* Convert Modal */}
-        <ConvertModal
-          isOpen={convertModalOpen}
-          onClose={() => setConvertModalOpen(false)}
-        />
-      </div>
+        {/* ── Footer ── */}
+        <footer className="text-center pt-8 pb-12">
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Subscription Garden · Next.js SSR · Botanical Garden Theme
+          </p>
+        </footer>
+      </main>
+
+      {/* Convert modal */}
+      <ConvertModal
+        isOpen={convertModalOpen}
+        onClose={() => setConvertModalOpen(false)}
+      />
     </div>
   );
 };

@@ -3,7 +3,7 @@ import ky, { HTTPError } from 'ky';
 const API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "" // 在生产环境中使用相对路径
-    : "http://localhost:3000"; // 开发环境中使用完整URL
+    : "http://localhost:3001"; // 开发环境中使用 next dev 地址
 
 // 创建 ky 实例
 const apiClient = ky.create({
