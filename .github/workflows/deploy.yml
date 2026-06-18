@@ -23,7 +23,7 @@ jobs:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-      DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR || '~/.config/subscription' }}
+      DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR || '/root/.config/subscription' }}
 
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build (Next standalone)
         run: bun run build
