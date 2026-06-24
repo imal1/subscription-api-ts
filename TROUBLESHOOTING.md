@@ -1,434 +1,218 @@
 # 故障排除指南
 
-详细的错误诊断和解决方案，帮助快速解决使用 Subscription API TypeScript 时遇到的问题。
+使用 Subscription API TS 时常见问题的诊断和解决方案。
 
-## 🚨 API 端点使用
+## 服务连接问题
 
-### `/api/update` 端点说明
+### 服务无法访问
 
-**重要更新：`/api/update` 现在支持 GET 方法！**
+**症状**：`curl: (7) Failed to connect to localhost port 3001`
 
-**使用方法：**
 ```bash
-# ✅ 现在这些方法都是正确的
-curl http://localhost:3000/api/update                    # 默认GET
-curl -X GET http://localhost:3000/api/update            # 明确GET
-wget http://localhost:3000/api/update                   # wget默认GET
-# 浏览器直接访问也可以正常工作
-```
-
-**成功响应示例：**
-```json
-{
-  "success": true,
-  "data": {
-    "message": "订阅更新成功，共 5 个节点",
-    "timestamp": "2025-06-26T10:30:00.000Z",
-    "nodesCount": 5,
-    "clashGenerated": true,
-    "backupCreated": "/app/data/backup/subscription_2025-06-26T10-30-00.txt"
-  },
-  "message": "订阅更新成功",
-  "timestamp": "2025-06-26T10:30:00.000Z"
-}
-```
-
-### 常见问题解决
-
-如果您仍然遇到 "端点不存在" 错误，可能的原因：
-
-1. **服务未启动**
-   ```bash
-   ./manage.sh status
-   ./manage.sh start
-   ```
-
-2. **端口配置错误**
-   ```bash
-   # 检查端口配置
-   grep PORT .env
-   # 确保使用正确的端口
-   curl http://localhost:3000/api/update
-   ```
-
-3. **路径错误**
-   ```bash
-   # 确保路径正确（注意 /api/update 而不是 /update）
-   curl http://localhost:3000/api/update
-   ```
-
-## 🔌 服务连接问题
-
-### 1. 服务连接失败
-
-**错误信息：**
-```bash
-curl: (7) Failed to connect to localhost port 3000: Connection refused
-```
-
-**诊断步骤：**
-```bash
-# 1. 检查服务状态
-./manage.sh status
-
-# 2. 检查端口占用
-lsof -i :3000
-netstat -tlnp | grep :3000
-
-# 3. 查看进程
-ps aux | grep subscription-api
-pgrep -f "node.*dist/index.js"
-```
-
-**解决方案：**
-```bash
-# 启动服务
-./manage.sh start
-
-# 如果启动失败，查看日志
-./manage.sh logs
-
-# 手动启动（调试模式）
-bun run dev
-```
-
-## ⚙️ 配置和文件问题
-
-### 3. 配置文件错误
-
-**错误信息：**
-```json
-{
-  "success": false,
-  "error": "配置文件不存在或格式错误"
-}
-```
-
-**诊断步骤：**
-```bash
-# 检查配置文件
-ls -la .env .env.example
-cat .env | grep -E "^[A-Z]"
-
-# 检查必要目录
-ls -la data/ logs/ config/
-```
-
-**解决方案：**
-```bash
-# 重新生成配置
-cp .env.example .env
-nano .env  # 编辑配置
-
-# 创建必要目录
-mkdir -p data logs data/backup
-
-# 验证配置
-./manage.sh overview
-```
-
-### 5. 权限问题
-
-**错误信息：**
-```bash
-EACCES: permission denied, mkdir '$HOME/.config/subscription/log'
-EACCES: permission denied, open '/var/run/subscription-api.pid'
-```
-
-**解决方案：**
-```bash
-# 检查文件权限
-ls -la $HOME/.config/subscription/ /var/run/
-
-# 修改权限
-sudo chown -R $USER:$USER $HOME/.config/subscription/
-sudo chown -R $USER:$USER /var/run/subscription-api.pid
-
-# 或使用 sudo 运行
-sudo ./manage.sh install
-sudo ./manage.sh start
-```
-
-### 6. 端口占用问题
-
-**错误信息：**
-```bash
-Error: listen EADDRINUSE :::3000
-```
-
-**诊断步骤：**
-```bash
-# 查找占用端口的进程
-lsof -i :3000
-netstat -tlnp | grep :3000
-ss -tlnp | grep :3000
-```
-
-**解决方案：**
-```bash
-# 方案1：更换端口
-echo "PORT=3001" >> .env
-./manage.sh restart
-
-# 方案2：停止占用进程
-kill $(lsof -ti:3000)
-
-# 方案3：强制停止
-sudo pkill -f "node.*3000"
-```
-
-## 🔍 诊断工具和命令
-
-### 快速诊断
-```bash
-# 全面系统检查
-./manage.sh status
-./manage.sh overview
-
-# API 端点测试
-./test-api-endpoints.sh
-
-# 查看实时日志
-./manage.sh logs
-tail -f logs/combined.log logs/error.log
-```
-
-### 手动测试步骤
-
-#### 基础连通性测试
-```bash
-# 1. 服务健康检查
-curl -v http://localhost:3000/health
-
-# 2. API 文档
-curl -s http://localhost:3000/ | jq .
-
-# 3. 服务状态
-curl -s http://localhost:3000/api/status | jq .
-```
-
-#### API 功能测试
-```bash
-# 1. 配置管理
-curl -s http://localhost:3000/api/configs | jq .
-
-# 2. 订阅更新（正确方法）
-curl http://localhost:3000/api/update -v
-
-# 3. 文件下载
-curl -I http://localhost:3000/subscription.txt
-curl -I http://localhost:3000/clash.yaml
-```
-
-#### 依赖服务测试
-```bash
-# 1. Mihomo 可用性检查
-curl -v http://localhost:9090/  # Mihomo 控制接口
-
-# 2. Nginx 状态（如果使用）
-curl -v http://localhost:3080/health
-
-# 3. 系统服务状态
+# 检查服务状态
 sudo systemctl status subscription-api-ts
+
+# 查看最近日志
+sudo journalctl -u subscription-api-ts -n 50 --no-pager
+
+# 检查端口
+ss -tlnp | grep 3001
 ```
 
-### 深度调试
-
-#### 启用详细日志
+**解决**：
 ```bash
-# 临时启用调试模式
-NODE_ENV=development LOG_LEVEL=debug bun run dev
+# 重启服务
+sudo systemctl restart subscription-api-ts
 
-# 或修改 .env 文件
-echo "LOG_LEVEL=debug" >> .env
-./manage.sh restart
+# 如果启动失败，检查应用日志
+tail -50 ~/.config/subscription/log/error.log
 ```
 
-#### 网络调试
+### 仪表盘状态显示"未生成"或"0 节点"
+
+**症状**：仪表盘首次加载正常，但 30 秒后所有状态变为"未生成"、节点数变为 0。
+
+**原因**：这是 v1.1.0 之前的一个 bug — 客户端轮询时未正确解析 API 响应。
+
+**解决**：确保部署的是最新版本（≥ v1.1.0，commit `f387663` 或更新）。查看当前部署版本：
+
 ```bash
-# 检查网络连接
-ping localhost
-telnet localhost 3000
-nc -zv localhost 3000
-
-# 检查防火墙
-sudo ufw status  # Ubuntu
-sudo firewall-cmd --list-all  # CentOS/RHEL
+readlink ~/.config/subscription/dist
+# 输出如：/root/.config/subscription/releases/20260624-162219-f387663
+# commit hash 后缀应为 f387663 或更新
 ```
 
-#### 系统资源检查
+## 文件生成问题
+
+### clash.yaml 不存在
+
+**症状**：`GET /clash.yaml` 返回 404，"Clash 配置"卡片显示"未生成"。
+
+**诊断**：
 ```bash
-# 内存使用
-free -h
-ps aux --sort=-%mem | head
+# 检查文件是否存在
+ls -la ~/.config/subscription/www/clash.yaml
 
-# 磁盘空间
-df -h
-du -sh logs/ data/
-
-# 系统负载
-uptime
-top -p $(pgrep -f subscription-api)
+# 触发一次更新
+curl -s http://127.0.0.1:3001/api/update | python3 -m json.tool
 ```
 
-## 📊 日志分析
+**常见原因**：
 
-### 日志位置
-```bash
-$BASE_DIR/log/combined.log    # 综合日志 (默认: $HOME/.config/subscription/log/)
-$BASE_DIR/log/error.log       # 错误日志
-$BASE_DIR/log/nginx-*.log     # Nginx 日志（如果使用）
-```
-
-### 常用日志命令
-```bash
-# 查看最近错误
-tail -50 $BASE_DIR/log/error.log
-
-# 实时监控
-tail -f logs/combined.log | grep ERROR
-
-# 搜索特定错误
-grep -i "端点不存在" logs/combined.log
-grep -i "ECONNREFUSED" logs/error.log
-
-# 分析访问模式
-awk '{print $1}' logs/combined.log | sort | uniq -c | sort -nr
-```
-
-## 🆘 问题报告
-
-如果上述方法都无法解决问题，请收集以下信息：
-
-### 系统信息收集
-```bash
-# 基本信息
-./manage.sh overview > debug-info.txt
-./manage.sh status >> debug-info.txt
-
-# 详细日志
-tail -100 logs/combined.log >> debug-info.txt
-tail -100 logs/error.log >> debug-info.txt
-
-# 系统环境
-node --version >> debug-info.txt
-bun --version >> debug-info.txt
-cat .env >> debug-info.txt
-
-# 网络状态
-netstat -tlnp | grep -E ":300[0-9]" >> debug-info.txt
-```
-
-### API测试结果
-```bash
-# 运行完整测试
-./test-api-endpoints.sh > api-test-results.txt 2>&1
-```
-
-将 `debug-info.txt` 和 `api-test-results.txt` 提供给技术支持可以帮助快速定位问题。
-
-## 🔗 相关资源
-
-- [配置文件说明](./config.yaml.example) - 配置说明和参数详解
-- [项目结构](./PROJECT_STRUCTURE.md) - 文件组织和架构
-- [API 使用帮助](./manage.sh) - 运行 `./manage.sh api-help` 查看详细 API 说明
-
-## 🔍 诊断工具
-
-### 快速诊断
-```bash
-# 运行完整的系统诊断
-./manage.sh status
-
-# 查看详细的项目状态
-./manage.sh overview
-
-# 测试所有 API 端点
-./test-api-endpoints.sh
-```
-
-### 手动测试步骤
-
-1. **测试服务是否运行：**
+1. **yq 版本问题** — 需要 mikefarah/yq v4，`-o yaml` 参数
    ```bash
-   curl http://localhost:3000/health
+   ~/.config/subscription/bin/yq --version
+   # 应为 yq (https://github.com/mikefarah/yq/) version v4.x
    ```
 
-2. **测试API文档：**
+2. **mihomo 不可用**
    ```bash
-   curl http://localhost:3000/
+   ~/.config/subscription/bin/mihomo -v
+   # 应输出版本信息
    ```
 
-3. **测试配置获取：**
+3. **sing-box 配置不存在** — 检查 config.yaml 中的 `sing_box_configs` 列表是否与实际配置匹配
    ```bash
-   curl http://localhost:3000/api/configs
+   sing-box info <config-name>
    ```
 
-4. **测试更新订阅（正确方法）：**
-   ```bash
-   curl http://localhost:3000/api/update
-   ```
+### subscription.txt 为空或只有少量节点
 
-5. **检查生成的文件：**
-   ```bash
-   ls -la data/
-   curl http://localhost:3000/subscription.txt
-   ```
+**症状**：更新成功但节点数很少。
 
-## 📝 调试技巧
-
-### 查看实时日志
 ```bash
-# 查看应用日志
-./manage.sh logs
+# 查看 raw.txt 中的实际节点
+cat ~/.config/subscription/www/raw.txt
 
-# 查看系统服务日志
+# 查看更新日志
+sudo journalctl -u subscription-api-ts --since "10 min ago" | grep "提取到有效代理URL\|URL获取完成"
+```
+
+**常见原因**：
+- sing-box 中部分配置名称不存在（日志会显示 `配置 xxx 不存在`）
+- 配置文件中的 `sing_box_configs` 与实际 sing-box 配置名不匹配
+
+## 部署问题
+
+### GitHub Actions 部署失败
+
+**症状**：push 到 main 后部署 workflow 显示失败。
+
+```bash
+# 查看 workflow 运行日志
+gh run list --limit 5
+gh run view <run-id> --log
+```
+
+**常见原因和解决**：
+
+| 错误 | 原因 | 解决 |
+|------|------|------|
+| `Permission denied (publickey)` | SSH key 问题 | 检查 `DEPLOY_SSH_KEY` secret |
+| `sudo: a password is required` | NOPASSWD 未配置 | `sudo visudo -f /etc/sudoers.d/subscription-deploy` |
+| `Host key verification failed` | known_hosts 缺失 | 更新 `DEPLOY_KNOWN_HOSTS` secret |
+| 健康检查超时 | 服务未正常启动 | 服务器上 `journalctl -u subscription-api-ts -n 200` |
+
+### 手动回滚
+
+```bash
+cd ~/.config/subscription
+ls -lt releases/                              # 查看历史版本
+ln -sfn releases/<旧版本目录名> dist           # 切换软链接
+sudo systemctl restart subscription-api-ts    # 重启
+```
+
+## 日志查看
+
+### 应用日志
+
+```bash
+# 综合日志
+tail -f ~/.config/subscription/log/combined.log
+
+# 错误日志
+tail -f ~/.config/subscription/log/error.log
+
+# 按关键词过滤
+grep "订阅更新" ~/.config/subscription/log/combined.log
+grep "ERROR" ~/.config/subscription/log/error.log
+```
+
+### 系统日志
+
+```bash
+# 最近 100 行
+sudo journalctl -u subscription-api-ts -n 100 --no-pager
+
+# 实时跟踪
 sudo journalctl -u subscription-api-ts -f
 
-# 查看 nginx 日志
-tail -f $BASE_DIR/log/nginx-error.log
+# 按时间范围
+sudo journalctl -u subscription-api-ts --since "1 hour ago"
 ```
 
-### 检查网络连接
+### 开启调试日志
+
+编辑 `~/.config/subscription/config.yaml`：
+
+```yaml
+logging:
+  level: debug
+```
+
+然后重启服务：`sudo systemctl restart subscription-api-ts`
+
+## 常见配置问题
+
+### 端口被占用
+
 ```bash
-# 检查端口监听
-netstat -tlnp | grep :3000
+# 查找占用端口的进程
+ss -tlnp | grep <端口号>
 
-# 检查防火墙
-sudo ufw status
-
-# 测试本地连接
-telnet localhost 3000
+# 更换端口 — 编辑 config.yaml
+# app.port: 3002
+sudo systemctl restart subscription-api-ts
 ```
 
-## 🆘 获取帮助
+### 权限问题
 
-如果上述解决方案都无法解决您的问题：
+```bash
+# 确保运行时目录权限正确
+sudo chown -R $USER:$USER ~/.config/subscription/
 
-1. **查看详细日志：**
+# 确保二进制文件可执行
+chmod +x ~/.config/subscription/bin/mihomo
+chmod +x ~/.config/subscription/bin/yq
+```
+
+## API 端点测试
+
+```bash
+# 健康检查
+curl http://localhost:3001/api/health
+
+# 服务状态
+curl http://localhost:3001/api/status | python3 -m json.tool
+
+# 触发更新
+curl http://localhost:3001/api/update
+
+# 下载文件
+curl -o clash.yaml http://localhost:3001/clash.yaml
+curl -o subscription.txt http://localhost:3001/subscription.txt
+```
+
+## 获取帮助
+
+1. 查看 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — 部署指南
+2. 查看 [GitHub Issues](https://github.com/imal1/subscription-api-ts/issues)
+3. 收集调试信息后提交 Issue：
    ```bash
-   ./manage.sh logs | tail -50
+   echo "=== 版本信息 ===" > debug.txt
+   readlink ~/.config/subscription/dist >> debug.txt
+   echo "=== 最近日志 ===" >> debug.txt
+   tail -100 ~/.config/subscription/log/error.log >> debug.txt
+   echo "=== 服务状态 ===" >> debug.txt
+   sudo systemctl status subscription-api-ts >> debug.txt
    ```
-
-2. **收集系统信息：**
-   ```bash
-   ./manage.sh overview > debug-info.txt
-   ./manage.sh status >> debug-info.txt
-   ```
-
-3. **运行测试脚本：**
-   ```bash
-   ./test-api-endpoints.sh > api-test-results.txt 2>&1
-   ```
-
-4. **检查依赖服务：**
-   ```bash
-   # 检查 Bun 版本
-   bun --version
-   
-   # 检查系统服务
-   sudo systemctl status subscription-api-ts
-   sudo systemctl status nginx
-   ```
-
-将这些信息一起提供可以帮助快速诊断问题。

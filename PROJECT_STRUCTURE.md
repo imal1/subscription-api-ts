@@ -1,106 +1,136 @@
 # Project Structure
 
-This document outlines the directory structure and organization of the Subscription API TypeScript project.
+本文档描述 Subscription API TS 的目录结构和代码组织。
 
-## Directory Tree
+## 整体架构
+
+项目是单一 Next.js 全栈应用（Pages Router，`output: 'standalone'`），没有独立的 Express 后端。后端逻辑在 `frontend/src/server/` 下，以框架无关的单例 service 形式组织。
 
 ```
 subscription-api-ts/
-├── src/                              # Source code
-│   ├── types/                        # TypeScript type definitions
-│   │   └── index.ts
-│   ├── config/                       # Configuration files
-│   │   └── index.ts
-│   ├── utils/                        # Utility functions
-│   │   └── logger.ts
-│   ├── services/                     # Business logic services
-│   │   ├── mihomoService.ts
-│   │   ├── singBoxService.ts
-│   │   └── subscriptionService.ts
-│   ├── controllers/                  # API controllers
-│   │   └── subscriptionController.ts
-│   ├── routes/                       # API routes
-│   │   └── index.ts
-│   ├── app.ts                        # Express app setup
-│   └── index.ts                      # Application entry point
-├── config/                           # System configuration files
-│   ├── nginx.conf.template           # Nginx template
-│   └── subscription-api-ts.service.template  # SystemD template
-├── scripts/                          # Automation scripts
-│   ├── install.sh                    # Installation script
-│   └── deploy.sh                     # Deployment script
-├── config/                           # Configuration templates
-│   ├── nginx.conf.template          # Nginx configuration template
-│   └── subscription-api-ts.service.template # Systemd service template
-├── opt/                              # Legacy/alternative implementations
-│   └── subscription-api/
-│       ├── src/                      # TypeScript source (mirror)
-│       ├── app.js                    # JavaScript version
-│       ├── subscription_api.py       # Python version
-│       ├── gunicorn_config.py        # Gunicorn configuration
-│       ├── package.json              # Node.js package config
-│       └── tsconfig.json             # TypeScript config
-├── data/                             # Data directory (runtime)
-│   └── backup/                       # Backup files
-├── logs/                             # Log files (runtime)
-├── dist/                             # Compiled output (generated)
-├── node_modules/                     # Dependencies (generated)
-├── config.yaml.example              # Configuration template
-├── .gitignore                        # Git ignore rules
-├── package.json                      # Node.js package definition
-├── package-lock.json                # Dependency lock file
-├── bun.lock                          # Bun package manager lock
-├── tsconfig.json                     # TypeScript configuration
-├── README.md                         # Project documentation
-├── LICENSE                           # License file
-├── config.yaml.example              # Configuration template
-└── PROJECT_STRUCTURE.md              # This file
+├── frontend/                              # Next.js 全栈应用（唯一应用）
+│   ├── src/
+│   │   ├── server/                        # 后端逻辑（框架无关）
+│   │   │   ├── config/index.ts            # 配置管理（读取 config.yaml）
+│   │   │   ├── services/                  # 业务服务（单例模式）
+│   │   │   │   ├── subscriptionService.ts # 订阅更新 + 状态查询
+│   │   │   │   ├── mihomoService.ts       # mihomo 转换 + 协议解析
+│   │   │   │   ├── singBoxService.ts      # sing-box 交互
+│   │   │   │   └── yamlService.ts         # YAML 配置管理
+│   │   │   ├── types/index.ts             # TypeScript 类型定义
+│   │   │   ├── utils/logger.ts            # Winston 日志
+│   │   │   └── version.ts                 # 版本号（从 package.json）
+│   │   ├── pages/                         # Next.js 页面 & API 路由
+│   │   │   ├── index.tsx                  # 仪表盘首页 (SSR)
+│   │   │   ├── actions.tsx                # 操作页面
+│   │   │   ├── api-docs.tsx               # API 文档页面
+│   │   │   ├── _app.tsx                   # Next.js App 入口
+│   │   │   └── api/                       # API 路由
+│   │   │       ├── health.ts
+│   │   │       ├── status.ts
+│   │   │       ├── update.ts
+│   │   │       ├── convert.ts
+│   │   │       ├── configs.ts
+│   │   │       ├── file/[name].ts
+│   │   │       ├── diagnose/mihomo.ts
+│   │   │       ├── test/protocols.ts
+│   │   │       └── yaml/*.ts
+│   │   ├── components/                    # React 组件
+│   │   │   ├── Dashboard.tsx              # 仪表盘主组件
+│   │   │   ├── ConvertModal.tsx           # 在线转换弹窗
+│   │   │   ├── ThemeProvider.tsx          # 主题管理
+│   │   │   ├── ThemeToggle.tsx            # 主题切换按钮
+│   │   │   ├── layout/                    # 布局组件
+│   │   │   │   ├── AppLayout.tsx
+│   │   │   │   ├── Sidebar.tsx
+│   │   │   │   ├── MobileHeader.tsx
+│   │   │   │   └── MobileDrawer.tsx
+│   │   │   ├── shared/                    # 共享组件
+│   │   │   │   ├── StatCard.tsx
+│   │   │   │   ├── StatusBadge.tsx
+│   │   │   │   ├── SectionHeading.tsx
+│   │   │   │   ├── InfoRow.tsx
+│   │   │   │   └── MethodBadge.tsx
+│   │   │   └── ui/                        # 基础 UI 组件 (shadcn/ui)
+│   │   ├── context/AppContext.tsx          # 全局状态
+│   │   ├── lib/
+│   │   │   ├── api.ts                     # API 客户端 (ky)
+│   │   │   ├── configApi.ts               # 配置 API
+│   │   │   └── utils.ts                   # 工具函数
+│   │   ├── styles/globals.css             # 全局样式 (Botanical Garden)
+│   │   └── instrumentation*.ts            # 启动钩子 (node-cron)
+│   ├── next.config.js                     # standalone + rewrites + env
+│   └── package.json                       # 前端依赖
+├── scripts/
+│   ├── server-deploy.sh                   # 原子部署脚本（CI 调用）
+│   ├── manage.sh                          # 服务器管理脚本
+│   └── lib/                               # 脚本库
+├── config/
+│   ├── nginx.conf.template                # Nginx 配置模板
+│   └── subscription-api-ts.service.template # systemd 单元模板
+├── .github/workflows/deploy.yml           # GitHub Actions 部署
+├── .claude/
+│   ├── CLAUDE.md                          # AI 项目文档
+│   └── roadmap/                           # 开发路线图
+├── docs/
+│   ├── DEPLOYMENT.md                      # 部署指南
+│   └── dashboard-redesign-prd.md          # 仪表盘设计 PRD
+├── CHANGELOG.md                           # 变更日志
+├── TROUBLESHOOTING.md                     # 故障排除
+├── MIGRATION_TO_MIHOMO.md                 # mihomo 迁移指南（历史）
+├── package.json                           # 根 monorepo 配置
+└── tsconfig.json                          # TypeScript 配置
 ```
 
-## Key Directories
+## 关键目录说明
 
-### `/src`
-Contains the main TypeScript source code organized by functionality:
-- **types**: TypeScript interfaces and type definitions
-- **config**: Application configuration management
-- **utils**: Shared utility functions (logging, etc.)
-- **services**: Core business logic for subscription handling
-- **controllers**: HTTP request handlers
-- **routes**: API route definitions
+### `frontend/src/server/`
 
-### `/config`
-System configuration templates (not committed files):
-- Nginx configuration template for reverse proxy
-- SystemD service template for Linux deployment
-- Templates support environment variable substitution
-- Generated files are in .gitignore
+框架无关的后端逻辑。所有 service 均为单例（`getInstance()`），API 路由是薄 handler 层，直接调用 service。
 
-### `/scripts`
-Automation and deployment scripts:
-- Installation and setup scripts
-- Diagnostic and troubleshooting tools
-- Configuration generation utilities
-- Service management helpers
+### `frontend/src/pages/api/`
 
-### `/etc`
-Example system configuration files showing proper placement in Linux systems.
+Next.js API 路由。每个文件对应一个端点，通过 `@/server/services/` 引用后端 service。API 响应统一包装为：
 
-### `/opt`
-Legacy implementations in different languages (JavaScript, Python) for compatibility.
+```json
+{ "success": true, "data": <payload>, "timestamp": "..." }
+```
 
-## File Naming Conventions
+### `scripts/server-deploy.sh`
 
-- TypeScript files: `camelCase.ts`
-- Configuration files: `kebab-case.conf` or `kebab-case.json`
-- Shell scripts: `kebab-case.sh`
-- Documentation: `UPPER_CASE.md`
-- Service files: `kebab-case.service`
+自包含的原子部署脚本，由 GitHub Actions 通过 SSH 调用。流程：解压 → 软链接切换 → systemctl restart → 健康检查 → 失败回滚。
 
-## Build Artifacts
+### `.claude/`
 
-- `dist/`: Compiled JavaScript output
-- `node_modules/`: Bun dependencies
-- `data/`: Runtime data storage
-- `logs/`: Application logs
+AI 辅助开发相关文件：
+- `CLAUDE.md` — 项目架构和约定的完整说明
+- `roadmap/` — 从 v0.1 到 v1.0 的开发路线图
 
-These directories are automatically created during build or runtime.
+## 运行时目录
+
+部署后服务器上的目录结构：
+
+```
+~/.config/subscription/
+├── config.yaml          # 主配置文件
+├── dist → releases/<id> # 软链接 → 当前版本
+├── releases/            # 历史版本
+├── www/                 # 静态文件（订阅文件、Clash 配置）
+│   ├── subscription.txt
+│   ├── clash.yaml
+│   └── raw.txt
+├── log/                 # 日志文件
+├── backup/              # 订阅备份
+├── bin/                 # 外部二进制（mihomo, yq）
+│   ├── mihomo
+│   └── yq
+└── mihomo/              # mihomo 配置目录
+```
+
+## 文件命名约定
+
+- TypeScript/TSX：`camelCase.ts` / `camelCase.tsx`
+- 配置文件：`kebab-case.yaml`
+- Shell 脚本：`kebab-case.sh`
+- 文档：`UPPER_CASE.md`
+- Service 模板：`kebab-case.service`
