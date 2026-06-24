@@ -1,7 +1,7 @@
 {
-  "name": "subscription-api-ts",
+  "name": "miobridge",
   "version": "1.1.0",
-  "description": "TypeScript订阅转换API服务 - 基于 Mihomo 内核，支持全协议转换 (vless/vmess/trojan/hysteria2/tuic)",
+  "description": "MioBridge — sing-box to Clash subscription converter powered by mihomo, supporting vless/vmess/trojan/hysteria2/tuic",
   "main": "dist/index.js",
   "private": true,
   "packageManager": "bun@1.0.30",
@@ -25,8 +25,8 @@
     "frontend:lint": "cd frontend && bun run lint"
   },
   "keywords": [
-    "subconverter",
-    "subscription",
+    "miobridge",
+    "subscription-converter",
     "clash",
     "sing-box",
     "mihomo",
@@ -46,12 +46,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/imal1/subscription-api-ts.git"
+    "url": "https://github.com/imal1/miobridge.git"
   },
   "bugs": {
-    "url": "https://github.com/imal1/subscription-api-ts/issues"
+    "url": "https://github.com/imal1/miobridge/issues"
   },
-  "homepage": "https://github.com/imal1/subscription-api-ts#readme",
+  "homepage": "https://github.com/imal1/miobridge#readme",
   "dependencies": {
     "axios": "^1.10.0",
     "compression": "^1.8.0",

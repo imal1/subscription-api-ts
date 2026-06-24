@@ -17,12 +17,12 @@ frontend/                         ← 唯一应用（Node 运行 next start / st
     instrumentation.ts            ← 启动钩子入口；仅 nodejs runtime 动态加载 instrumentation-node
     instrumentation-node.ts       ← 真正的初始化：ensureDirectories + mihomo/sing-box 检查 + node-cron 自动更新
     server/                       ← 框架无关的后端逻辑（从原 Express 迁入，直接复用）
-      config/   ← 读取 ~/.config/subscription/config.yaml（经 yq），导出 config 单例
-      services/ ← subscriptionService / mihomoService / singBoxService / yamlService（均为 getInstance 单例）
+      config/   ← 读取 ~/.config/miobridge/config.yaml（经 yq），导出 config 单例
+      services/ ← mioBridgeService / mihomoService / singBoxService / yamlService（均为 getInstance 单例）
       utils/    ← winston logger
       types/
     pages/
-      index.tsx                   ← getServerSideProps 直接调用 SubscriptionService.getStatus() → 首屏实时 SSR
+      index.tsx                   ← getServerSideProps 直接调用 MioBridgeService.getStatus() → 首屏实时 SSR
       api/                        ← 由原 Express controller 改写的薄 handler，复用 server/services
         status.ts update.ts convert.ts configs.ts health.ts
         diagnose/mihomo.ts  test/protocols.ts  file/[name].ts
@@ -36,8 +36,8 @@ frontend/                         ← 唯一应用（Node 运行 next start / st
 - **SSR 数据**：页面首屏数据在 `getServerSideProps` 内**同进程直接调用 service**（不要自打 HTTP）。客户端组件保留 30s 轮询做实时刷新。
 - **node 专属模块**（path/fs/child_process/winston/node-cron）只能在 server/、api/、instrumentation-node 中使用；`instrumentation.ts` 必须用 `NEXT_RUNTIME === 'nodejs'` 守卫后再动态 import，避免 Edge 编译失败。
 - **定时任务**在 `instrumentation-node.ts` 用 node-cron 注册（`config.autoUpdateCron`，时区 Asia/Shanghai）。
-- **配置来源**：`~/.config/subscription/config.yaml`，由 `yamlService` 经 `yq` 解析；缺失时回退默认值。数据/日志/备份目录均在 `~/.config/subscription` 下（绝对路径，与 cwd 无关）。
-- **外部二进制**：`mihomo`、`yq`、`sing-box`，优先 `~/.config/subscription/bin/`，否则回退 `process.cwd()/bin` 或系统 PATH。
+- **配置来源**：`~/.config/miobridge/config.yaml`，由 `yamlService` 经 `yq` 解析；缺失时回退默认值。数据/日志/备份目录均在 `~/.config/miobridge` 下（绝对路径，与 cwd 无关）。
+- **外部二进制**：`mihomo`、`yq`、`sing-box`，优先 `~/.config/miobridge/bin/`，否则回退 `process.cwd()/bin` 或系统 PATH。
 - 对外文件下载 URL `/subscription.txt`、`/clash.yaml`、`/raw.txt`、`/health` 通过 `next.config.js` 的 `rewrites` 映射到内部 API，保持兼容。
 
 ## 开发命令
@@ -48,11 +48,11 @@ bun run build               # = next build（产出 .next/standalone）
 bun run start               # node frontend/.next/standalone/frontend/server.js
 bun run lint                # oxlint frontend/src
 ```
-本地需要可用的 `mihomo`/`yq`（放在 `~/.config/subscription/bin/`）；`sing-box` 缺失时仪表盘仍可渲染，仅显示「不可访问」。
+本地需要可用的 `mihomo`/`yq`（放在 `~/.config/miobridge/bin/`）；`sing-box` 缺失时仪表盘仍可渲染，仅显示「不可访问」。
 
 ## 生产部署（Linux，Node 运行时）
-- 由 `scripts/manage.sh install` 驱动：构建 → 将 `.next/standalone` 整树复制到 `$DIST_DIR`（`~/.config/subscription/dist`），入口为 `$DIST_DIR/frontend/server.js`。
-- systemd 单元用 **node** 运行 `server.js`（`Environment=PORT=<api_port> HOSTNAME=0.0.0.0 NODE_ENV=production`）。模板见 `config/subscription-api-ts.service.template`。
+- 由 `scripts/manage.sh install` 驱动：构建 → 将 `.next/standalone` 整树复制到 `$DIST_DIR`（`~/.config/miobridge/dist`），入口为 `$DIST_DIR/frontend/server.js`。
+- systemd 单元用 **node** 运行 `server.js`（`Environment=PORT=<api_port> HOSTNAME=0.0.0.0 NODE_ENV=production`）。模板见 `config/miobridge.service.template`。
 - nginx 把所有请求（`/`、`/api/*`、`/_next/*`、文件下载）反代到 Next 单进程；模板见 `config/nginx.conf.template`。订阅文件可由 nginx 直接从 `$DATA_DIR` 提供以加速。
 - standalone 不自动包含 `.next/static` 与 `public`，构建脚本（`scripts/lib/build.sh`）会手动拷入运行目录——改动构建流程时务必保留这一步。
 

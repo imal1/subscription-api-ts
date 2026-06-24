@@ -1,7 +1,7 @@
 [Unit]
 Description=TypeScript Subscription API Service
 After=network.target
-Documentation=https://github.com/imal1/subscription-api-ts
+Documentation=https://github.com/imal1/miobridge
 
 [Service]
 Type=simple
@@ -21,7 +21,7 @@ StartLimitInterval=60s
 StartLimitBurst=3
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=subscription-api-ts
+SyslogIdentifier=miobridge
 
 # 安全设置
 NoNewPrivileges=yes

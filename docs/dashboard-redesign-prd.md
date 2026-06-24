@@ -1,4 +1,4 @@
-# Product Requirements Document: Subscription Garden 仪表盘重构
+# Product Requirements Document: MioBridge 仪表盘重构
 
 **Version**: 1.1
 **Date**: 2026-06-18
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-将 Subscription Garden 仪表盘从「单页长滚动全部模块」重构为**侧边栏导航 + 多页面路由**架构（Next.js Pages Router），并加入**呼吸折叠、导航指示器弹跳滑动、内容区编排入场**三层协同动画。核心目标是让小团队用户打开首页就能一览所有关键状态，同时通过可折叠侧边栏在 3 个功能页面间流畅切换。
+将 MioBridge 仪表盘从「单页长滚动全部模块」重构为**侧边栏导航 + 多页面路由**架构（Next.js Pages Router），并加入**呼吸折叠、导航指示器弹跳滑动、内容区编排入场**三层协同动画。核心目标是让小团队用户打开首页就能一览所有关键状态，同时通过可折叠侧边栏在 3 个功能页面间流畅切换。
 
 关键指标：
 - 状态概览 6 项核心指标在首屏**无需滚动**即可看完
@@ -170,7 +170,7 @@ ConvertModal 打开: scale(0.95)→1 + backdrop 模糊 200ms
   - `MobileDrawer.tsx`: 移动端抽屉
 - **User flow**:
   1. 用户打开任意页面 → AppLayout 渲染侧边栏（桌面常驻 / 移动汉堡菜单） + 右侧内容区
-  2. 侧边栏顶部显示应用 Logo（植物图标 sway + "Subscription Garden"）
+  2. 侧边栏顶部显示应用 Logo（植物图标 sway + "MioBridge"）
   3. 导航项：仪表盘（ph:gauge）、操作（ph:lightning）、API 文档（ph:globe）
   4. 侧边栏底部：折叠按钮 (ph:sidebar) + 主题切换按钮 + 版本号
   5. 折叠状态下仅显示图标，hover 显示 tooltip
@@ -185,7 +185,7 @@ ConvertModal 打开: scale(0.95)→1 + backdrop 模糊 200ms
 - **Layout**: 2 行
   - Row 1: 4 张 StatCard（订阅文件 / Clash 配置 / 节点数量 / 运行时间）
   - Row 2: "核心服务" + "文件信息" 并排
-- **Data source**: `getServerSideProps` → `subscriptionService.getStatus()`
+- **Data source**: `getServerSideProps` → `mioBridgeService.getStatus()`
 - **Polling**: 客户端 30s 轮询，静默更新不触发入场动画
 - **Edge cases**: SSR 失败时显示 garden-alert-danger + 手动刷新按钮
 

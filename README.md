@@ -1,6 +1,6 @@
-# Subscription API TS
+# MioBridge
 
-基于 TypeScript 的 sing-box 订阅转换服务 — 将多协议节点自动转换为 Clash 配置，提供实时 Web 仪表盘。
+基于 Mihomo 内核的 sing-box → Clash 订阅转换服务 — 多协议节点自动聚合、转换，提供实时 Web 仪表盘。
 
 ## 功能特性
 
@@ -30,15 +30,15 @@
 - Linux 服务器（Ubuntu 18.04+ / Debian 10+）
 - Node.js >= 18
 - sing-box（已安装并配置）
-- mihomo + yq（自动安装到 `~/.config/subscription/bin/`）
+- mihomo + yq（自动安装到 `~/.config/miobridge/bin/`）
 
 ## 快速开始
 
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/imal1/subscription-api-ts.git
-cd subscription-api-ts
+git clone https://github.com/imal1/miobridge.git
+cd miobridge
 ```
 
 ### 2. 安装依赖 & 构建
@@ -50,7 +50,7 @@ bun run build
 
 ### 3. 配置
 
-配置文件位于 `~/.config/subscription/config.yaml`。首次运行时会自动使用默认值，你也可以手动编辑：
+配置文件位于 `~/.config/miobridge/config.yaml`。首次运行时会自动使用默认值，你也可以手动编辑：
 
 ```yaml
 app:
@@ -121,7 +121,7 @@ frontend/                         ← Next.js 全栈应用
     server/                       ← 后端逻辑
       config/index.ts             ← 配置管理
       services/                   ← 业务服务（单例）
-        subscriptionService.ts
+        mioBridgeService.ts
         mihomoService.ts
         singBoxService.ts
         yamlService.ts
@@ -163,13 +163,13 @@ bun run lint           # 代码检查 (oxlint)
 
 ```bash
 # 查看服务日志
-sudo journalctl -u subscription-api-ts -f
+sudo journalctl -u miobridge -f
 
 # 查看应用日志
-tail -f ~/.config/subscription/log/combined.log
+tail -f ~/.config/miobridge/log/combined.log
 
 # 查看当前部署版本
-readlink ~/.config/subscription/dist
+readlink ~/.config/miobridge/dist
 ```
 
 ## 贡献

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { SubscriptionService } from '@/server/services/subscriptionService';
+import { MioBridgeService } from '@/server/services/mioBridgeService';
 import { logger } from '@/server/utils/logger';
 import type { ApiResponse } from '@/server/types';
 
@@ -10,7 +10,7 @@ export const config = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResponse>) {
   try {
-    const result = await SubscriptionService.getInstance().updateSubscription();
+    const result = await MioBridgeService.getInstance().updateSubscription();
     res.json({ success: true, data: result, message: '订阅更新成功', timestamp: new Date().toISOString() });
   } catch (error: any) {
     logger.error('更新订阅API错误:', error);

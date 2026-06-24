@@ -18,10 +18,10 @@
 
 - `mihomoService.ts` — mihomo 调用、协议解析、Clash 配置生成
 - `singBoxService.ts` — sing-box 交互
-- `subscriptionService.ts` — 订阅更新和状态管理
+- `mioBridgeService.ts` — 订阅更新和状态管理
 - `yamlService.ts` — config.yaml 配置管理
 
-mihomo 二进制文件位于 `~/.config/subscription/bin/mihomo`，由安装脚本自动下载。
+mihomo 二进制文件位于 `~/.config/miobridge/bin/mihomo`，由安装脚本自动下载。
 
 ## 协议支持
 

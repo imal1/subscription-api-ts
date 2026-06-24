@@ -36,12 +36,12 @@ export class MihomoService {
                 this.mihomoPath = fullConfig.binaries.mihomo_path;
             } else {
                 // 使用默认路径
-                const basePath = path.join(os.homedir(), '.config', 'subscription', 'bin');
+                const basePath = path.join(os.homedir(), '.config', 'miobridge', 'bin');
                 this.mihomoPath = path.join(basePath, 'mihomo');
             }
-            
+
             // 配置文件路径
-            const configDir = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
+            const configDir = path.join(os.homedir(), '.config', 'miobridge', 'mihomo');
             this.configPath = path.join(configDir, 'config.yaml');
             
             // 确保目录存在
@@ -49,9 +49,9 @@ export class MihomoService {
             fs.ensureDirSync(path.dirname(this.configPath));
         } catch (error) {
             // 回退到默认路径
-            const basePath = path.join(os.homedir(), '.config', 'subscription', 'bin');
+            const basePath = path.join(os.homedir(), '.config', 'miobridge', 'bin');
             this.mihomoPath = path.join(basePath, 'mihomo');
-            const configDir = path.join(os.homedir(), '.config', 'subscription', 'mihomo');
+            const configDir = path.join(os.homedir(), '.config', 'miobridge', 'mihomo');
             this.configPath = path.join(configDir, 'config.yaml');
             
             // 确保目录存在
@@ -213,7 +213,7 @@ export class MihomoService {
             const response = await axios.get(url, {
                 timeout: config.requestTimeout,
                 headers: {
-                    'User-Agent': 'subscription-api-ts/1.0.0'
+                    'User-Agent': 'miobridge/1.0.0'
                 }
             });
 
@@ -732,7 +732,7 @@ export class MihomoService {
                 
                 // 添加注释头
                 const header = `# Clash 配置文件
-# 由 subscription-api-ts 使用 mihomo 内核生成
+# 由 miobridge 使用 mihomo 内核生成
 # 生成时间: ${new Date().toISOString()}
 # 节点数量: ${proxyCount}
 

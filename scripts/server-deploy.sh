@@ -11,7 +11,7 @@
 #   1. 解压到 $BASE_DIR/releases/<release-id>/
 #   2. 拷贝 .next/static、public（standalone 不自带）从 tar 内已包含的位置
 #   3. 原子切换 $BASE_DIR/dist 软链接 → releases/<release-id>
-#   4. 重启 systemd 服务（subscription-api-ts）
+#   4. 重启 systemd 服务（miobridge）
 #   5. 健康检查（/api/health 轮询，最多 30s）
 #   6. 失败则回滚软链接 + 重启 + 退出非零
 #   7. 成功则保留最近 5 个 release，其余清理
@@ -24,10 +24,10 @@
 set -euo pipefail
 
 # ---------- 默认参数 ----------
-BASE_DIR="${BASE_DIR:-$HOME/.config/subscription}"
+BASE_DIR="${BASE_DIR:-$HOME/.config/miobridge}"
 RELEASES_DIR="$BASE_DIR/releases"
 DIST_LINK="$BASE_DIR/dist"
-SERVICE_NAME="${SERVICE_NAME:-subscription-api-ts}"
+SERVICE_NAME="${SERVICE_NAME:-miobridge}"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 HEALTH_PATH="${HEALTH_PATH:-/api/health}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-30}"
@@ -255,8 +255,8 @@ case "${1:-}" in
   health                         运行一次健康检查（成功退出 0）
 
 环境变量:
-  BASE_DIR        默认 \$HOME/.config/subscription
-  SERVICE_NAME    默认 subscription-api-ts
+  BASE_DIR        默认 \$HOME/.config/miobridge
+  SERVICE_NAME    默认 miobridge
   KEEP_RELEASES   保留的历史 release 数（默认 5）
   HEALTH_TIMEOUT  健康检查超时秒数（默认 30）
   HEALTH_PATH     健康检查路径（默认 /api/health）

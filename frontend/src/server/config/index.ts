@@ -59,7 +59,7 @@ export const getFrontendConfig = () => {
         // 默认配置
         return {
             app: {
-                name: 'subscription-api-ts',
+                name: 'miobridge',
                 version: VERSION,
                 environment: 'production'
             },

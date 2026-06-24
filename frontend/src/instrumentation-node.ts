@@ -3,17 +3,17 @@
 import cron from 'node-cron'
 import { config } from '@/server/config'
 import { logger } from '@/server/utils/logger'
-import { SubscriptionService } from '@/server/services/subscriptionService'
+import { MioBridgeService } from '@/server/services/mioBridgeService'
 import { MihomoService } from '@/server/services/mihomoService'
 import { SingBoxService } from '@/server/services/singBoxService'
 
-const subscriptionService = SubscriptionService.getInstance()
+const mioBridgeService = MioBridgeService.getInstance()
 
 async function initialize() {
   try {
     logger.info('🚀 Next 服务端启动初始化...')
 
-    await subscriptionService.ensureDirectories()
+    await mioBridgeService.ensureDirectories()
     logger.info('✅ 目录初始化完成')
 
     // Mihomo 状态检查（非阻塞）
@@ -44,7 +44,7 @@ async function initialize() {
         async () => {
           logger.info('执行定时更新订阅...')
           try {
-            const result = await subscriptionService.updateSubscription()
+            const result = await mioBridgeService.updateSubscription()
             logger.info(`定时更新完成: ${result.nodesCount} 个节点`)
           } catch (error: any) {
             logger.error('定时更新失败:', error)

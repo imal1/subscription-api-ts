@@ -16,7 +16,7 @@ if [ ! -f "$MANAGE_SCRIPT" ]; then
 fi
 
 # 显示欢迎信息
-echo "🚀 Subscription API TypeScript 快速安装"
+echo "🚀 MioBridge 快速安装"
 echo "版本: $(cd "$SCRIPT_DIR/.." && grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' package.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || echo "未知")"
 echo ""
 
@@ -63,7 +63,7 @@ cleanup_old_config() {
     # 删除其他旧的配置文件（不需要用户确认）
     local other_files_to_remove=(
         "$PROJECT_ROOT/config/nginx.conf"
-        "$PROJECT_ROOT/config/subscription-api-ts.service"
+        "$PROJECT_ROOT/config/miobridge.service"
     )
     
     for file in "${other_files_to_remove[@]}"; do
@@ -204,7 +204,7 @@ show_completion_info() {
         echo "1. 生成订阅文件: curl http://${external_host}:${nginx_proxy_port}/api/update"
         echo "2. 访问控制面板(SSR): http://${external_host}:${nginx_proxy_port}/"
         
-        local service_name="${SERVICE_NAME:-subscription-api-ts}"
+        local service_name="${SERVICE_NAME:-miobridge}"
         echo ""
         print_status "info" "📊 服务管理："
         if [[ $EUID -eq 0 ]]; then
@@ -246,7 +246,7 @@ show_completion_info() {
     print_status "info" "🆘 故障排除："
     echo "   如遇到问题，请检查："
     echo "   1. 权限问题: bash scripts/verify-permissions.sh"
-    echo "   2. 服务日志: journalctl -u subscription-api-ts -f"
+    echo "   2. 服务日志: journalctl -u miobridge -f"
     echo "   3. 配置文件: cat $BASE_DIR/config.yaml"
     echo "   4. 端口占用: netstat -tlnp | grep :$nginx_proxy_port"
 }
@@ -304,12 +304,12 @@ main() {
     # 显示完成信息
     show_completion_info
     
-    print_status "success" "🎉 Subscription API TypeScript 安装完成！"
+    print_status "success" "🎉 MioBridge 安装完成！"
 }
 
 # 显示帮助信息
 show_help() {
-    echo "Subscription API TypeScript 安装脚本"
+    echo "MioBridge 安装脚本"
     echo "版本: $VERSION"
     echo ""
     echo "用法:"

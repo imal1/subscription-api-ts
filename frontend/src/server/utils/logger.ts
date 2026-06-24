@@ -19,7 +19,7 @@ const getLogDir = (): string => {
         return config.logDir;
     } catch {
         const os = require('os');
-        return path.join(os.homedir(), '.config', 'subscription', 'log');
+        return path.join(os.homedir(), '.config', 'miobridge', 'log');
     }
 };
 
@@ -36,7 +36,7 @@ const logFormat = winston.format.combine(
 export const logger = winston.createLogger({
     level: getLogLevel(),
     format: logFormat,
-    defaultMeta: { service: 'subscription-api' },
+    defaultMeta: { service: 'miobridge'' },
     transports: [
         new winston.transports.File({
             filename: path.join(getLogDir(), 'error.log'),

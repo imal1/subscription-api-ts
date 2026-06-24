@@ -18,7 +18,7 @@
 - 版本号不一致：三处硬编码版本号统一为 `package.json` 的 `version`
 
 ### Changed
-- `subscriptionService.getStatus()` 返回类型从 `Promise<any>` 改为 `Promise<StatusInfo>`
+- `mioBridgeService.getStatus()` 返回类型从 `Promise<any>` 改为 `Promise<StatusInfo>`
 - `next.config.js` 注入 `NEXT_PUBLIC_GIT_COMMIT` 和 `NEXT_PUBLIC_BUILD_TIME`
 - `/api/health` 和 `config/index.ts` 的默认版本号改为从 `version.ts` 读取
 

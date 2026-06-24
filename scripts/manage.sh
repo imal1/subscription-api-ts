@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Subscription API TypeScript 统一管理脚本
+# MioBridge 统一管理脚本
 # 这是一个集成了所有功能的管理脚本，替代原有的多个脚本文件
 
 set -e
@@ -19,7 +19,7 @@ source "$SCRIPT_DIR/lib/build.sh"
 
 # 显示帮助信息
 show_help() {
-    show_header "Subscription API TypeScript 管理工具"
+    show_header "MioBridge 管理工具"
     show_version
     
     echo "用法: $0 <命令> [选项]"
@@ -112,7 +112,7 @@ setup_systemd_service() {
     
     print_status "info" "配置 systemd 服务..."
 
-    local service_name="subscription-api-ts"
+    local service_name="miobridge"
     local service_file="/etc/systemd/system/${service_name}.service"
 
     # 解析 node 路径（Next.js standalone 以 Node 运行）
@@ -132,7 +132,7 @@ setup_systemd_service() {
     # 创建服务文件：运行 Next standalone 入口 server.js
     safe_sudo tee "$service_file" > /dev/null << EOF
 [Unit]
-Description=Subscription API TypeScript Service (Next.js SSR)
+Description=MioBridge Service (Next.js SSR)
 After=network.target
 
 [Service]
@@ -233,7 +233,7 @@ cmd_check() {
     
     # 检查服务状态 (Linux)
     if [ "$OS" = "linux" ]; then
-        local service_name="subscription-api-ts"
+        local service_name="miobridge"
         if service_is_running "$service_name"; then
             print_status "success" "服务正在运行"
         else
@@ -297,9 +297,9 @@ show_completion_info() {
     
     echo "🚀 快速开始:"
     if [ "$OS" = "linux" ]; then
-        echo "  启动服务: sudo systemctl start subscription-api-ts"
-        echo "  查看状态: sudo systemctl status subscription-api-ts"
-        echo "  查看日志: sudo journalctl -u subscription-api-ts -f"
+        echo "  启动服务: sudo systemctl start miobridge"
+        echo "  查看状态: sudo systemctl status miobridge"
+        echo "  查看日志: sudo journalctl -u miobridge -f"
     else
         echo "  启动服务: cd $DIST_DIR/frontend && PORT=$api_port node server.js"
         echo "  本地开发: cd $PROJECT_ROOT/frontend && bun run dev"
@@ -354,26 +354,26 @@ main() {
             clean_build "$@"
             ;;
         start)
-            service_start "subscription-api-ts"
+            service_start "miobridge"
             ;;
         stop)
-            service_stop "subscription-api-ts"
+            service_stop "miobridge"
             ;;
         restart)
-            service_restart "subscription-api-ts"
+            service_restart "miobridge"
             ;;
         status)
-            service_status "subscription-api-ts"
+            service_status "miobridge"
             ;;
         logs)
             if [ "$1" = "-f" ]; then
-                service_logs_follow "subscription-api-ts"
+                service_logs_follow "miobridge"
             else
-                service_logs "subscription-api-ts" "${1:-50}"
+                service_logs "miobridge" "${1:-50}"
             fi
             ;;
         logs-f)
-            service_logs_follow "subscription-api-ts"
+            service_logs_follow "miobridge"
             ;;
         check)
             cmd_check "$@"

@@ -2,7 +2,7 @@
 
 ## 概述
 
-这个前端 Dashboard 是一个基于 Next.js 和 Tailwind CSS 构建的现代化 Web 界面，用于管理和监控 Subscription API 服务。
+这个前端 Dashboard 是一个基于 Next.js 和 Tailwind CSS 构建的现代化 Web 界面，用于管理和监控 MioBridge 服务。
 
 ## 特性
 

@@ -1,4 +1,4 @@
-# Copilot Instructions for Subscription API TypeScript
+# Copilot Instructions for MioBridge
 
 ## Project Overview
 This is a TypeScript subscription conversion API service that converts sing-box configurations to Clash format using **mihomo (clash-meta)** core. The project recently migrated from subconverter to mihomo in v2.0.0+ for better protocol support (vless, hysteria2, tuic).
@@ -7,7 +7,7 @@ This is a TypeScript subscription conversion API service that converts sing-box 
 
 ### Core Service Pattern
 All services follow singleton pattern via `getInstance()`:
-- `SubscriptionService` - Main orchestrator for subscription conversion workflow
+- `MioBridgeService` - Main orchestrator for subscription conversion workflow
 - `MihomoService` - Handles mihomo binary management and protocol conversion  
 - `SingBoxService` - Extracts proxy URLs from sing-box configurations
 - `YamlService` - Manages YAML configuration files and validation
@@ -19,7 +19,7 @@ All services follow singleton pattern via `getInstance()`:
 4. **Output**: Files saved to `config.staticDir` (subscription.txt, clash.yaml, raw.txt)
 
 ### Configuration System
-- Uses hybrid config: `.env` for basic settings + `~/.config/subscription/config.yaml` for advanced
+- Uses hybrid config: `.env` for basic settings + `~/.config/miobridge/config.yaml` for advanced
 - Config accessed via `yamlService.getFullConfig()` or legacy `config` object
 - Key paths: `binaries.mihomo_path`, `app.environment`, `logging.level`
 
@@ -63,7 +63,7 @@ bun run mihomo:version    # Check mihomo binary version
 ### Error Handling in Services
 All services use `logger.error()` and throw descriptive errors. Key patterns:
 - Check service health before operations: `await mihomoService.checkHealth()`
-- Validate inputs extensively (see `SubscriptionService.updateSubscription()`)
+- Validate inputs extensively (see `MioBridgeService.updateSubscription()`)
 - Provide detailed diagnostic info in error responses
 
 ### API Response Format
@@ -79,7 +79,7 @@ Standard response structure via `ApiResponse` type:
 
 ### Protocol Support
 Post-mihomo migration supports: vless, vmess, trojan, hysteria2, tuic, shadowsocks, wireguard.
-Protocol extraction in `SubscriptionService` uses `validProxyProtocols` array.
+Protocol extraction in `MioBridgeService` uses `validProxyProtocols` array.
 
 ## Frontend (Next.js) Integration
 

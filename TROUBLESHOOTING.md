@@ -10,10 +10,10 @@
 
 ```bash
 # 检查服务状态
-sudo systemctl status subscription-api-ts
+sudo systemctl status miobridge
 
 # 查看最近日志
-sudo journalctl -u subscription-api-ts -n 50 --no-pager
+sudo journalctl -u miobridge -n 50 --no-pager
 
 # 检查端口
 ss -tlnp | grep 3001
@@ -22,10 +22,10 @@ ss -tlnp | grep 3001
 **解决**：
 ```bash
 # 重启服务
-sudo systemctl restart subscription-api-ts
+sudo systemctl restart miobridge
 
 # 如果启动失败，检查应用日志
-tail -50 ~/.config/subscription/log/error.log
+tail -50 ~/.config/miobridge/log/error.log
 ```
 
 ### 仪表盘状态显示"未生成"或"0 节点"
@@ -37,8 +37,8 @@ tail -50 ~/.config/subscription/log/error.log
 **解决**：确保部署的是最新版本（≥ v1.1.0，commit `f387663` 或更新）。查看当前部署版本：
 
 ```bash
-readlink ~/.config/subscription/dist
-# 输出如：/root/.config/subscription/releases/20260624-162219-f387663
+readlink ~/.config/miobridge/dist
+# 输出如：/root/.config/miobridge/releases/20260624-162219-f387663
 # commit hash 后缀应为 f387663 或更新
 ```
 
@@ -51,7 +51,7 @@ readlink ~/.config/subscription/dist
 **诊断**：
 ```bash
 # 检查文件是否存在
-ls -la ~/.config/subscription/www/clash.yaml
+ls -la ~/.config/miobridge/www/clash.yaml
 
 # 触发一次更新
 curl -s http://127.0.0.1:3001/api/update | python3 -m json.tool
@@ -61,13 +61,13 @@ curl -s http://127.0.0.1:3001/api/update | python3 -m json.tool
 
 1. **yq 版本问题** — 需要 mikefarah/yq v4，`-o yaml` 参数
    ```bash
-   ~/.config/subscription/bin/yq --version
+   ~/.config/miobridge/bin/yq --version
    # 应为 yq (https://github.com/mikefarah/yq/) version v4.x
    ```
 
 2. **mihomo 不可用**
    ```bash
-   ~/.config/subscription/bin/mihomo -v
+   ~/.config/miobridge/bin/mihomo -v
    # 应输出版本信息
    ```
 
@@ -82,10 +82,10 @@ curl -s http://127.0.0.1:3001/api/update | python3 -m json.tool
 
 ```bash
 # 查看 raw.txt 中的实际节点
-cat ~/.config/subscription/www/raw.txt
+cat ~/.config/miobridge/www/raw.txt
 
 # 查看更新日志
-sudo journalctl -u subscription-api-ts --since "10 min ago" | grep "提取到有效代理URL\|URL获取完成"
+sudo journalctl -u miobridge --since "10 min ago" | grep "提取到有效代理URL\|URL获取完成"
 ```
 
 **常见原因**：
@@ -111,15 +111,15 @@ gh run view <run-id> --log
 | `Permission denied (publickey)` | SSH key 问题 | 检查 `DEPLOY_SSH_KEY` secret |
 | `sudo: a password is required` | NOPASSWD 未配置 | `sudo visudo -f /etc/sudoers.d/subscription-deploy` |
 | `Host key verification failed` | known_hosts 缺失 | 更新 `DEPLOY_KNOWN_HOSTS` secret |
-| 健康检查超时 | 服务未正常启动 | 服务器上 `journalctl -u subscription-api-ts -n 200` |
+| 健康检查超时 | 服务未正常启动 | 服务器上 `journalctl -u miobridge -n 200` |
 
 ### 手动回滚
 
 ```bash
-cd ~/.config/subscription
+cd ~/.config/miobridge
 ls -lt releases/                              # 查看历史版本
 ln -sfn releases/<旧版本目录名> dist           # 切换软链接
-sudo systemctl restart subscription-api-ts    # 重启
+sudo systemctl restart miobridge    # 重启
 ```
 
 ## 日志查看
@@ -128,39 +128,39 @@ sudo systemctl restart subscription-api-ts    # 重启
 
 ```bash
 # 综合日志
-tail -f ~/.config/subscription/log/combined.log
+tail -f ~/.config/miobridge/log/combined.log
 
 # 错误日志
-tail -f ~/.config/subscription/log/error.log
+tail -f ~/.config/miobridge/log/error.log
 
 # 按关键词过滤
-grep "订阅更新" ~/.config/subscription/log/combined.log
-grep "ERROR" ~/.config/subscription/log/error.log
+grep "订阅更新" ~/.config/miobridge/log/combined.log
+grep "ERROR" ~/.config/miobridge/log/error.log
 ```
 
 ### 系统日志
 
 ```bash
 # 最近 100 行
-sudo journalctl -u subscription-api-ts -n 100 --no-pager
+sudo journalctl -u miobridge -n 100 --no-pager
 
 # 实时跟踪
-sudo journalctl -u subscription-api-ts -f
+sudo journalctl -u miobridge -f
 
 # 按时间范围
-sudo journalctl -u subscription-api-ts --since "1 hour ago"
+sudo journalctl -u miobridge --since "1 hour ago"
 ```
 
 ### 开启调试日志
 
-编辑 `~/.config/subscription/config.yaml`：
+编辑 `~/.config/miobridge/config.yaml`：
 
 ```yaml
 logging:
   level: debug
 ```
 
-然后重启服务：`sudo systemctl restart subscription-api-ts`
+然后重启服务：`sudo systemctl restart miobridge`
 
 ## 常见配置问题
 
@@ -172,18 +172,18 @@ ss -tlnp | grep <端口号>
 
 # 更换端口 — 编辑 config.yaml
 # app.port: 3002
-sudo systemctl restart subscription-api-ts
+sudo systemctl restart miobridge
 ```
 
 ### 权限问题
 
 ```bash
 # 确保运行时目录权限正确
-sudo chown -R $USER:$USER ~/.config/subscription/
+sudo chown -R $USER:$USER ~/.config/miobridge/
 
 # 确保二进制文件可执行
-chmod +x ~/.config/subscription/bin/mihomo
-chmod +x ~/.config/subscription/bin/yq
+chmod +x ~/.config/miobridge/bin/mihomo
+chmod +x ~/.config/miobridge/bin/yq
 ```
 
 ## API 端点测试
@@ -206,13 +206,13 @@ curl -o subscription.txt http://localhost:3001/subscription.txt
 ## 获取帮助
 
 1. 查看 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — 部署指南
-2. 查看 [GitHub Issues](https://github.com/imal1/subscription-api-ts/issues)
+2. 查看 [GitHub Issues](https://github.com/imal1/miobridge/issues)
 3. 收集调试信息后提交 Issue：
    ```bash
    echo "=== 版本信息 ===" > debug.txt
-   readlink ~/.config/subscription/dist >> debug.txt
+   readlink ~/.config/miobridge/dist >> debug.txt
    echo "=== 最近日志 ===" >> debug.txt
-   tail -100 ~/.config/subscription/log/error.log >> debug.txt
+   tail -100 ~/.config/miobridge/log/error.log >> debug.txt
    echo "=== 服务状态 ===" >> debug.txt
-   sudo systemctl status subscription-api-ts >> debug.txt
+   sudo systemctl status miobridge >> debug.txt
    ```

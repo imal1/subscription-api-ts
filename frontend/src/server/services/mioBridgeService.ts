@@ -8,17 +8,17 @@ import { MihomoService } from './mihomoService';
 import { YamlService } from './yamlService';
 import { VERSION, GIT_COMMIT, BUILD_TIME } from '../version';
 
-export class SubscriptionService {
-    private static instance: SubscriptionService;
+export class MioBridgeService {
+    private static instance: MioBridgeService;
     private singBoxService: SingBoxService;
     private mihomoService: MihomoService;
     private yamlService: YamlService;
     
-    public static getInstance(): SubscriptionService {
-        if (!SubscriptionService.instance) {
-            SubscriptionService.instance = new SubscriptionService();
+    public static getInstance(): MioBridgeService {
+        if (!MioBridgeService.instance) {
+            MioBridgeService.instance = new MioBridgeService();
         }
-        return SubscriptionService.instance;
+        return MioBridgeService.instance;
     }
 
     constructor() {

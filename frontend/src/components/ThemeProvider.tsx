@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
-const STORAGE_KEY = "subscription-dashboard-theme";
+const STORAGE_KEY = "miobridge-theme";
 
 function getSystemTheme(): Theme {
   if (typeof window === "undefined") return "light";

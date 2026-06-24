@@ -7,13 +7,13 @@
 项目是单一 Next.js 全栈应用（Pages Router，`output: 'standalone'`），没有独立的 Express 后端。后端逻辑在 `frontend/src/server/` 下，以框架无关的单例 service 形式组织。
 
 ```
-subscription-api-ts/
+miobridge/
 ├── frontend/                              # Next.js 全栈应用（唯一应用）
 │   ├── src/
 │   │   ├── server/                        # 后端逻辑（框架无关）
 │   │   │   ├── config/index.ts            # 配置管理（读取 config.yaml）
 │   │   │   ├── services/                  # 业务服务（单例模式）
-│   │   │   │   ├── subscriptionService.ts # 订阅更新 + 状态查询
+│   │   │   │   ├── mioBridgeService.ts # 订阅更新 + 状态查询
 │   │   │   │   ├── mihomoService.ts       # mihomo 转换 + 协议解析
 │   │   │   │   ├── singBoxService.ts      # sing-box 交互
 │   │   │   │   └── yamlService.ts         # YAML 配置管理
@@ -67,7 +67,7 @@ subscription-api-ts/
 │   └── lib/                               # 脚本库
 ├── config/
 │   ├── nginx.conf.template                # Nginx 配置模板
-│   └── subscription-api-ts.service.template # systemd 单元模板
+│   └── miobridge.service.template # systemd 单元模板
 ├── .github/workflows/deploy.yml           # GitHub Actions 部署
 ├── .claude/
 │   ├── CLAUDE.md                          # AI 项目文档
@@ -111,7 +111,7 @@ AI 辅助开发相关文件：
 部署后服务器上的目录结构：
 
 ```
-~/.config/subscription/
+~/.config/miobridge/
 ├── config.yaml          # 主配置文件
 ├── dist → releases/<id> # 软链接 → 当前版本
 ├── releases/            # 历史版本

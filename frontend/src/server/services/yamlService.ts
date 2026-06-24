@@ -23,7 +23,7 @@ export class YamlService {
      * 获取配置文件路径
      */
     private getConfigPath(): string {
-        const baseDir = path.join(os.homedir(), '.config', 'subscription');
+        const baseDir = path.join(os.homedir(), '.config', 'miobridge');
         return path.join(baseDir, 'config.yaml');
     }
 
@@ -31,7 +31,7 @@ export class YamlService {
      * 获取 yq 工具路径
      */
     private getYqPath(): string {
-        const baseDir = path.join(os.homedir(), '.config', 'subscription');
+        const baseDir = path.join(os.homedir(), '.config', 'miobridge');
         return path.join(baseDir, 'bin', 'yq');
     }
 
@@ -39,7 +39,7 @@ export class YamlService {
      * 获取基础目录
      */
     private getSubscriptionBaseDir(): string {
-        return path.join(os.homedir(), '.config', 'subscription');
+        return path.join(os.homedir(), '.config', 'miobridge');
     }
 
     /**

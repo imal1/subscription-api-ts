@@ -71,7 +71,7 @@ setup_env() {
     fi
     
     # 设置基础目录
-    export BASE_DIR="${BASE_DIR:-$user_home/.config/subscription}"
+    export BASE_DIR="${BASE_DIR:-$user_home/.config/miobridge}"
     export DATA_DIR="${DATA_DIR:-${BASE_DIR}/www}"
     export LOG_DIR="${LOG_DIR:-${BASE_DIR}/log}"
     export DIST_DIR="${DIST_DIR:-${BASE_DIR}/dist}"

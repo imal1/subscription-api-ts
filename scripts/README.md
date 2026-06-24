@@ -1,6 +1,6 @@
 # Scripts 目录说明
 
-这个目录包含了 Subscription API TypeScript 项目的所有管理脚本。
+这个目录包含了 MioBridge 项目的所有管理脚本。
 
 ## 🎯 设计特点
 
@@ -166,7 +166,7 @@ sudo bash scripts/manage.sh restart
 1. **权限要求**：某些操作需要 root 权限，使用 `sudo` 执行
 2. **系统支持**：完全支持 Linux 和 macOS，服务管理功能仅适用于 Linux
 3. **依赖检查**：脚本会自动检查和安装必要的依赖
-4. **配置文件**：默认配置文件位于 `~/.config/subscription/config.yaml`
+4. **配置文件**：默认配置文件位于 `~/.config/miobridge/config.yaml`
 
 ## 🐛 故障排除
 

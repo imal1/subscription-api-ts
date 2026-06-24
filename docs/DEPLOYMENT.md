@@ -4,7 +4,7 @@
 新流程：CI 跑构建 → 通过 SSH 把 standalone 产物推到服务器 → 服务器上原子切换软链接 → 健康检查 → 失败自动回滚。
 
 > 服务器上的 systemd 单元、nginx 反代、外部二进制（mihomo/yq/sing-box）这些**保持不变**，
-> 仍然由 `scripts/manage.sh setup` 一次性安装。CI 只负责更新 `~/.config/subscription/dist/` 这个产物目录。
+> 仍然由 `scripts/manage.sh setup` 一次性安装。CI 只负责更新 `~/.config/miobridge/dist/` 这个产物目录。
 
 ## 整体架构
 
@@ -14,10 +14,10 @@ GitHub Actions (ubuntu-latest)
   ├─ tar -czf release.tar.gz frontend/.next/standalone/.
   └─ scp + ssh →
                                  服务器
-                                 ├─ /tmp/subscription-deploy-<id>/
+                                 ├─ /tmp/miobridge-deploy-<id>/
                                  │    release.tar.gz
                                  │    server-deploy.sh
-                                 └─ ~/.config/subscription/
+                                 └─ ~/.config/miobridge/
                                       ├─ releases/
                                       │   ├─ 20261107-103045-abc1234/
                                       │   ├─ 20261108-091820-def5678/   ← 新
@@ -37,25 +37,25 @@ GitHub Actions (ubuntu-latest)
 在**本地**生成一对仅供 CI 使用的密钥：
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/subscription-deploy -N '' -C 'github-actions-deploy'
+ssh-keygen -t ed25519 -f ~/.ssh/miobridge-deploy -N '' -C 'github-actions-deploy'
 ```
 
 把公钥加入服务器对应用户的 `~/.ssh/authorized_keys`：
 
 ```bash
-ssh-copy-id -i ~/.ssh/subscription-deploy.pub <user>@<host>
-# 或手动 cat ~/.ssh/subscription-deploy.pub | ssh <user>@<host> 'cat >> ~/.ssh/authorized_keys'
+ssh-copy-id -i ~/.ssh/miobridge-deploy.pub <user>@<host>
+# 或手动 cat ~/.ssh/miobridge-deploy.pub | ssh <user>@<host> 'cat >> ~/.ssh/authorized_keys'
 ```
 
 私钥稍后填到 GitHub Secret `DEPLOY_SSH_KEY`。
 
 ### 2. 配置 NOPASSWD sudoers（仅限重启服务）
 
-CI 在远端要执行 `sudo systemctl restart subscription-api-ts`，必须免密。
-用 `sudo visudo -f /etc/sudoers.d/subscription-deploy` 写入（注意把 `<user>` 替换成实际部署用户）：
+CI 在远端要执行 `sudo systemctl restart miobridge`，必须免密。
+用 `sudo visudo -f /etc/sudoers.d/miobridge-deploy` 写入（注意把 `<user>` 替换成实际部署用户）：
 
 ```
-<user> ALL=(root) NOPASSWD: /bin/systemctl restart subscription-api-ts, /bin/systemctl restart subscription-api-ts.service
+<user> ALL=(root) NOPASSWD: /bin/systemctl restart miobridge, /bin/systemctl restart miobridge.service
 ```
 
 > 路径以 `which systemctl` 实际输出为准（Debian/Ubuntu 通常是 `/bin/systemctl`，部分系统是 `/usr/bin/systemctl`，两个都写也无妨）。
@@ -79,7 +79,7 @@ ssh-keyscan -H <host> 2>/dev/null
 | `DEPLOY_SSH_KEY`    | ✅   | 上一步生成的 **私钥**完整内容              | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `DEPLOY_KNOWN_HOSTS`| 推荐 | `ssh-keyscan -H <host>` 的输出             | 整段 known_hosts 行                      |
 | `DEPLOY_PORT`       | 否   | 自定义 SSH 端口，默认 `22`                 | `2222`                                   |
-| `DEPLOY_BASE_DIR`   | 否   | 自定义部署根目录，默认 `~/.config/subscription` | `/opt/subscription`                  |
+| `DEPLOY_BASE_DIR`   | 否   | 自定义部署根目录，默认 `~/.config/miobridge` | `/opt/subscription`                  |
 
 ## 触发部署
 
@@ -95,7 +95,7 @@ ssh-keyscan -H <host> 2>/dev/null
 ~/path/to/server-deploy.sh health
 
 # 手动 apply（拿到一个本地 tarball）
-BASE_DIR=~/.config/subscription \
+BASE_DIR=~/.config/miobridge \
   ~/path/to/server-deploy.sh apply ./release.tar.gz manual-$(date +%s)
 ```
 
@@ -103,8 +103,8 @@ BASE_DIR=~/.config/subscription \
 
 | 变量              | 默认值                        | 用途                                  |
 | ----------------- | ----------------------------- | ------------------------------------- |
-| `BASE_DIR`        | `$HOME/.config/subscription`  | 部署根目录                            |
-| `SERVICE_NAME`    | `subscription-api-ts`         | systemd 单元名                        |
+| `BASE_DIR`        | `$HOME/.config/miobridge`  | 部署根目录                            |
+| `SERVICE_NAME`    | `miobridge`         | systemd 单元名                        |
 | `KEEP_RELEASES`   | `5`                           | 保留的历史版本数                      |
 | `HEALTH_TIMEOUT`  | `30`                          | 健康检查最长等待秒数                  |
 | `HEALTH_PATH`     | `/api/health`                 | 健康检查路径                          |
@@ -122,22 +122,22 @@ BASE_DIR=~/.config/subscription \
 ### 手动回滚到任意历史版本
 
 ```bash
-cd ~/.config/subscription
+cd ~/.config/miobridge
 ls -lt releases/                           # 查看所有 release
 ln -sfn releases/<某个旧 id> dist          # 切链接（注意 -n 才会替换链接而不是落入目录）
-sudo systemctl restart subscription-api-ts
+sudo systemctl restart miobridge
 ```
 
 ### 查看当前版本
 
 ```bash
-readlink ~/.config/subscription/dist
+readlink ~/.config/miobridge/dist
 ```
 
 ### 清理失败留痕
 
 ```bash
-rm -rf ~/.config/subscription/releases/*.failed-*
+rm -rf ~/.config/miobridge/releases/*.failed-*
 ```
 
 ## 与旧 manage.sh 流程的关系
@@ -158,5 +158,5 @@ CI 只接管「应用代码部署」这一段，二进制和服务模板仍由 `
 | `Permission denied (publickey)`        | `DEPLOY_SSH_KEY` 内容有误，或公钥未加入 `authorized_keys`               |
 | `sudo: a password is required`         | NOPASSWD sudoers 未配置或路径不匹配（`which systemctl` 看实际路径）    |
 | `Host key verification failed`         | `DEPLOY_KNOWN_HOSTS` 缺失或服务器换了 host key，重新跑 `ssh-keyscan -H` |
-| 健康检查超时回滚                       | 服务器看 `journalctl -u subscription-api-ts -n 200`；端口是否被占用    |
+| 健康检查超时回滚                       | 服务器看 `journalctl -u miobridge -n 200`；端口是否被占用    |
 | `release 校验失败：未找到 frontend/server.js` | 构建步骤异常，本地复现 `bun run build` 看 `.next/standalone` 结构 |
