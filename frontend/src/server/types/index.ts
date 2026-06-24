@@ -42,6 +42,8 @@ export interface StatusInfo {
     uptime: number;
     version: string;
     mihomoVersion?: string;
+    gitCommit?: string;
+    buildTime?: string;
 }
 
 export interface ApiResponse<T = any> {

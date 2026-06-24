@@ -38,6 +38,8 @@ export interface ApiStatus {
   uptime: number;
   version: string;
   mihomoVersion?: string;
+  gitCommit?: string;
+  buildTime?: string;
 }
 
 export interface UpdateResult {
@@ -106,7 +108,8 @@ class ApiService {
   // 获取API状态
   async getStatus(): Promise<ApiStatus> {
     try {
-      return await apiClient.get('api/status').json<ApiStatus>();
+      const response = await apiClient.get('api/status').json<ApiResponse<ApiStatus>>();
+      return response.data as ApiStatus;
     } catch (error) {
       return this.handleError(error);
     }
@@ -115,7 +118,8 @@ class ApiService {
   // 更新订阅
   async updateSubscription(): Promise<UpdateResult> {
     try {
-      return await apiClient.get('api/update').json<UpdateResult>();
+      const response = await apiClient.get('api/update').json<ApiResponse<UpdateResult>>();
+      return response.data as UpdateResult;
     } catch (error) {
       return this.handleError(error);
     }

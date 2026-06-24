@@ -1,11 +1,12 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { UpdateResult } from '../types';
+import { StatusInfo, UpdateResult } from '../types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { SingBoxService } from './singBoxService';
 import { MihomoService } from './mihomoService';
 import { YamlService } from './yamlService';
+import { VERSION, GIT_COMMIT, BUILD_TIME } from '../version';
 
 export class SubscriptionService {
     private static instance: SubscriptionService;
@@ -200,25 +201,27 @@ export class SubscriptionService {
     /**
      * 获取订阅状态信息
      */
-    async getStatus(): Promise<any> {
+    async getStatus(): Promise<StatusInfo> {
         const subscriptionFile = path.join(config.staticDir, 'subscription.txt');
         const clashFile = path.join(config.staticDir, config.clashFilename);
         const rawFile = path.join(config.staticDir, 'raw.txt');
 
-        const status = {
+        const status: StatusInfo = {
             subscriptionExists: await fs.pathExists(subscriptionFile),
             clashExists: await fs.pathExists(clashFile),
             rawExists: await fs.pathExists(rawFile),
             mihomoAvailable: await this.mihomoService.checkHealth(),
             singBoxAccessible: await this.singBoxService.checkSingBoxAvailable(),
             uptime: process.uptime(),
-            version: '2.0.0'
+            version: VERSION,
+            gitCommit: GIT_COMMIT,
+            buildTime: BUILD_TIME,
         };
 
         // 获取 mihomo 版本信息
         try {
             const mihomoVersion = await this.mihomoService.getVersion();
-            (status as any).mihomoVersion = mihomoVersion?.version || 'unknown';
+            status.mihomoVersion = mihomoVersion?.version || 'unknown';
         } catch (error) {
             logger.warn('获取 mihomo 版本失败:', error);
         }
@@ -226,20 +229,20 @@ export class SubscriptionService {
         // 获取文件信息
         if (status.subscriptionExists) {
             const stats = await fs.stat(subscriptionFile);
-            (status as any).subscriptionLastUpdated = stats.mtime.toISOString();
-            (status as any).subscriptionSize = stats.size;
+            status.subscriptionLastUpdated = stats.mtime.toISOString();
+            status.subscriptionSize = stats.size;
         }
 
         if (status.clashExists) {
             const stats = await fs.stat(clashFile);
-            (status as any).clashLastUpdated = stats.mtime.toISOString();
-            (status as any).clashSize = stats.size;
+            status.clashLastUpdated = stats.mtime.toISOString();
+            status.clashSize = stats.size;
         }
 
         if (status.rawExists) {
             const content = await fs.readFile(rawFile, 'utf8');
             const lines = content.split('\n').filter(line => line.trim());
-            (status as any).nodesCount = lines.length;
+            status.nodesCount = lines.length;
         }
 
         return status;

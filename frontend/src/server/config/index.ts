@@ -1,6 +1,7 @@
 import { Config } from '../types';
 import * as path from 'path';
 import { yamlService } from '../services/yamlService';
+import { VERSION } from '../version';
 
 // 直接导出 yamlService 实例，供其他模块使用
 export { yamlService };
@@ -19,7 +20,7 @@ export const getAppEnvironment = (): string => {
 // 获取应用版本
 export const getAppVersion = (): string => {
     const fullConfig = yamlService.getFullConfig();
-    return fullConfig?.app?.version || '1.0.0';
+    return fullConfig?.app?.version || VERSION;
 };
 
 // 获取日志级别
@@ -59,7 +60,7 @@ export const getFrontendConfig = () => {
         return {
             app: {
                 name: 'subscription-api-ts',
-                version: '1.0.0',
+                version: VERSION,
                 environment: 'production'
             },
             network: {

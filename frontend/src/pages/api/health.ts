@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { VERSION } from '@/server/version';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -7,7 +8,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      version: '1.0.0',
+      version: VERSION,
     });
   } catch (error: any) {
     res.status(503).json({ status: 'unhealthy', error: error.message, timestamp: new Date().toISOString() });

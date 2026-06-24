@@ -1,4 +1,10 @@
 const path = require('path')
+const { execSync } = require('child_process')
+
+let gitCommit = 'unknown'
+try {
+  gitCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+} catch { /* not a git repo or git not available */ }
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -21,7 +27,12 @@ const nextConfig = {
       { source: '/raw.txt', destination: '/api/file/raw' },
       { source: '/health', destination: '/api/health' }
     ]
-  }
+  },
+  // 注入构建时元数据，用于运行时展示版本和 commit
+  env: {
+    NEXT_PUBLIC_GIT_COMMIT: gitCommit,
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+  },
 }
 
 module.exports = nextConfig
