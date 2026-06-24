@@ -161,7 +161,14 @@ export default function Dashboard({ initialStatus = null, initialError = null }:
       <footer className="text-center pt-4 pb-8">
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
           Subscription Garden · Next.js SSR · Botanical Garden Theme
+          {status?.version && <> · v{status.version}</>}
         </p>
+        {status?.gitCommit && (
+          <p className="text-[10px] mt-1 font-mono" style={{ color: 'var(--muted-foreground)' }}>
+            {status.gitCommit}
+            {status.buildTime && <> · built {new Date(status.buildTime).toLocaleDateString('zh-CN')}</>}
+          </p>
+        )}
       </footer>
     </div>
   )
