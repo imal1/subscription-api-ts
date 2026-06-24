@@ -724,8 +724,8 @@ export class MihomoService {
                 // 获取 yq 工具路径
                 const yqPath = this.getYqPath();
                 
-                // 使用 yq 将 JSON 转换为 YAML
-                const yamlResult = execSync(`${yqPath} eval -P '.' "${tempJsonPath}"`, {
+                // 使用 yq 将 JSON 转换为 YAML（-o yaml 确保输出 YAML 而非 JSON）
+                const yamlResult = execSync(`${yqPath} eval -P -o yaml '.' "${tempJsonPath}"`, {
                     encoding: 'utf8',
                     timeout: 10000
                 });
