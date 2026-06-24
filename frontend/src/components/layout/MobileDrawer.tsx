@@ -82,7 +82,7 @@ export default function MobileDrawer() {
               className="font-semibold text-[0.9375rem]"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--sidebar-foreground)' }}
             >
-              MioBridge
+              Mio Garden
             </span>
           </div>
           <button

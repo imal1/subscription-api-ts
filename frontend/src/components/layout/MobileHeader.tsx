@@ -12,7 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
 export default function MobileHeader() {
   const { setMobileDrawerOpen } = useAppContext()
   const router = useRouter()
-  const title = PAGE_TITLES[router.pathname] ?? 'MioBridge'
+  const title = PAGE_TITLES[router.pathname] ?? 'Mio Garden'
 
   return (
     <header

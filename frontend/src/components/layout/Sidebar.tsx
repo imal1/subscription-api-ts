@@ -113,7 +113,7 @@ const Sidebar = memo(function Sidebar() {
             transition: 'opacity 150ms ease, max-width 300ms cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          MioBridge
+          Mio Garden
         </span>
       </div>
 
@@ -201,7 +201,7 @@ const Sidebar = memo(function Sidebar() {
             className="text-center text-[10px] px-4 pb-1"
             style={{ color: 'var(--muted-foreground)', opacity: 0.6 }}
           >
-            MioBridge
+            Mio Garden
           </p>
         )}
       </div>
