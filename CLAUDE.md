@@ -361,3 +361,30 @@ gh run list -w health-check.yml -L5
 ```
 
 ## 开发命令
+
+## 记忆维护
+
+`.claude/memory/` 目录包含持久化的项目记忆文件。每次完成以下操作后，必须更新对应的记忆文件：
+
+| 操作 | 更新文件 | 更新方式 |
+|------|---------|---------|
+| 修复 bug | `.claude/memory/bug-fixes.md` | 在文件顶部追加新条目（日期、症状、原因、修复） |
+| 架构决策 / 技术选型变更 | `.claude/memory/project-architecture.md` | 追加新的决策条目 |
+| CI/CD workflow 变更 | `.claude/memory/ci-cd-pipeline.md` | 更新对应章节 |
+| 部署流程变更 | `.claude/memory/deployment-flow.md` | 更新对应章节 |
+| 配置约定变更 | `.claude/memory/config-patterns.md` | 更新对应配置项 |
+| 代码风格 / lint 规则变更 | `.claude/memory/coding-conventions.md` | 更新对应约定 |
+
+### 更新格式
+
+记忆文件使用 frontmatter 格式：
+```markdown
+---
+name: <short-kebab-case-slug>
+description: <one-line summary>
+metadata:
+  type: project
+---
+```
+
+索引文件 `.claude/memory/MEMORY.md` 维护所有记忆文件的链接列表。新增记忆文件时同步更新索引。
