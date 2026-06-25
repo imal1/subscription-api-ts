@@ -167,4 +167,71 @@ CSS 变量以语义化 tokens 暴露（`--primary`, `--secondary`, `--accent`, `
 - `output: 'standalone'` 在 Pages Router 下经过充分验证
 - 未来可在 App Router 稳定性提升后考虑迁移
 
+## 常见问题排查
+
+基于 v0.1 开发经验和 `TROUBLESHOOTING.md` 提炼的快速排查指南。
+
+### clash.yaml 不生成
+
+**症状**：`/clash.yaml` 返回 404，仪表盘"Clash 配置"卡片显示"未生成"。
+
+**原因**：yq 默认 `eval -P` 输出 JSON 而非 YAML，导致 YAML 生成失败。
+
+**解决**：确保 yq 命令使用 `-o yaml` 参数。已在 v1.1.0 修复（commit `f387663`）。
+
+**验证**：
+```bash
+~/.config/miobridge/bin/yq --version  # 应为 mikefarah/yq v4.x
+curl -s http://localhost:3001/api/update | python3 -m json.tool
+ls -la ~/.config/miobridge/www/clash.yaml
+```
+
+### 仪表盘状态轮询丢失
+
+**症状**：仪表盘首次加载正常，30 秒后所有状态变为"未生成"、节点数变为 0。
+
+**原因**：API 响应包含 `{ success, data }` 包装，但客户端 `api.ts` 未解包 `data` 字段。
+
+**解决**：在 `frontend/src/lib/api.ts` 中对 API 响应进行 `response.data` 解包。已在 v1.1.0 修复。
+
+### 部署版本不可见
+
+**症状**：无法确认服务器运行的是哪个 commit。
+
+**原因**：构建时未注入 commit hash。
+
+**解决**：在 GitHub Actions 构建环境中设置 `NEXT_PUBLIC_GIT_COMMIT=${{ github.sha }}`，仪表盘页脚自动显示。
+
+### 服务启动失败
+
+**诊断**：
+```bash
+sudo systemctl status miobridge
+sudo journalctl -u miobridge -n 50 --no-pager
+ss -tlnp | grep 3001
+```
+
+**常见原因**：
+- 端口被占用 → 修改 `config.yaml` 中 `app.port` 或终止占用进程
+- 二进制缺失 → 确保 `~/.config/miobridge/bin/` 下有 `mihomo`、`yq`
+- 权限问题 → `sudo chown -R $USER:$USER ~/.config/miobridge/`
+
+### GitHub Actions 部署失败
+
+| 错误 | 原因 | 解决 |
+|------|------|------|
+| `Permission denied (publickey)` | SSH key 问题 | 检查 `DEPLOY_SSH_KEY` secret |
+| `sudo: a password is required` | NOPASSWD 未配置 | `sudo visudo -f /etc/sudoers.d/miobridge-deploy` |
+| `Host key verification failed` | known_hosts 缺失 | 更新 `DEPLOY_KNOWN_HOSTS` secret |
+| 健康检查超时回滚 | 服务未正常启动 | `journalctl -u miobridge -n 200` |
+
+### 手动回滚
+
+```bash
+cd ~/.config/miobridge
+ls -lt releases/
+ln -sfn releases/<旧版本目录名> dist
+sudo systemctl restart miobridge
+```
+
 ## 开发命令
