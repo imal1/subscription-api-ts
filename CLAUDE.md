@@ -234,4 +234,130 @@ ln -sfn releases/<旧版本目录名> dist
 sudo systemctl restart miobridge
 ```
 
+## 外部依赖说明
+
+### mihomo (clash-meta 内核)
+
+- **用途**：订阅转换核心引擎，将节点列表转换为 Clash 配置
+- **版本要求**：clash-meta 1.18.x+（需支持 vless reality、hysteria2、tuic）
+- **获取方式**：从 [MetaCubeX/mihomo releases](https://github.com/MetaCubeX/mihomo/releases) 下载对应架构二进制
+- **部署位置**：`~/.config/miobridge/bin/mihomo`
+- **调用方式**：`child_process.exec('mihomo ...')`，本地命令行，无 HTTP 开销
+- **降级行为**：不可用时订阅更新失败，仪表盘显示错误状态
+
+### yq (mikefarah/yq v4)
+
+- **用途**：解析 `config.yaml` 和操作 YAML 输出
+- **版本要求**：v4.x（v3 不兼容，语法不同）
+- **获取方式**：`wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64`
+- **部署位置**：`~/.config/miobridge/bin/yq`
+- **关键用法**：
+  - `yq eval '.key' config.yaml` — 读取值
+  - `yq eval -o yaml '.' input` — 确保 YAML 输出（非 JSON）
+- **降级行为**：不可用时服务无法启动（config 解析失败）
+
+### sing-box
+
+- **用途**：代理节点管理，提供节点 URL 和配置信息
+- **版本要求**：1.8.x+（需支持 vless reality）
+- **获取方式**：从 [SagerNet/sing-box releases](https://github.com/SagerNet/sing-box/releases) 下载
+- **部署位置**：系统 PATH 或 `~/.config/miobridge/bin/sing-box`
+- **调用方式**：`child_process.exec('sing-box ...')`
+- **降级行为**：不可用时仪表盘仍可渲染，但 sing-box 相关功能显示"不可访问"
+
+## 环境变量速查
+
+### 构建时变量（`NEXT_PUBLIC_*`）
+
+| 变量 | 用途 | 设置方式 |
+|------|------|---------|
+| `NEXT_PUBLIC_GIT_COMMIT` | 仪表盘页脚显示 commit hash | GitHub Actions 自动注入 `${{ github.sha }}` |
+
+### GitHub Actions Secrets
+
+| Secret | 必填 | 说明 | 示例 |
+|--------|------|------|------|
+| `DEPLOY_HOST` | ✅ | 服务器地址 | `1.2.3.4` |
+| `DEPLOY_USER` | ✅ | SSH 登录用户 | `imali` |
+| `DEPLOY_SSH_KEY` | ✅ | 部署专用 SSH 私钥 | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `DEPLOY_KNOWN_HOSTS` | 推荐 | 服务器 host key | `ssh-keyscan -H <host>` 输出 |
+| `DEPLOY_PORT` | 否 | 自定义 SSH 端口（默认 22） | `2222` |
+| `DEPLOY_BASE_DIR` | 否 | 部署根目录（默认 `~/.config/miobridge`） | `/opt/subscription` |
+
+### 生产环境变量（systemd）
+
+| 变量 | 值 | 说明 |
+|------|-----|------|
+| `PORT` | `config.yaml` 中 `app.port` | 服务端口 |
+| `HOSTNAME` | `0.0.0.0` | 监听地址 |
+| `NODE_ENV` | `production` | 运行模式 |
+
+## 数据流图
+
+```
+┌─────────────┐
+│  sing-box   │  多个配置（vless, hysteria2, trojan, tuic, vmess）
+│  configs    │
+└──────┬──────┘
+       │ singBoxService.getAllConfigUrls()
+       │ child_process.exec('sing-box ...')
+       ▼
+┌─────────────┐
+│  节点 URL    │  从 sing-box 输出中正则提取代理 URL
+│  提取       │  (vless://..., vmess://..., trojan://..., hy2://..., tuic://...)
+└──────┬──────┘
+       │ mioBridgeService.extractAndConvert()
+       ▼
+┌─────────────┐
+│   mihomo    │  child_process.exec('mihomo convert ...')
+│   转换      │  输入：节点 URL 列表
+│             │  输出：Clash 格式 YAML
+└──┬──┬──┬────┘
+   │  │  │
+   │  │  └──→ raw.txt          原始节点列表（每行一个 URL）
+   │  │
+   │  └─────→ subscription.txt  Base64 编码的节点列表（订阅格式）
+   │
+   └────────→ clash.yaml        Clash 配置文件（YAML 格式）
+
+┌─────────────┐
+│  Next.js     │  getServerSideProps → MioBridgeService.getStatus()
+│  SSR         │  首屏数据同进程直接调用 service，不经过 HTTP
+│  仪表盘      │  客户端 30s 轮询 /api/status 保持实时
+└─────────────┘
+```
+
+## GitHub Actions 集成
+
+项目使用三个 GitHub Actions workflow 构成完整的 CI/CD 流水线：
+
+### ci.yml — PR 门禁
+- **触发**：PR 到 `main` 分支
+- **流程**：`lint (oxlint)` → `typecheck (tsc --noEmit)` → `build (next build)`
+- **结果**：全部通过才允许 merge
+
+### deploy.yml — 自动部署
+- **触发**：push 到 `main` 分支 + `workflow_dispatch` 手动触发
+- **流程**：Checkout → Setup Bun/Node → Install → Build → Assemble → Pack → SSH Deploy → Health Check → Summary
+- **部署原理**：原子软链接切换（`dist → releases/<id>`）+ 健康检查 + 失败自动回滚
+- **本地触发**：`gh workflow run deploy.yml` 或 `/miobridge:deploy`
+
+### health-check.yml — 定时监控
+- **触发**：`cron: "*/5 * * * *"` 每 5 分钟 + `workflow_dispatch` 手动
+- **流程**：SSH → `curl /api/health` → 失败则 `systemctl restart` + 二次检查 → 报告
+- **告警**：GitHub Step Summary 记录每次检查结果
+
+### 本地与 CI 的协作
+
+```bash
+# 本地触发部署
+gh workflow run deploy.yml --ref main
+
+# 查看部署状态
+gh run watch $(gh run list -w deploy.yml -L1 --json databaseId -q '.[0].databaseId')
+
+# 查看健康检查历史
+gh run list -w health-check.yml -L5
+```
+
 ## 开发命令
