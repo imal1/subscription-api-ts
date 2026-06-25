@@ -19,7 +19,7 @@ jobs:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-      DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR || '/root/.config/subscription' }}
+      DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR || '~/.config/miobridge' }}
 
     steps:
       - name: Setup SSH
