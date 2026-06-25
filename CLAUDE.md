@@ -122,3 +122,49 @@ CSS 变量以语义化 tokens 暴露（`--primary`, `--secondary`, `--accent`, `
 - 不写 `shadow-sm`/`shadow-md`——使用 `var(--shadow-card)` 等 token。
 - 不引入第三方 CSS 框架之外的样式方案。
 - 不在组件中硬编码色值——使用 token 或 CSS 变量。
+
+## 项目决策记录
+
+本节记录关键架构决策及其原因，帮助 AI 和贡献者理解"为什么这样做"而不仅是"怎么做的"。
+
+### 为什么从 Express + Next 静态导出迁移到 Next.js 全栈 SSR？
+
+**决策**（2026-06）：将 Express 后端和 Next.js 前端合并为单一 Next.js 全栈应用（Pages Router，`output: 'standalone'`）。
+
+**原因**：
+- 双进程（Express + Next）增加运维复杂度，需要分别管理端口和生命周期
+- SSR 需要后端数据，双进程架构下只能通过 HTTP 自调用获取首屏数据，增加延迟
+- `getServerSideProps` 同进程直接调用 service 单例，零网络开销
+- standalone 输出模式支持单目录部署，`server.js` 一个入口启动全栈
+
+### 为什么用 mihomo 而非 subconverter？
+
+**决策**：使用 mihomo（clash-meta 内核）作为转换引擎，而非 subconverter。
+
+**原因**：
+- mihomo 原生支持 vless reality、hysteria2、tuic 等新协议，subconverter 对这些协议支持不完整
+- 本地命令行调用（`child_process.exec`）比 HTTP 调用 subconverter 更轻量，无网络开销
+- mihomo 输出 Clash 配置格式与 Clash Meta 内核完全兼容，无需二次处理
+- 项目只需要转换功能，不需要 subconverter 的完整功能集
+
+### 为什么用 yq 而非 js-yaml？
+
+**决策**：使用 mikefarah/yq v4 命令行工具解析和生成 YAML，而非 Node.js YAML 库。
+
+**原因**：
+- sing-box 配置格式复杂，包含多文档和特殊语法，yq 对此处理更可靠
+- yq 的 `eval` 和 `-o yaml` 组合能精确控制 YAML 输出格式
+- 命令行调用模式与 mihomo 一致，保持外部工具调用的一致性
+- **教训**：yq v4 默认 `eval -P` 输出 JSON 而非 YAML，必须显式加 `-o yaml`（v0.1 bug #1）
+
+### 为什么用 Pages Router 而非 App Router？
+
+**决策**（2026-06 迁移时）：使用 Next.js Pages Router 而非 App Router。
+
+**原因**：
+- 迁移时 App Router 的 `instrumentation.ts` 在 Node runtime 下的稳定性不足
+- Pages Router 的 `getServerSideProps` 模式对 SSR 数据注入更成熟
+- `output: 'standalone'` 在 Pages Router 下经过充分验证
+- 未来可在 App Router 稳定性提升后考虑迁移
+
+## 开发命令
