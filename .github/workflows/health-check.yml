@@ -1,0 +1,109 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: health-check
+  cancel-in-progress: false
+
+jobs:
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+      DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR || '/root/.config/subscription' }}
+
+    steps:
+      - name: Setup SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "${{ secrets.DEPLOY_KNOWN_HOSTS }}" ]; then
+            printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+
+      - name: Detect port
+        id: port
+        run: |
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          PORT=$(ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy "$REMOTE" \
+            "cat '$DEPLOY_BASE_DIR/config.yaml' 2>/dev/null | grep 'port:' | awk '{print \$2}' | head -1 || echo '3001'" 2>/dev/null || echo "3001")
+          PORT="${PORT:-3001}"
+          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+          echo "Detected port: $PORT"
+
+      - name: Health check
+        id: check
+        run: |
+          set -euo pipefail
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          PORT="${{ steps.port.outputs.port }}"
+
+          if ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy "$REMOTE" \
+            "curl -fsS --max-time 5 'http://127.0.0.1:$PORT/api/health'" >/dev/null 2>&1; then
+            echo "status=healthy" >> "$GITHUB_OUTPUT"
+            echo "✅ Service is healthy"
+          else
+            echo "status=unhealthy" >> "$GITHUB_OUTPUT"
+            echo "❌ Service is unhealthy, attempting recovery..."
+          fi
+
+      - name: Auto-recovery
+        if: steps.check.outputs.status == 'unhealthy'
+        run: |
+          set -euo pipefail
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          PORT="${{ steps.port.outputs.port }}"
+
+          echo "Restarting service..."
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy "$REMOTE" \
+            "sudo systemctl restart miobridge" || true
+
+          echo "Waiting 10s for service to start..."
+          sleep 10
+
+          if ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy "$REMOTE" \
+            "curl -fsS --max-time 5 'http://127.0.0.1:$PORT/api/health'" >/dev/null 2>&1; then
+            echo "recovered=true" >> "$GITHUB_OUTPUT"
+            echo "⚠️  Service recovered after restart"
+          else
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            echo "❌ Service still unhealthy after restart — manual intervention needed"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.status }}" = "healthy" ]; then
+            echo "### ✅ Health Check Passed" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Host: \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Port: \`${{ steps.port.outputs.port }}\`" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.check.outputs.status }}" = "unhealthy" ]; then
+            echo "### ⚠️  Health Check Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Host: \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Auto-recovery: attempted" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Recovered: ${{ steps.auto-recovery.outputs.recovered || 'unknown' }}" >> "$GITHUB_STEP_SUMMARY"
+            if [ "${{ steps.auto-recovery.outputs.recovered }}" = "false" ]; then
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "**❌ Manual intervention required!**" >> "$GITHUB_STEP_SUMMARY"
+              echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+              echo "ssh $DEPLOY_USER@$DEPLOY_HOST" >> "$GITHUB_STEP_SUMMARY"
+              echo "sudo journalctl -u miobridge -n 200" >> "$GITHUB_STEP_SUMMARY"
+              echo "sudo systemctl restart miobridge" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
