@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(bun run:*)",
+      "Bash(bun install:*)",
+      "Bash(gh:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run:*)",
+      "Bash(systemctl:status miobridge)",
+      "Bash(systemctl:restart miobridge)",
+      "Bash(journalctl:-u miobridge*)",
+      "Bash(journalctl:-u subscription*)",
+      "Bash(curl:localhost:*)",
+      "Bash(curl:http://localhost:*)",
+      "Bash(curl:/api/health*)",
+      "Bash(curl:/api/status*)",
+      "Bash(git:*)",
+      "Bash(oxlint:*)",
+      "Bash(npx:tsc*)",
+      "Bash(readlink:*)",
+      "Bash(ls:~/.config/miobridge*)",
+      "Bash(cat:~/.config/miobridge*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(tar:*)",
+      "Bash(wc:*)",
+      "Bash(ssh-keyscan:*)",
+      "Bash(python3:*)"
+    ]
+  },
+  "hooks": {
+    "PreCommit": [
+      {
+        "command": "bun run lint"
+      },
+      {
+        "command": "bash -c 'MSG=$(git rev-parse --git-dir 2>/dev/null)/COMMIT_EDITMSG; if [ -f \"$MSG\" ]; then if ! head -1 \"$MSG\" | grep -qE \"^(feat|fix|docs|refactor|chore|test|ci|perf|style|build)(\\(.+\\))?!?: .+\"; then echo \"⚠️  Commit message does not follow Conventional Commits format\"; echo \"   Expected: <type>: <description>\"; echo \"   Types: feat, fix, docs, refactor, chore, test, ci, perf, style, build\"; fi; fi'"
+      }
+    ]
+  }
+}
