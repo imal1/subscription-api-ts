@@ -36,7 +36,7 @@ const logFormat = winston.format.combine(
 export const logger = winston.createLogger({
     level: getLogLevel(),
     format: logFormat,
-    defaultMeta: { service: 'miobridge'' },
+    defaultMeta: { service: 'miobridge' },
     transports: [
         new winston.transports.File({
             filename: path.join(getLogDir(), 'error.log'),
