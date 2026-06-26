@@ -6,6 +6,7 @@ import { logger } from '@/server/utils/logger'
 import { MioBridgeService } from '@/server/services/mioBridgeService'
 import { MihomoService } from '@/server/services/mihomoService'
 import { SingBoxService } from '@/server/services/singBoxService'
+import { NodeManager } from '@/server/services/nodeManager'
 
 const mioBridgeService = MioBridgeService.getInstance()
 
@@ -35,6 +36,14 @@ async function initialize() {
       logger.info(singBoxAvailable ? '✅ Sing-box 可用' : '⚠️  Sing-box 不可用')
     } catch (error: any) {
       logger.warn('⚠️  Sing-box 检查失败:', error?.message)
+    }
+
+    // NodeManager 多节点集群初始化（非阻塞）
+    try {
+      await NodeManager.getInstance().loadNodes()
+      logger.info('✅ NodeManager 集群节点初始化完成')
+    } catch (error: any) {
+      logger.warn('⚠️  NodeManager 初始化失败:', error?.message)
     }
 
     // 注册定时自动更新
