@@ -108,4 +108,44 @@ describe('Task 3: NodeManager Service', () => {
       expect(nodes.length).toBe(0);
     });
   });
+
+  describe('getClusterStatus', () => {
+    it('should return cluster status with local node', async () => {
+      const manager = NodeManager.getInstance();
+      const cluster = await manager.getClusterStatus();
+      expect(cluster).toBeDefined();
+      expect(typeof cluster.totalNodes).toBe('number');
+      expect(typeof cluster.onlineNodes).toBe('number');
+      expect(typeof cluster.totalProxies).toBe('number');
+      expect(Array.isArray(cluster.nodes)).toBe(true);
+      expect(cluster.lastUpdated).toBeDefined();
+    });
+
+    it('should include local node in cluster nodes', async () => {
+      const manager = NodeManager.getInstance();
+      const cluster = await manager.getClusterStatus();
+      const localNode = cluster.nodes.find(n => n.nodeId === 'local');
+      expect(localNode).toBeDefined();
+      expect(localNode!.name).toBe('本地');
+    });
+  });
+
+  describe('triggerUpdate', () => {
+    it('should return results object', async () => {
+      const manager = NodeManager.getInstance();
+      const result = await manager.triggerUpdate();
+      expect(result).toBeDefined();
+      expect(result.results).toBeDefined();
+      expect(typeof result.results).toBe('object');
+    });
+  });
+
+  describe('healthCheck', () => {
+    it('should return health status for all nodes', async () => {
+      const manager = NodeManager.getInstance();
+      const result = await manager.healthCheck();
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+    });
+  });
 });

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
+import { MioBridgeService } from './mioBridgeService';
 import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml } from '../types';
 
 const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.yaml');
@@ -10,8 +11,11 @@ const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.y
 export class NodeManager {
   private static instance: NodeManager;
   private nodes: NodeConfig[] = [];
+  private localService: MioBridgeService;
 
-  private constructor() {}
+  private constructor() {
+    this.localService = MioBridgeService.getInstance();
+  }
 
   public static getInstance(): NodeManager {
     if (!NodeManager.instance) {
@@ -111,5 +115,92 @@ export class NodeManager {
       'X-Timestamp': timestamp,
       'X-Signature': signature,
     };
+  }
+
+  /** 聚合集群状态 */
+  async getClusterStatus(): Promise<ClusterStatus> {
+    // 获取本地节点状态
+    const localStatus = await this.getLocalNodeStatus();
+    const allStatuses = [localStatus];
+    return this.buildClusterStatus(allStatuses);
+  }
+
+  /** 构建本地节点状态 */
+  private async getLocalNodeStatus(): Promise<NodeStatus> {
+    try {
+      const status = await this.localService.getStatus();
+      return {
+        nodeId: 'local',
+        name: '本地',
+        kernel: 'sing-box',
+        location: '本地',
+        online: true,
+        latency: 0,
+        nodesCount: status.nodesCount || 0,
+        subscriptionExists: status.subscriptionExists,
+        clashExists: status.clashExists,
+        mihomoAvailable: status.mihomoAvailable,
+        kernelAccessible: status.singBoxAccessible,
+        version: status.version,
+        uptime: status.uptime,
+      };
+    } catch (error: any) {
+      return {
+        nodeId: 'local',
+        name: '本地',
+        kernel: 'sing-box',
+        location: '本地',
+        online: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /** 构建 ClusterStatus */
+  private buildClusterStatus(allStatuses: NodeStatus[]): ClusterStatus {
+    const onlineNodes = allStatuses.filter(n => n.online);
+    const totalProxies = allStatuses.reduce((sum, n) => sum + (n.nodesCount || 0), 0);
+    return {
+      totalNodes: allStatuses.length,
+      onlineNodes: onlineNodes.length,
+      totalProxies,
+      nodes: allStatuses,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  /** 触发更新 */
+  async triggerUpdate(nodeId?: string): Promise<{
+    results: Record<string, { success: boolean; message: string }>;
+  }> {
+    const results: Record<string, { success: boolean; message: string }> = {};
+
+    if (!nodeId || nodeId === 'local') {
+      try {
+        const result = await this.localService.updateSubscription();
+        results['local'] = { success: true, message: result.message };
+      } catch (error: any) {
+        results['local'] = { success: false, message: error.message };
+      }
+    }
+
+    return { results };
+  }
+
+  /** 健康检查 */
+  async healthCheck(nodeId?: string): Promise<
+    Record<string, { online: boolean; latency: number }>
+  > {
+    const results: Record<string, { online: boolean; latency: number }> = {};
+
+    try {
+      const start = Date.now();
+      await this.localService.getStatus();
+      results['local'] = { online: true, latency: Date.now() - start };
+    } catch {
+      results['local'] = { online: false, latency: 0 };
+    }
+
+    return results;
   }
 }
