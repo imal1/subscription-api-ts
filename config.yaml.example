@@ -1,5 +1,5 @@
 # ===============================================
-# Subscription API TypeScript 配置文件模板
+# MioBridge 配置文件模板
 # ===============================================
 # 这是配置文件模板，在项目安装时会自动复制为 config.yaml 文件并填入默认值
 # 
@@ -13,7 +13,7 @@
 # 服务基础配置
 # ---------------------------------------------
 app:
-  name: subscription-api-ts       # 应用名称
+  name: miobridge               # 应用名称
   version: 0.2.0                  # 应用版本
   port: 3001                      # API 服务端口
   environment: production         # 运行环境: development/production

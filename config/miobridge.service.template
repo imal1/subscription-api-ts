@@ -1,5 +1,5 @@
 [Unit]
-Description=TypeScript Subscription API Service
+Description=MioBridge — sing-box/xray/v2ray subscription converter
 After=network.target
 Documentation=https://github.com/imal1/miobridge
 
