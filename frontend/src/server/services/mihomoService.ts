@@ -213,7 +213,7 @@ export class MihomoService {
             const response = await axios.get(url, {
                 timeout: config.requestTimeout,
                 headers: {
-                    'User-Agent': 'miobridge/1.0.0'
+                    'User-Agent': 'miobridge/0.2.0'
                 }
             });
 

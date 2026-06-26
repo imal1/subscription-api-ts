@@ -1,6 +1,6 @@
 {
   "name": "miobridge",
-  "version": "1.1.0",
+  "version": "0.2.0",
   "description": "MioBridge — sing-box to Clash subscription converter powered by mihomo, supporting vless/vmess/trojan/hysteria2/tuic",
   "main": "dist/index.js",
   "private": true,

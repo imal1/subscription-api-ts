@@ -14,7 +14,7 @@
 # ---------------------------------------------
 app:
   name: subscription-api-ts       # 应用名称
-  version: 1.1.0                  # 应用版本
+  version: 0.2.0                  # 应用版本
   port: 3001                      # API 服务端口
   environment: production         # 运行环境: development/production
 
