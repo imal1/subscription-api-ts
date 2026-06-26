@@ -68,3 +68,60 @@ export interface HealthStatus {
     };
     timestamp: string;
 }
+
+// ==================== v1.0 多节点类型 ====================
+
+/** 代理内核类型 */
+export type KernelType = 'sing-box' | 'xray' | 'v2ray';
+
+/** 节点配置（来自 nodes.yaml） */
+export interface NodeConfig {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  secret: string;          // HMAC 共享密钥，localhost 可为空
+  kernel: KernelType;
+  location: string;
+  enabled: boolean;
+}
+
+/** 单个节点的运行时状态 */
+export interface NodeStatus {
+  nodeId: string;
+  name: string;
+  kernel: KernelType;
+  location: string;
+  online: boolean;
+  error?: string;           // 离线或异常原因
+  latency?: number;         // 毫秒
+  nodesCount?: number;      // 代理节点数
+  subscriptionExists?: boolean;
+  clashExists?: boolean;
+  mihomoAvailable?: boolean;
+  kernelAccessible?: boolean;
+  version?: string;
+  uptime?: number;
+}
+
+/** 集群聚合状态 */
+export interface ClusterStatus {
+  totalNodes: number;
+  onlineNodes: number;
+  totalProxies: number;
+  nodes: NodeStatus[];
+  lastUpdated: string;
+}
+
+/** 内核适配器接口 */
+export interface KernelAdapter {
+  readonly type: KernelType;
+  getConfigPaths(): Promise<string[]>;
+  extractNodeUrls(): Promise<string[]>;
+  isAvailable(): Promise<boolean>;
+}
+
+/** nodes.yaml 顶层结构 */
+export interface NodesYaml {
+  nodes: NodeConfig[];
+}
