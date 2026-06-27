@@ -1,34 +1,32 @@
 import type { GetServerSideProps } from 'next'
 import Dashboard from '@/components/Dashboard'
-import type { ApiStatus } from '@/lib/api'
+import type { ClusterStatus } from '@/server/types'
 
 interface HomeProps {
-  initialStatus: ApiStatus | null
+  initialCluster: ClusterStatus | null
   initialError: string | null
 }
 
-export default function Home({ initialStatus, initialError }: HomeProps) {
-  return <Dashboard initialStatus={initialStatus} initialError={initialError} />
+export default function Home({ initialCluster, initialError }: HomeProps) {
+  return <Dashboard initialCluster={initialCluster} initialError={initialError} />
 }
 
-// 服务端渲染：在同进程内直接调用 service 取实时状态，首屏即带数据
+// 服务端渲染：同进程内直接调用 NodeManager 获取集群状态
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
-  // 仅在服务端 import 后端 service，避免打进客户端 bundle
-  const { MioBridgeService } = await import('@/server/services/mioBridgeService')
+  const { NodeManager } = await import('@/server/services/nodeManager')
   try {
-    const status = await MioBridgeService.getInstance().getStatus()
+    const cluster = await NodeManager.getInstance().getClusterStatus()
     return {
       props: {
-        // 经 JSON 序列化保证可传递（去掉 undefined）
-        initialStatus: JSON.parse(JSON.stringify(status)) as ApiStatus,
+        initialCluster: JSON.parse(JSON.stringify(cluster)) as ClusterStatus,
         initialError: null,
       },
     }
   } catch (error) {
     return {
       props: {
-        initialStatus: null,
-        initialError: error instanceof Error ? error.message : '获取状态失败',
+        initialCluster: null,
+        initialError: error instanceof Error ? error.message : '获取集群状态失败',
       },
     }
   }

@@ -166,6 +166,35 @@ class ApiService {
       return this.handleError(error);
     }
   }
+
+  // 获取集群状态
+  async getClusterStatus(): Promise<ApiResponse> {
+    try {
+      return await apiClient.get('api/cluster/status').json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // 触发集群更新
+  async triggerClusterUpdate(nodeId?: string): Promise<ApiResponse> {
+    try {
+      const body = nodeId ? { json: { nodeId } } : {};
+      return await apiClient.post('api/cluster/update', body).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // 集群健康检查
+  async clusterHealthCheck(nodeId?: string): Promise<ApiResponse> {
+    try {
+      const params = nodeId ? `?nodeId=${encodeURIComponent(nodeId)}` : '';
+      return await apiClient.get(`api/cluster/health${params}`).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
 }
 
 export const apiService = new ApiService();
