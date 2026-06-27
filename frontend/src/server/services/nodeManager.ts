@@ -7,11 +7,14 @@ import { MioBridgeService } from './mioBridgeService';
 import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml } from '../types';
 
 const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.yaml');
+const REMOTE_TIMEOUT_MS = 10_000;
 
 export class NodeManager {
   private static instance: NodeManager;
   private nodes: NodeConfig[] = [];
   private localService: MioBridgeService;
+  /** In-memory cache of last known remote node statuses */
+  private nodeCache: Map<string, NodeStatus> = new Map();
 
   private constructor() {
     this.localService = MioBridgeService.getInstance();
@@ -93,6 +96,11 @@ export class NodeManager {
     return this.nodes.length > 0;
   }
 
+  /** 获取节点缓存（供 Dashboard 使用） */
+  getNodeCache(): Map<string, NodeStatus> {
+    return this.nodeCache;
+  }
+
   /** HMAC-SHA256 签名 */
   signRequest(
     node: NodeConfig,
@@ -117,11 +125,155 @@ export class NodeManager {
     };
   }
 
+  // ==================== 远程节点 HTTP 轮询 ====================
+
+  /** 从远程节点获取状态 */
+  private async fetchRemoteStatus(node: NodeConfig): Promise<NodeStatus> {
+    const baseStatus: NodeStatus = {
+      nodeId: node.id,
+      name: node.name,
+      kernel: node.kernel,
+      location: node.location,
+      online: false,
+    };
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...this.signRequest(node, 'GET', '/api/status'),
+      };
+
+      const url = `https://${node.host}:${node.port}/api/status`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return {
+          ...baseStatus,
+          online: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const json = await response.json();
+      const data = json.data || json;
+
+      const status: NodeStatus = {
+        ...baseStatus,
+        online: true,
+        latency: 0, // will be set by health check
+        nodesCount: data.nodesCount,
+        subscriptionExists: data.subscriptionExists,
+        clashExists: data.clashExists,
+        mihomoAvailable: data.mihomoAvailable,
+        kernelAccessible: data.singBoxAccessible,
+        version: data.version,
+        uptime: data.uptime,
+      };
+
+      this.nodeCache.set(node.id, status);
+      return status;
+    } catch (error: any) {
+      const errorMsg = error.name === 'AbortError'
+        ? '请求超时'
+        : `连接失败: ${error.message}`;
+      const status: NodeStatus = { ...baseStatus, online: false, error: errorMsg };
+      this.nodeCache.set(node.id, status);
+      return status;
+    }
+  }
+
+  /** 触发远程节点更新 */
+  private async fetchRemoteUpdate(node: NodeConfig): Promise<{ success: boolean; message: string }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS * 3); // update takes longer
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...this.signRequest(node, 'GET', '/api/update'),
+      };
+
+      const url = `https://${node.host}:${node.port}/api/update`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return { success: false, message: `节点 ${node.name} HTTP ${response.status}` };
+      }
+
+      const json = await response.json();
+      return { success: true, message: `节点 ${node.name}: ${json.message || '更新成功'}` };
+    } catch (error: any) {
+      const errorMsg = error.name === 'AbortError'
+        ? '请求超时'
+        : `节点 ${node.name} 离线: ${error.message}`;
+      return { success: false, message: errorMsg };
+    }
+  }
+
+  /** 远程节点健康检查（测延迟） */
+  private async fetchRemoteHealth(node: NodeConfig): Promise<{ online: boolean; latency: number }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+
+      const headers: Record<string, string> = {
+        ...this.signRequest(node, 'GET', '/api/health'),
+      };
+
+      const url = `https://${node.host}:${node.port}/health`;
+      const start = Date.now();
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return { online: false, latency: 0 };
+      }
+
+      return { online: true, latency: Date.now() - start };
+    } catch {
+      return { online: false, latency: 0 };
+    }
+  }
+
+  // ==================== 集群聚合操作 ====================
+
   /** 聚合集群状态 */
   async getClusterStatus(): Promise<ClusterStatus> {
     // 获取本地节点状态
     const localStatus = await this.getLocalNodeStatus();
-    const allStatuses = [localStatus];
+    const allStatuses: NodeStatus[] = [localStatus];
+
+    // 并发轮询所有远程节点
+    if (this.nodes.length > 0) {
+      const remoteResults = await Promise.allSettled(
+        this.nodes.map(node => this.fetchRemoteStatus(node))
+      );
+
+      for (const result of remoteResults) {
+        if (result.status === 'fulfilled') {
+          allStatuses.push(result.value);
+        }
+        // rejected results are silently skipped — the node will be missing from the cluster view
+      }
+    }
+
     return this.buildClusterStatus(allStatuses);
   }
 
@@ -129,7 +281,7 @@ export class NodeManager {
   private async getLocalNodeStatus(): Promise<NodeStatus> {
     try {
       const status = await this.localService.getStatus();
-      return {
+      const nodeStatus: NodeStatus = {
         nodeId: 'local',
         name: '本地',
         kernel: 'sing-box',
@@ -144,6 +296,8 @@ export class NodeManager {
         version: status.version,
         uptime: status.uptime,
       };
+      this.nodeCache.set('local', nodeStatus);
+      return nodeStatus;
     } catch (error: any) {
       return {
         nodeId: 'local',
@@ -169,36 +323,90 @@ export class NodeManager {
     };
   }
 
-  /** 触发更新 */
+  /** 触发更新（本地 + 远程） */
   async triggerUpdate(nodeId?: string): Promise<{
     results: Record<string, { success: boolean; message: string }>;
   }> {
     const results: Record<string, { success: boolean; message: string }> = {};
 
-    if (!nodeId || nodeId === 'local') {
-      try {
-        const result = await this.localService.updateSubscription();
-        results['local'] = { success: true, message: result.message };
-      } catch (error: any) {
-        results['local'] = { success: false, message: error.message };
+    // If a specific remote node is requested
+    if (nodeId && nodeId !== 'local') {
+      const targetNode = this.nodes.find(n => n.id === nodeId);
+      if (targetNode) {
+        results[nodeId] = await this.fetchRemoteUpdate(targetNode);
+      } else {
+        results[nodeId] = { success: false, message: `节点 ${nodeId} 不存在` };
+      }
+      return { results };
+    }
+
+    // Update local
+    try {
+      const result = await this.localService.updateSubscription();
+      results['local'] = { success: true, message: result.message };
+    } catch (error: any) {
+      results['local'] = { success: false, message: error.message };
+    }
+
+    // Update all remote nodes concurrently
+    if (this.nodes.length > 0) {
+      const remoteResults = await Promise.allSettled(
+        this.nodes.map(async (node) => {
+          const r = await this.fetchRemoteUpdate(node);
+          return { nodeId: node.id, result: r };
+        })
+      );
+
+      for (const r of remoteResults) {
+        if (r.status === 'fulfilled') {
+          results[r.value.nodeId] = r.value.result;
+        }
       }
     }
 
     return { results };
   }
 
-  /** 健康检查 */
+  /** 健康检查（本地 + 远程） */
   async healthCheck(nodeId?: string): Promise<
     Record<string, { online: boolean; latency: number }>
   > {
     const results: Record<string, { online: boolean; latency: number }> = {};
 
+    // If a specific remote node is requested
+    if (nodeId && nodeId !== 'local') {
+      const targetNode = this.nodes.find(n => n.id === nodeId);
+      if (targetNode) {
+        results[nodeId] = await this.fetchRemoteHealth(targetNode);
+      } else {
+        results[nodeId] = { online: false, latency: 0 };
+      }
+      return results;
+    }
+
+    // Check local
     try {
       const start = Date.now();
       await this.localService.getStatus();
       results['local'] = { online: true, latency: Date.now() - start };
     } catch {
       results['local'] = { online: false, latency: 0 };
+    }
+
+    // Check all remote nodes concurrently
+    if (this.nodes.length > 0) {
+      const remoteResults = await Promise.allSettled(
+        this.nodes.map(async (node) => {
+          const r = await this.fetchRemoteHealth(node);
+          return { nodeId: node.id, result: r };
+        })
+      );
+
+      for (const r of remoteResults) {
+        if (r.status === 'fulfilled') {
+          results[r.value.nodeId] = r.value.result;
+        }
+      }
     }
 
     return results;
