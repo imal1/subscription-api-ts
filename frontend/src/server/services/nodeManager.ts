@@ -8,6 +8,8 @@ import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml } from '../types'
 
 const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.yaml');
 const REMOTE_TIMEOUT_MS = 10_000;
+/** fs.watch 去抖延迟：文件可能连续触发多次 change 事件 */
+const WATCH_DEBOUNCE_MS = 500;
 
 export class NodeManager {
   private static instance: NodeManager;
@@ -15,6 +17,8 @@ export class NodeManager {
   private localService: MioBridgeService;
   /** In-memory cache of last known remote node statuses */
   private nodeCache: Map<string, NodeStatus> = new Map();
+  private watcher: fs.FSWatcher | null = null;
+  private watchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   private constructor() {
     this.localService = MioBridgeService.getInstance();
@@ -25,6 +29,46 @@ export class NodeManager {
       NodeManager.instance = new NodeManager();
     }
     return NodeManager.instance;
+  }
+
+  /** 启动 nodes.yaml 文件监听（热加载） */
+  startWatch(): void {
+    if (this.watcher) return; // 防止重复启动
+
+    try {
+      // 确保父目录存在后再监听（目录不存在时 watch 会失败）
+      const dir = path.dirname(NODES_YAML_PATH);
+      if (!fs.existsSync(dir)) {
+        logger.info('NodeManager: nodes.yaml 目录不存在，跳过文件监听');
+        return;
+      }
+
+      this.watcher = fs.watch(NODES_YAML_PATH, (eventType) => {
+        if (eventType !== 'change') return;
+        // 去抖：短时间内的重复事件只触发一次
+        if (this.watchDebounceTimer) clearTimeout(this.watchDebounceTimer);
+        this.watchDebounceTimer = setTimeout(async () => {
+          logger.info('NodeManager: 检测到 nodes.yaml 变更，重新加载节点...');
+          await this.loadNodes();
+        }, WATCH_DEBOUNCE_MS);
+      });
+
+      logger.info('NodeManager: nodes.yaml 文件监听已启动');
+    } catch (error: any) {
+      logger.warn(`NodeManager: 启动文件监听失败: ${error.message}`);
+    }
+  }
+
+  /** 停止文件监听 */
+  stopWatch(): void {
+    if (this.watcher) {
+      this.watcher.close();
+      this.watcher = null;
+    }
+    if (this.watchDebounceTimer) {
+      clearTimeout(this.watchDebounceTimer);
+      this.watchDebounceTimer = null;
+    }
   }
 
   /** 读取 nodes.yaml */

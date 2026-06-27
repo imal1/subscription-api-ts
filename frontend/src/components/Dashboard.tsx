@@ -7,6 +7,7 @@ import { useClusterSSE } from '@/lib/useClusterSSE'
 import type { ClusterStatus } from '@/server/types'
 import { ClusterOverview } from '@/components/cluster/ClusterOverview'
 import { NodeCard } from '@/components/cluster/NodeCard'
+import { BatchActions } from '@/components/cluster/BatchActions'
 import SectionHeading from '@/components/shared/SectionHeading'
 
 interface DashboardProps {
@@ -41,6 +42,16 @@ export default function Dashboard({ initialCluster = null, initialError = null }
     }
   }, [])
 
+  const handleUpdateAll = useCallback(async () => {
+    setError(null)
+    await apiService.triggerClusterUpdate()
+  }, [])
+
+  const handleHealthCheckAll = useCallback(async () => {
+    setError(null)
+    await apiService.clusterHealthCheck()
+  }, [])
+
   return (
     <div className="px-6 py-8 max-w-5xl mx-auto space-y-8">
       {/* Error */}
@@ -56,6 +67,16 @@ export default function Dashboard({ initialCluster = null, initialError = null }
 
       {/* Cluster Overview */}
       {cluster && <ClusterOverview cluster={cluster} />}
+
+      {/* Batch Actions */}
+      {cluster && (
+        <BatchActions
+          totalNodes={cluster.totalNodes}
+          onlineNodes={cluster.onlineNodes}
+          onUpdateAll={handleUpdateAll}
+          onHealthCheckAll={handleHealthCheckAll}
+        />
+      )}
 
       {/* Node Cards */}
       {cluster && cluster.nodes && cluster.nodes.length > 0 && (

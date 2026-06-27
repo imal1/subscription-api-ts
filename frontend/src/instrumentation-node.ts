@@ -40,8 +40,10 @@ async function initialize() {
 
     // NodeManager 多节点集群初始化（非阻塞）
     try {
-      await NodeManager.getInstance().loadNodes()
-      logger.info('✅ NodeManager 集群节点初始化完成')
+      const nodeManager = NodeManager.getInstance()
+      await nodeManager.loadNodes()
+      nodeManager.startWatch()
+      logger.info('✅ NodeManager 集群节点初始化完成（已启用热加载）')
     } catch (error: any) {
       logger.warn('⚠️  NodeManager 初始化失败:', error?.message)
     }

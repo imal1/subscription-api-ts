@@ -107,4 +107,12 @@ describe('Phase C: Cluster Dashboard Page', () => {
     render(<Dashboard initialCluster={null} initialError={null} />);
     expect(screen.getByText('等待集群数据...')).toBeDefined();
   });
+
+  it('should render BatchActions with update and health check buttons', async () => {
+    const Dashboard = (await import('@/components/Dashboard')).default;
+    render(<Dashboard initialCluster={mockClusterData} initialError={null} />);
+    expect(screen.getByText('批量操作')).toBeDefined();
+    expect(screen.getByText('全部更新')).toBeDefined();
+    expect(screen.getByText('全部健康检查')).toBeDefined();
+  });
 });
