@@ -11,6 +11,9 @@ import type {
   KernelAdapter,
   KernelType,
   NodesYaml,
+  NodeSshConfig,
+  NodeAgentInfo,
+  NodeKernelInfo,
 } from '../index';
 
 describe('Task 1: Type Definitions', () => {
@@ -160,5 +163,49 @@ describe('Task 1: Type Definitions', () => {
       expect(yaml.nodes[0].id).toBe('n1');
       expect(yaml.nodes[1].enabled).toBe(false);
     });
+  });
+});
+
+describe('v1.0 Agent types', () => {
+  it('NodeSshConfig should have user, port, keyPath, hostKey', () => {
+    const ssh: NodeSshConfig = {
+      user: 'root',
+      port: 22,
+      keyPath: '~/.ssh/id_ed25519',
+      hostKey: 'ssh-ed25519 AAA...',
+    };
+    expect(ssh.user).toBe('root');
+    expect(ssh.port).toBe(22);
+  });
+
+  it('NodeAgentInfo should have deployed, version, status, lastDeploy', () => {
+    const agent: NodeAgentInfo = {
+      deployed: true,
+      version: '1.0.0',
+      status: 'running',
+      lastDeploy: '2026-06-27T10:00:00Z',
+    };
+    expect(agent.status).toBe('running');
+  });
+
+  it('NodeKernelInfo should have installed, version, installScript', () => {
+    const kernel: NodeKernelInfo = {
+      installed: true,
+      version: '25.3.6',
+      installScript: 'sing-box',
+    };
+    expect(kernel.installed).toBe(true);
+  });
+
+  it('NodeConfig should accept optional ssh, agent, kernelInfo', () => {
+    const cfg: NodeConfig = {
+      id: 'test', name: 'Test', host: 'example.com', port: 443,
+      secret: '', kernel: 'sing-box', location: 'test', enabled: true,
+      ssh: { user: 'root', port: 22, keyPath: '/key', hostKey: '' },
+      agent: { deployed: false, version: '', status: 'not_deployed', lastDeploy: '' },
+      kernelInfo: { installed: false, version: '', installScript: '' },
+    };
+    expect(cfg.ssh?.user).toBe('root');
+    expect(cfg.agent?.status).toBe('not_deployed');
   });
 });

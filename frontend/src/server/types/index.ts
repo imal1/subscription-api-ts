@@ -84,6 +84,12 @@ export interface NodeConfig {
   kernel: KernelType;
   location: string;
   enabled: boolean;
+  /** SSH 连接配置（可选，用于远程部署） */
+  ssh?: NodeSshConfig;
+  /** Agent 运行时信息（系统维护） */
+  agent?: NodeAgentInfo;
+  /** 内核安装信息（系统维护） */
+  kernelInfo?: NodeKernelInfo;
 }
 
 /** 单个节点的运行时状态 */
@@ -124,4 +130,29 @@ export interface KernelAdapter {
 /** nodes.yaml 顶层结构 */
 export interface NodesYaml {
   nodes: NodeConfig[];
+}
+
+// ==================== v1.0 Agent 部署类型 ====================
+
+/** 节点 SSH 连接配置 */
+export interface NodeSshConfig {
+  user: string;
+  port: number;
+  keyPath: string;
+  hostKey: string;
+}
+
+/** Agent 运行时信息 */
+export interface NodeAgentInfo {
+  deployed: boolean;
+  version: string;
+  status: 'not_deployed' | 'deploying' | 'running' | 'stopped' | 'error';
+  lastDeploy: string;
+}
+
+/** 内核安装信息 */
+export interface NodeKernelInfo {
+  installed: boolean;
+  version: string;
+  installScript: string;
 }

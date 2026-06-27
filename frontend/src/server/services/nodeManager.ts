@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
 import { MioBridgeService } from './mioBridgeService';
-import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml } from '../types';
+import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml, NodeAgentInfo } from '../types';
 
 const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.yaml');
 const REMOTE_TIMEOUT_MS = 10_000;
@@ -95,6 +95,7 @@ export class NodeManager {
   private parseNodesYaml(raw: string): NodesYaml {
     const nodes: NodeConfig[] = [];
     let current: Partial<NodeConfig> = {};
+    let subSection = '';
     const lines = raw.split('\n');
 
     for (const line of lines) {
@@ -104,11 +105,35 @@ export class NodeManager {
       if (trimmed.startsWith('- id:')) {
         if (current.id) { nodes.push(current as NodeConfig); }
         current = { id: this.extractYamlValue(trimmed, 'id') };
+        subSection = '';
+      } else if (trimmed === 'ssh:') {
+        subSection = 'ssh';
+        current.ssh = { user: 'root', port: 22, keyPath: '', hostKey: '' };
+      } else if (trimmed === 'agent:') {
+        subSection = 'agent';
+        current.agent = { deployed: false, version: '', status: 'not_deployed', lastDeploy: '' };
+      } else if (trimmed === 'kernelInfo:') {
+        subSection = 'kernelInfo';
+        current.kernelInfo = { installed: false, version: '', installScript: '' };
+      } else if (subSection === 'ssh') {
+        if (trimmed.startsWith('user:')) current.ssh!.user = this.extractYamlValue(trimmed, 'user');
+        else if (trimmed.startsWith('port:')) current.ssh!.port = parseInt(this.extractYamlValue(trimmed, 'port')) || 22;
+        else if (trimmed.startsWith('keyPath:')) current.ssh!.keyPath = this.extractYamlValue(trimmed, 'keyPath');
+        else if (trimmed.startsWith('hostKey:')) current.ssh!.hostKey = this.extractYamlValue(trimmed, 'hostKey');
+      } else if (subSection === 'agent') {
+        if (trimmed.startsWith('deployed:')) current.agent!.deployed = this.extractYamlValue(trimmed, 'deployed') === 'true';
+        else if (trimmed.startsWith('version:')) current.agent!.version = this.extractYamlValue(trimmed, 'version');
+        else if (trimmed.startsWith('status:')) current.agent!.status = this.extractYamlValue(trimmed, 'status') as NodeAgentInfo['status'];
+        else if (trimmed.startsWith('lastDeploy:')) current.agent!.lastDeploy = this.extractYamlValue(trimmed, 'lastDeploy');
+      } else if (subSection === 'kernelInfo') {
+        if (trimmed.startsWith('installed:')) current.kernelInfo!.installed = this.extractYamlValue(trimmed, 'installed') === 'true';
+        else if (trimmed.startsWith('version:')) current.kernelInfo!.version = this.extractYamlValue(trimmed, 'version');
+        else if (trimmed.startsWith('installScript:')) current.kernelInfo!.installScript = this.extractYamlValue(trimmed, 'installScript');
       } else if (trimmed.startsWith('name:')) {
         current.name = this.extractYamlValue(trimmed, 'name');
       } else if (trimmed.startsWith('host:')) {
         current.host = this.extractYamlValue(trimmed, 'host');
-      } else if (trimmed.startsWith('port:')) {
+      } else if (trimmed.startsWith('port:') && !line.includes('ssh')) {
         current.port = parseInt(this.extractYamlValue(trimmed, 'port')) || 443;
       } else if (trimmed.startsWith('secret:')) {
         current.secret = this.extractYamlValue(trimmed, 'secret');
