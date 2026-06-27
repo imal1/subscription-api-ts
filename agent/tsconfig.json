@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@adapters/*": ["../frontend/src/server/services/adapters/*"],
+      "@middleware/*": ["../frontend/src/server/middleware/*"],
+      "@types/*": ["../frontend/src/server/types/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "../frontend/src/server/services/adapters/**/*.ts", "../frontend/src/server/middleware/**/*.ts", "../frontend/src/server/types/**/*.ts"],
+  "exclude": ["node_modules", "src/**/__tests__/**"]
+}

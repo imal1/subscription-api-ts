@@ -1,0 +1,17 @@
+{
+  "name": "miobridge-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/server.ts --compile --outfile miobridge-agent --target bun-linux-x64",
+    "build:arm64": "bun build src/server.ts --compile --outfile miobridge-agent --target bun-linux-arm64",
+    "build:all": "bun run build && bun run build:arm64",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
