@@ -195,6 +195,73 @@ class ApiService {
       return this.handleError(error);
     }
   }
+
+  // 部署节点
+  async deployNode(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/deploy', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // Agent 管理
+  async updateAgent(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/agent/update', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async uninstallAgent(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/agent/uninstall', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async restartAgent(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/agent/restart', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async stopAgent(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/agent/stop', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async startAgent(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/agent/start', { json: { nodeId } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // 内核管理
+  async installKernel(nodeId: string, kernelType: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/kernel/install', { json: { nodeId, kernelType } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async uninstallKernel(nodeId: string, kernelType: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/kernel/uninstall', { json: { nodeId, kernelType } }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
 }
 
 export const apiService = new ApiService();

@@ -9,9 +9,21 @@ interface NodeCardProps {
   node: NodeStatus;
   onUpdate?: (nodeId: string) => void;
   onHealthCheck?: (nodeId: string) => void;
+  onDeploy?: (nodeId: string) => void;
+  onUpdateAgent?: (nodeId: string) => void;
+  onRestartAgent?: (nodeId: string) => void;
+  onUninstallAgent?: (nodeId: string) => void;
 }
 
-export function NodeCard({ node, onUpdate, onHealthCheck }: NodeCardProps) {
+export function NodeCard({
+  node,
+  onUpdate,
+  onHealthCheck,
+  onDeploy,
+  onUpdateAgent,
+  onRestartAgent,
+  onUninstallAgent,
+}: NodeCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const kernelLabel = (k: string) => {
@@ -32,12 +44,9 @@ export function NodeCard({ node, onUpdate, onHealthCheck }: NodeCardProps) {
     }
   };
 
-  const formatUptime = (s?: number) => {
-    if (!s && s !== 0) return '-';
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return `${h}h ${m}m`;
-  };
+  const needsDeploy = node.nodeId !== 'local' && !node.agent?.deployed;
+  const isRunning = node.agent?.status === 'running';
+  const isDeploying = node.agent?.status === 'deploying';
 
   return (
     <>
@@ -113,6 +122,52 @@ export function NodeCard({ node, onUpdate, onHealthCheck }: NodeCardProps) {
             </span>
           )}
         </div>
+
+        {/* Agent deployment actions — only for remote nodes */}
+        {node.nodeId !== 'local' && (
+          <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+            {needsDeploy && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeploy?.(node.nodeId); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+                <Icon icon="ph:rocket-launch-bold" className="w-3.5 h-3.5" />
+                一键部署
+              </button>
+            )}
+            {isRunning && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onUpdateAgent?.(node.nodeId); }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--secondary)', color: 'var(--secondary-foreground)' }}>
+                  <Icon icon="ph:arrow-clockwise-bold" className="w-3.5 h-3.5" />
+                  更新
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRestartAgent?.(node.nodeId); }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--secondary)', color: 'var(--secondary-foreground)' }}>
+                  <Icon icon="ph:repeat-bold" className="w-3.5 h-3.5" />
+                  重启
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onUninstallAgent?.(node.nodeId); }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--destructive)', color: 'var(--destructive-foreground)' }}>
+                  <Icon icon="ph:trash-bold" className="w-3.5 h-3.5" />
+                  卸载
+                </button>
+              </>
+            )}
+            {isDeploying && (
+              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--primary)' }}>
+                <Icon icon="ph:spinner-bold" className="w-3.5 h-3.5 animate-spin" />
+                部署中...
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {expanded && (
