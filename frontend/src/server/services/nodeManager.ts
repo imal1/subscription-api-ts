@@ -245,6 +245,7 @@ export class NodeManager {
         kernelAccessible: data.singBoxAccessible,
         version: data.version,
         uptime: data.uptime,
+        agent: node.agent,
       };
 
       this.nodeCache.set(node.id, status);

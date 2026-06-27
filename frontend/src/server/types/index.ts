@@ -108,6 +108,7 @@ export interface NodeStatus {
   kernelAccessible?: boolean;
   version?: string;
   uptime?: number;
+  agent?: NodeAgentInfo;
 }
 
 /** 集群聚合状态 */

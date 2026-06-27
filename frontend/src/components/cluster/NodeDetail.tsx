@@ -49,6 +49,27 @@ export function NodeDetail({
     }
   };
 
+  const agentStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'running': return '运行中';
+      case 'stopped': return '已停止';
+      case 'deploying': return '部署中';
+      case 'error': return '异常';
+      case 'not_deployed':
+      default: return '未部署';
+    }
+  };
+
+  const agentStatusColor = (status?: string) => {
+    switch (status) {
+      case 'running': return 'success';
+      case 'error': return 'danger';
+      case 'deploying': return 'warning';
+      case 'not_deployed':
+      default: return 'warning';
+    }
+  };
+
   return (
     <div
       className="garden-card p-5 mb-3 -mt-2 border-t-0"
@@ -130,6 +151,36 @@ export function NodeDetail({
               </span>
             </InfoRow>
           )}
+        </div>
+      )}
+
+      {/* Agent deployment info — only for remote nodes */}
+      {node.nodeId !== 'local' && node.agent && (
+        <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+          <h4
+            className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-display)' }}
+          >
+            部署信息
+          </h4>
+          <div className="space-y-1">
+            <InfoRow label="Agent">
+              <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                {node.agent.version || '-'}
+              </span>
+              <StatusBadge
+                label={agentStatusLabel(node.agent.status)}
+                status={agentStatusColor(node.agent.status)}
+              />
+            </InfoRow>
+            {node.agent.lastDeploy && (
+              <InfoRow label="部署时间">
+                <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  {new Date(node.agent.lastDeploy).toLocaleString('zh-CN')}
+                </span>
+              </InfoRow>
+            )}
+          </div>
         </div>
       )}
 
