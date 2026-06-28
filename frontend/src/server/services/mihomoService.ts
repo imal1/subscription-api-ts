@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { VERSION } from '../version';
 
 interface ProxyConfig {
     name: string;
@@ -213,7 +214,7 @@ export class MihomoService {
             const response = await axios.get(url, {
                 timeout: config.requestTimeout,
                 headers: {
-                    'User-Agent': 'miobridge/0.2.0'
+                    'User-Agent': `miobridge/${VERSION}`
                 }
             });
 

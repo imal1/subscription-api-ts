@@ -4,6 +4,21 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循语义化版本规范。
 
+## [1.2.0] — 2026-06-28
+
+### Added
+- **零接触多节点部署（Agent）**：Agent 子包（`agent/`），含 HTTP 服务器（`/api/status`、`/api/update`、`/api/health`）、配置解析、Linux amd64/arm64 构建脚本
+- **DeployManager 服务**：SSH 远程部署管理，支持节点注册、代理生命周期、内核管理
+- **节点 SSH 类型**：`NodeSshConfig`、`NodeAgentInfo`、`NodeKernelInfo` 类型定义
+- **CLI 部署命令**：`deploy`、`deploy:status`、`deploy:rollback` 等命令行工具
+- **UpdateChecker 服务**：版本检查与自动更新管理
+- **部署 UI 组件**：`AddNodeForm`（添加节点表单）、`DeployProgressDialog`（部署进度弹窗）、节点详情中的 Agent 信息区域、Agent 生命周期按钮
+- **部署相关 API**：`/api/deploy/*`、`/api/agent/*`、`/api/kernel/*` 端点
+- SSH 完成设计文档与实现计划
+
+### Fixed
+- **Vitest JSX 解析失败**：`tsconfig.json` 使用 `jsx: "preserve"`（Next.js 要求），vitest 的 esbuild 无法解析 JSX。添加 `@vitejs/plugin-react` 插件用 Babel 处理 JSX 转换，同时排除 `../agent/**` 下的 Bun 专用测试。修复后 162 个测试全部通过（之前 3 个文件、7 个测试失败）
+
 ## [1.1.0] — 2026-06-24
 
 ### Added
