@@ -24,6 +24,7 @@ function writeNodesYaml(nodes: Partial<NodeConfig>[], filePath: string) {
       lines.push(`      port: ${n.ssh.port}`);
       lines.push(`      keyPath: "${n.ssh.keyPath}"`);
       lines.push(`      hostKey: "${n.ssh.hostKey}"`);
+      if (n.ssh.password) lines.push(`      password: "${n.ssh.password}"`);
     }
     if (n.agent) {
       lines.push(`    agent:`);

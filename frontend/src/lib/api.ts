@@ -205,6 +205,30 @@ class ApiService {
     }
   }
 
+  // 添加节点
+  async addNode(data: {
+    name: string;
+    host: string;
+    port: number;
+    kernel: string;
+    location: string;
+    sshUser: string;
+    sshPort: number;
+    sshKey: string;
+    sshPassword?: string;
+  }): Promise<ApiResponse> {
+    try {
+      return await apiClient.post('api/cluster/nodes', { json: data }).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // 获取部署进度 SSE
+  getDeployProgressUrl(nodeId: string): string {
+    return `${API_BASE_URL}/api/cluster/deploy/progress?node=${encodeURIComponent(nodeId)}`;
+  }
+
   // Agent 管理
   async updateAgent(nodeId: string): Promise<ApiResponse> {
     try {

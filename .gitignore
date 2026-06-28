@@ -91,5 +91,11 @@ frontend/dist/
 .next/cache
 frontend/.next/cache
 
+# Agent binary (built from source)
+agent/miobridge-agent
+
+# Session-local memory (not for commit)
+.remember/
+
 # Nginx configuration files
 config/nginx.conf

@@ -38,6 +38,94 @@ export class NodeManager {
     this.deployDelegate = delegate;
   }
 
+  /** 将节点写入 nodes.yaml（追加或创建） */
+  async writeNodeToYaml(node: NodeConfig): Promise<NodeConfig> {
+    // 确保目录存在
+    const dir = path.dirname(NODES_YAML_PATH);
+    await fs.ensureDir(dir);
+
+    // 重新加载现有节点以检查重复
+    await this.loadNodes();
+    if (this.nodes.find(n => n.id === node.id)) {
+      throw new Error(`节点 ${node.id} 已存在`);
+    }
+
+    // 生成默认值
+    if (!node.id) {
+      node.id = 'node-' + crypto.randomBytes(2).toString('hex');
+    }
+    if (!node.secret) {
+      node.secret = crypto.randomBytes(32).toString('hex');
+    }
+    if (!node.agent) {
+      node.agent = { deployed: false, version: '', status: 'not_deployed', lastDeploy: '' };
+    }
+    node.enabled = true;
+
+    // 序列化为 YAML
+    const lines: string[] = [];
+    const fileExists = await fs.pathExists(NODES_YAML_PATH);
+
+    if (fileExists) {
+      // Append to existing file
+      const existing = await fs.readFile(NODES_YAML_PATH, 'utf8');
+      lines.push(existing.trimEnd());
+      if (!existing.endsWith('\n')) lines.push('');
+    } else {
+      lines.push('nodes:');
+    }
+
+    // Build node entry
+    lines.push(`  - id: "${node.id}"`);
+    if (node.name) lines.push(`    name: "${node.name}"`);
+    if (node.host) lines.push(`    host: "${node.host}"`);
+    lines.push(`    port: ${node.port}`);
+    if (node.secret) lines.push(`    secret: "${node.secret}"`);
+    if (node.kernel) lines.push(`    kernel: "${node.kernel}"`);
+    if (node.location) lines.push(`    location: "${node.location}"`);
+    lines.push(`    enabled: ${node.enabled}`);
+
+    if (node.ssh) {
+      lines.push(`    ssh:`);
+      lines.push(`      user: "${node.ssh.user}"`);
+      lines.push(`      port: ${node.ssh.port}`);
+      if (node.ssh.keyPath) lines.push(`      keyPath: "${node.ssh.keyPath}"`);
+      if (node.ssh.hostKey) lines.push(`      hostKey: "${node.ssh.hostKey}"`);
+      if (node.ssh.password) lines.push(`      password: "${node.ssh.password}"`);
+    }
+
+    if (node.agent) {
+      lines.push(`    agent:`);
+      lines.push(`      deployed: ${node.agent.deployed}`);
+      if (node.agent.version) lines.push(`      version: "${node.agent.version}"`);
+      lines.push(`      status: "${node.agent.status}"`);
+      if (node.agent.lastDeploy) lines.push(`      lastDeploy: "${node.agent.lastDeploy}"`);
+    }
+
+    if (node.kernelInfo) {
+      lines.push(`    kernelInfo:`);
+      lines.push(`      installed: ${node.kernelInfo.installed}`);
+      if (node.kernelInfo.version) lines.push(`      version: "${node.kernelInfo.version}"`);
+      if (node.kernelInfo.installScript) lines.push(`      installScript: "${node.kernelInfo.installScript}"`);
+    }
+
+    await fs.writeFile(NODES_YAML_PATH, lines.join('\n') + '\n');
+    logger.info(`NodeManager: 节点 ${node.id} 已写入 nodes.yaml`);
+
+    // 重新加载节点
+    await this.loadNodes();
+
+    // 如果有 SSH 配置且 agent 未部署，触发自动部署
+    if (this.deployDelegate && node.ssh && node.agent?.status === 'not_deployed') {
+      logger.info(`NodeManager: 触发自动部署节点 ${node.id}`);
+      this.deployDelegate(node).catch(err => {
+        logger.error(`NodeManager: 自动部署节点 ${node.id} 失败: ${err.message}`);
+      });
+    }
+
+    return node;
+  }
+
   /** 启动 nodes.yaml 文件监听（热加载） */
   startWatch(): void {
     if (this.watcher) return; // 防止重复启动
@@ -127,7 +215,7 @@ export class NodeManager {
         subSection = '';
       } else if (trimmed === 'ssh:') {
         subSection = 'ssh';
-        current.ssh = { user: 'root', port: 22, keyPath: '', hostKey: '' };
+        current.ssh = { user: 'root', port: 22, keyPath: '', hostKey: '', password: '' };
       } else if (trimmed === 'agent:') {
         subSection = 'agent';
         current.agent = { deployed: false, version: '', status: 'not_deployed', lastDeploy: '' };
@@ -139,6 +227,7 @@ export class NodeManager {
         else if (trimmed.startsWith('port:')) current.ssh!.port = parseInt(this.extractYamlValue(trimmed, 'port')) || 22;
         else if (trimmed.startsWith('keyPath:')) current.ssh!.keyPath = this.extractYamlValue(trimmed, 'keyPath');
         else if (trimmed.startsWith('hostKey:')) current.ssh!.hostKey = this.extractYamlValue(trimmed, 'hostKey');
+        else if (trimmed.startsWith('password:')) current.ssh!.password = this.extractYamlValue(trimmed, 'password');
       } else if (subSection === 'agent') {
         if (trimmed.startsWith('deployed:')) current.agent!.deployed = this.extractYamlValue(trimmed, 'deployed') === 'true';
         else if (trimmed.startsWith('version:')) current.agent!.version = this.extractYamlValue(trimmed, 'version');

@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NodeManager } from '@/server/services/nodeManager';
 import { DeployManager } from '@/server/services/deployManager';
+import type { DeployStep } from '@/server/services/deployManager';
+import { setDeployProgress } from '@/server/services/deployProgressStore';
 import { logger } from '@/server/utils/logger';
 import type { ApiResponse } from '@/server/types';
 
@@ -31,23 +33,42 @@ export default async function handler(
       return res.status(400).json({ success: false, error: '节点未配置 SSH 信息', timestamp: new Date().toISOString() });
     }
 
-    const secret = deployManager.generateHmacSecret();
+    // Initialize progress tracking
+    const steps: DeployStep[] = [];
+    setDeployProgress(nodeId, steps);
 
-    const agentYaml = deployManager.generateAgentYaml(
-      node.id, node.name, secret, node.kernel,
-    );
-    const systemdUnit = deployManager.generateSystemdUnit(secret);
-
-    res.json({
-      success: true,
-      data: {
-        nodeId,
-        secret,
-        agentYaml,
-        systemdUnit,
+    // Start deploy asynchronously
+    const deployPromise = deployManager.deployToNode(
+      {
+        nodeId: node.id,
+        ssh: {
+          host: node.host,
+          user: node.ssh.user,
+          port: node.ssh.port,
+          keyPath: node.ssh.keyPath,
+          hostKey: node.ssh.hostKey,
+          password: node.ssh.password,
+        },
+        agentPort: 3001,
       },
-      message: `节点 ${node.name} 部署配置已生成`,
+      (step: DeployStep) => {
+        steps.push(step);
+        setDeployProgress(nodeId, [...steps]);
+      },
+    );
+
+    // Return immediately with 202 Accepted
+    res.status(202).json({
+      success: true,
+      message: `节点 ${node.name} 部署已启动`,
       timestamp: new Date().toISOString(),
+    });
+
+    // Wait for deploy to finish (in background, after response sent)
+    deployPromise.then((result) => {
+      logger.info(`Deploy API: 节点 ${nodeId} 部署完成: ${result.success ? '成功' : '失败'} - ${result.message}`);
+    }).catch((err) => {
+      logger.error(`Deploy API: 节点 ${nodeId} 部署异常: ${err.message}`);
     });
   } catch (error: any) {
     logger.error('部署失败:', error);

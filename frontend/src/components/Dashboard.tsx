@@ -11,6 +11,7 @@ import { NodeCard } from '@/components/cluster/NodeCard'
 import { BatchActions } from '@/components/cluster/BatchActions'
 import { AddNodeForm } from '@/components/cluster/AddNodeForm'
 import type { NodeFormData } from '@/components/cluster/AddNodeForm'
+// (sshPassword field added to NodeFormData for password auth support)
 import { DeployProgressDialog } from '@/components/cluster/DeployProgressDialog'
 import SectionHeading from '@/components/shared/SectionHeading'
 
@@ -58,10 +59,6 @@ export default function Dashboard({ initialCluster = null, initialError = null }
     await apiService.clusterHealthCheck()
   }, [])
 
-  const handleAddNode = useCallback(async (data: NodeFormData) => {
-    setShowAddNode(false)
-  }, [])
-
   const handleDeploy = useCallback(async (nodeId: string) => {
     setDeployProgress({ nodeName: nodeId, steps: [{ step: 'connect', status: 'running', message: '正在连接...', progress: 0 }] })
     try {
@@ -71,6 +68,35 @@ export default function Dashboard({ initialCluster = null, initialError = null }
       setDeployProgress(null)
     }
   }, [])
+
+  const handleAddNode = useCallback(async (data: NodeFormData) => {
+    setShowAddNode(false)
+    try {
+      setError(null)
+      const result = await apiService.addNode({
+        name: data.name,
+        host: data.host,
+        port: data.port,
+        kernel: data.kernel,
+        location: data.location,
+        sshUser: data.sshUser,
+        sshPort: data.sshPort,
+        sshKey: data.sshKey,
+        sshPassword: data.sshPassword,
+      })
+      if (result.success) {
+        // Optionally auto-deploy
+        const nodeId = (result.data as any)?.id
+        if (nodeId) {
+          handleDeploy(nodeId)
+        }
+      } else {
+        setError(result.error || '添加节点失败')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '添加节点失败')
+    }
+  }, [handleDeploy])
 
   const handleUpdateAgent = useCallback(async (nodeId: string) => {
     try {

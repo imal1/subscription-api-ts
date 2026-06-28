@@ -141,6 +141,8 @@ export interface NodeSshConfig {
   port: number;
   keyPath: string;
   hostKey: string;
+  /** 密码认证（可选，优先使用 keyPath，keyPath 为空时使用密码） */
+  password?: string;
 }
 
 /** Agent 运行时信息 */

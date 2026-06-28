@@ -1,4 +1,4 @@
-import type { NodeConfig } from '../../types';
+import type { NodeConfig } from '../types';
 
 export interface DeployArgs {
   command: string;
@@ -25,7 +25,7 @@ export function formatDeployStatus(nodes: NodeConfig[]): string {
     const name = (node.name || '').padEnd(13);
     const status = (node.agent?.status || 'unknown').padEnd(14);
     const version = (node.agent?.version || 'N/A').padEnd(23);
-    const port = String(node.agent?.port || 'N/A');
+    const port = String(node.port || 'N/A');
 
     lines.push(`${id}${name}${status}${version}${port}`);
   }
@@ -74,5 +74,5 @@ export async function handleDeployRestart(
   const node = nodeManager.getNode(args.nodeId);
   if (!node) return `Node '${args.nodeId}' not found.`;
   if (!node.ssh) return `Node '${args.nodeId}' has no SSH configuration. Cannot restart agent remotely.`;
-  return `Restarting deploy-agent on node '${args.nodeId}' (${node.ssh.host})...\nRestart command sent. Monitor with "miobridge deploy status ${args.nodeId}".`;
+  return `Restarting deploy-agent on node '${args.nodeId}' (${node.host})...\nRestart command sent. Monitor with "miobridge deploy status ${args.nodeId}".`;
 }

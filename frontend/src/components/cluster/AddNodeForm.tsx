@@ -18,13 +18,14 @@ export interface NodeFormData {
   sshUser: string;
   sshPort: number;
   sshKey: string;
+  sshPassword: string;
 }
 
 export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
   const [form, setForm] = useState<NodeFormData>({
     name: '', host: '', port: 443,
     kernel: 'sing-box', location: '',
-    sshUser: 'root', sshPort: 22, sshKey: '',
+    sshUser: 'root', sshPort: 22, sshKey: '', sshPassword: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -131,6 +132,16 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
               className="w-full mt-1 px-3 py-2 rounded-lg border text-sm font-mono"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
+              SSH 密码 <span className="text-xs opacity-70">(密钥为空时使用密码认证)</span>
+            </label>
+            <input type="password" value={form.sshPassword} onChange={e => update('sshPassword', e.target.value)}
+              className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+              placeholder="SSH 登录密码" />
           </div>
 
           <div className="flex gap-3 pt-2">
