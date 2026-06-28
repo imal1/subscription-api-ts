@@ -19,6 +19,8 @@ export class NodeManager {
   private nodeCache: Map<string, NodeStatus> = new Map();
   private watcher: fs.FSWatcher | null = null;
   private watchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 部署委托：加载节点后，对有 SSH 配置但 agent 未部署的节点自动触发部署 */
+  private deployDelegate: ((node: NodeConfig) => Promise<{ success: boolean; message: string }>) | null = null;
 
   private constructor() {
     this.localService = MioBridgeService.getInstance();
@@ -29,6 +31,11 @@ export class NodeManager {
       NodeManager.instance = new NodeManager();
     }
     return NodeManager.instance;
+  }
+
+  /** 设置部署委托（由 DeployManager 注册） */
+  setDeployDelegate(delegate: (node: NodeConfig) => Promise<{ success: boolean; message: string }>): void {
+    this.deployDelegate = delegate;
   }
 
   /** 启动 nodes.yaml 文件监听（热加载） */
@@ -83,6 +90,18 @@ export class NodeManager {
       const parsed = this.parseNodesYaml(raw);
       this.nodes = parsed.nodes.filter(n => n.enabled);
       logger.info(`NodeManager: 加载了 ${this.nodes.length} 个节点`);
+
+      // 自动部署：对已配置 SSH 但 agent 未部署的节点触发部署
+      if (this.deployDelegate) {
+        const deployable = this.nodes.filter(n => n.ssh && n.agent?.status === 'not_deployed');
+        for (const node of deployable) {
+          logger.info(`NodeManager: 触发自动部署节点 ${node.id}`);
+          this.deployDelegate(node).catch(err => {
+            logger.error(`NodeManager: 自动部署节点 ${node.id} 失败: ${err.message}`);
+          });
+        }
+      }
+
       return this.nodes;
     } catch (error: any) {
       logger.error(`NodeManager: 加载 nodes.yaml 失败: ${error.message}`);

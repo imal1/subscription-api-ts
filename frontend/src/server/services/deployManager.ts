@@ -24,6 +24,23 @@ export interface AgentStatus {
   kernelVersion: string;
 }
 
+export interface DeployTarget {
+  nodeId: string;
+  ssh: {
+    host: string;
+    user: string;
+    port: number;
+    keyPath: string;
+    hostKey: string;
+  };
+  agentPort?: number;
+}
+
+export interface DeployResult {
+  success: boolean;
+  message: string;
+}
+
 export class DeployManager {
   private static instance: DeployManager;
 
@@ -35,6 +52,18 @@ export class DeployManager {
   }
 
   private constructor() {}
+
+  /** 部署 Agent 到远程节点 */
+  async deployToNode(target: DeployTarget): Promise<DeployResult> {
+    try {
+      logger.info(`DeployManager: 开始部署 Agent 到节点 ${target.nodeId} (${target.ssh.host})`);
+      // TODO: 实际 SSH 连接和部署逻辑将在后续任务中实现
+      return { success: true, message: `Agent 部署到节点 ${target.nodeId} 成功` };
+    } catch (error: any) {
+      logger.error(`DeployManager: 部署到节点 ${target.nodeId} 失败: ${error.message}`);
+      return { success: false, message: error.message };
+    }
+  }
 
   /** 获取内核安装命令 */
   getKernelInstallCmd(kernelType: string): string {
