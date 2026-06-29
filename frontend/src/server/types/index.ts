@@ -79,7 +79,6 @@ export interface NodeConfig {
   id: string;
   name: string;
   host: string;
-  port: number;
   secret: string;          // HMAC 共享密钥，localhost 可为空
   kernel: KernelType;
   location: string;
@@ -138,7 +137,6 @@ export interface NodesYaml {
 /** 节点 SSH 连接配置 */
 export interface NodeSshConfig {
   user: string;
-  port: number;
   keyPath: string;
   hostKey: string;
   /** 密码认证（可选，优先使用 keyPath，keyPath 为空时使用密码） */
@@ -158,4 +156,14 @@ export interface NodeKernelInfo {
   installed: boolean;
   version: string;
   installScript: string;
+}
+
+/** 部署进度状态（单条当前状态，非历史数组） */
+export interface DeployStatus {
+  nodeId: string;
+  step: string;
+  status: 'pending' | 'running' | 'success' | 'error';
+  message: string;
+  progress: number;
+  startedAt: number;  // Date.now()，用于 TTL 清理
 }

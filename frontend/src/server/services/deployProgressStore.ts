@@ -1,16 +1,34 @@
-import type { DeployStep } from './deployManager';
+import type { DeployStatus } from '../types';
 
-/** In-memory deploy progress store shared across API routes */
-const deployProgress = new Map<string, DeployStep[]>();
+/** In-memory deploy progress store — single current status per node, 5-min TTL */
+const deployProgress = new Map<string, DeployStatus>();
+const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-export function getDeployProgress(nodeId: string): DeployStep[] {
-  return deployProgress.get(nodeId) || [];
+function cleanup(): void {
+  const now = Date.now();
+  // Convert to array first to avoid iteration issues
+  const entries = Array.from(deployProgress.entries());
+  for (const [nodeId, status] of entries) {
+    if (now - status.startedAt > TTL_MS) {
+      deployProgress.delete(nodeId);
+    }
+  }
 }
 
-export function setDeployProgress(nodeId: string, steps: DeployStep[]): void {
-  deployProgress.set(nodeId, steps);
+export function getDeployStatus(nodeId: string): DeployStatus | null {
+  cleanup();
+  return deployProgress.get(nodeId) || null;
 }
 
-export function clearDeployProgress(nodeId: string): void {
+export function getAllDeployStatuses(): DeployStatus[] {
+  cleanup();
+  return Array.from(deployProgress.values());
+}
+
+export function setDeployStatus(nodeId: string, status: DeployStatus): void {
+  deployProgress.set(nodeId, status);
+}
+
+export function clearDeployStatus(nodeId: string): void {
   deployProgress.delete(nodeId);
 }
