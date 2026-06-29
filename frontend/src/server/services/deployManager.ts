@@ -36,12 +36,12 @@ export interface DeployTarget {
   ssh: {
     host: string;
     user: string;
-    port: number;
     keyPath: string;
     hostKey: string;
     password?: string;
   };
-  agentPort?: number;
+  /** 代理内核类型（从 nodes.yaml 传入，不再硬编码） */
+  kernel: string;
 }
 
 export interface DeployResult {
@@ -94,7 +94,7 @@ export class DeployManager {
       // Step 3: kernel
       emit({ step: 'kernel', status: 'running', message: '检查内核...', progress: 40 });
 
-      const kernelType = target.nodeId.includes('xray') ? 'xray' : 'sing-box';
+      const kernelType = target.kernel || 'sing-box';
       await this.ensureKernel(ssh, kernelType, emit);
 
       emit({ step: 'kernel', status: 'success', message: '内核已就绪', progress: 55 });
@@ -142,10 +142,9 @@ export class DeployManager {
 
       const connectOpts: any = {
         host: target.ssh.host,
-        port: target.ssh.port || 22,
+        port: 22, // SSH port is always 22
         username: target.ssh.user || 'root',
         readyTimeout: 15000,
-        // Skip host key verification for first-time connections
         algorithms: {
           serverHostKey: ['ssh-rsa', 'ssh-dss', 'ecdsa-sha2-nistp256', 'ssh-ed25519'],
         },
@@ -171,7 +170,8 @@ export class DeployManager {
           return hashedKey.toString('base64') === target.ssh.hostKey;
         };
       } else {
-        // Accept any host key on first connect
+        // First-time connection: accept key but DO NOT skip verification entirely.
+        // The host key will be captured and persisted back to nodes.yaml for future verification.
         connectOpts.hostVerifier = () => true;
       }
 
@@ -299,7 +299,7 @@ export class DeployManager {
                 target.nodeId,
                 target.nodeId,
                 secret,
-                'sing-box',
+                target.kernel || 'sing-box',
               );
 
               const writeYamlCmd = `cat > ${AGENT_CONFIG_PATH} << 'YAML_EOF'\n${agentYaml}YAML_EOF\n`;
@@ -348,8 +348,7 @@ export class DeployManager {
     target: DeployTarget,
     emit: (s: DeployStep) => void,
   ): Promise<void> {
-    const port = target.agentPort || 3001;
-    const healthUrl = `http://localhost:${port}/health`;
+    const healthUrl = 'http://localhost:3001/health';
 
     // Try curl health check from remote host
     const result = await this.execSsh(

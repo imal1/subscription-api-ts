@@ -20,7 +20,7 @@ describe('Task 3: NodeManager Service', () => {
     it('should return empty headers for localhost node', () => {
       const manager = NodeManager.getInstance();
       const localNode: NodeConfig = {
-        id: 'local', name: '本地', host: 'localhost', port: 3001,
+        id: 'local', name: '本地', host: 'localhost',
         secret: 'abc123', kernel: 'sing-box', location: '本地', enabled: true,
       };
       const headers = manager.signRequest(localNode, 'GET', '/api/status');

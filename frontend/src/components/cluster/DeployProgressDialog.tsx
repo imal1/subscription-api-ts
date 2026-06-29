@@ -1,12 +1,12 @@
 "use client";
 
 import { Icon } from '@iconify/react';
-import type { DeployStep } from '@/server/services/deployManager';
+import type { DeployStatus } from '@/server/types';
 
 interface DeployProgressDialogProps {
   isOpen: boolean;
   nodeName: string;
-  steps: DeployStep[];
+  status: DeployStatus | null;
   onClose: () => void;
 }
 
@@ -34,11 +34,14 @@ const STATUS_COLORS: Record<string, string> = {
   error: 'var(--terracotta)',
 };
 
-export function DeployProgressDialog({ isOpen, nodeName, steps, onClose }: DeployProgressDialogProps) {
+/** All deploy steps in order, for rendering the step list */
+const ALL_STEPS = ['connect', 'bun', 'kernel', 'agent', 'start', 'verify', 'done'];
+
+export function DeployProgressDialog({ isOpen, nodeName, status, onClose }: DeployProgressDialogProps) {
   if (!isOpen) return null;
 
-  const lastStep = steps[steps.length - 1];
-  const isDone = lastStep?.step === 'done' || lastStep?.status === 'error';
+  const isDone = status?.step === 'done' || status?.status === 'error';
+  const currentStepIndex = status ? ALL_STEPS.indexOf(status.step) : -1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={isDone ? onClose : undefined}>
@@ -55,33 +58,53 @@ export function DeployProgressDialog({ isOpen, nodeName, steps, onClose }: Deplo
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
-              width: `${lastStep?.progress || 0}%`,
-              backgroundColor: lastStep?.status === 'error' ? 'var(--terracotta)' : 'var(--fern)',
+              width: `${status?.progress || 0}%`,
+              backgroundColor: status?.status === 'error' ? 'var(--terracotta)' : 'var(--fern)',
             }}
           />
         </div>
 
-        {/* Steps */}
+        {/* Step list — shows all steps with current/historical status */}
         <div className="space-y-2 mb-4">
-          {steps.map((step) => (
-            <div key={step.step} className="flex items-center gap-3">
-              <Icon
-                icon={step.status === 'running' ? 'ph:spinner-bold' : STATUS_ICONS[step.status] || 'ph:circle'}
-                className={`w-5 h-5 ${step.status === 'running' ? 'animate-spin' : ''}`}
-                style={{ color: STATUS_COLORS[step.status] || 'var(--muted-foreground)' }}
-              />
-              <span className="text-sm" style={{ color: step.status === 'pending' ? 'var(--muted-foreground)' : 'var(--foreground)' }}>
-                {step.message || STEP_LABELS[step.step] || step.step}
-              </span>
-            </div>
-          ))}
+          {ALL_STEPS.map((stepKey) => {
+            const isCurrent = status?.step === stepKey;
+            const isPast = currentStepIndex >= 0 && ALL_STEPS.indexOf(stepKey) < currentStepIndex;
+            const isError = status?.status === 'error' && isCurrent;
+
+            let stepStatus: string;
+            let stepMessage: string;
+
+            if (isPast) {
+              stepStatus = 'success';
+              stepMessage = STEP_LABELS[stepKey] || stepKey;
+            } else if (isCurrent) {
+              stepStatus = status.status;
+              stepMessage = status.message || STEP_LABELS[stepKey] || stepKey;
+            } else {
+              stepStatus = 'pending';
+              stepMessage = STEP_LABELS[stepKey] || stepKey;
+            }
+
+            return (
+              <div key={stepKey} className="flex items-center gap-3">
+                <Icon
+                  icon={stepStatus === 'running' ? 'ph:spinner-bold' : STATUS_ICONS[stepStatus] || 'ph:circle'}
+                  className={`w-5 h-5 ${stepStatus === 'running' ? 'animate-spin' : ''}`}
+                  style={{ color: isError ? 'var(--terracotta)' : STATUS_COLORS[stepStatus] || 'var(--muted-foreground)' }}
+                />
+                <span className="text-sm" style={{ color: stepStatus === 'pending' ? 'var(--muted-foreground)' : 'var(--foreground)' }}>
+                  {stepMessage}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {isDone && (
           <button onClick={onClose}
             className="w-full px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}>
-            {lastStep?.status === 'error' ? '关闭' : '完成'}
+            {status?.status === 'error' ? '关闭' : '完成'}
           </button>
         )}
       </div>

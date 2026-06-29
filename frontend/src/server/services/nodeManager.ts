@@ -79,7 +79,6 @@ export class NodeManager {
     lines.push(`  - id: "${node.id}"`);
     if (node.name) lines.push(`    name: "${node.name}"`);
     if (node.host) lines.push(`    host: "${node.host}"`);
-    lines.push(`    port: ${node.port}`);
     if (node.secret) lines.push(`    secret: "${node.secret}"`);
     if (node.kernel) lines.push(`    kernel: "${node.kernel}"`);
     if (node.location) lines.push(`    location: "${node.location}"`);
@@ -88,7 +87,6 @@ export class NodeManager {
     if (node.ssh) {
       lines.push(`    ssh:`);
       lines.push(`      user: "${node.ssh.user}"`);
-      lines.push(`      port: ${node.ssh.port}`);
       if (node.ssh.keyPath) lines.push(`      keyPath: "${node.ssh.keyPath}"`);
       if (node.ssh.hostKey) lines.push(`      hostKey: "${node.ssh.hostKey}"`);
       if (node.ssh.password) lines.push(`      password: "${node.ssh.password}"`);
@@ -215,7 +213,7 @@ export class NodeManager {
         subSection = '';
       } else if (trimmed === 'ssh:') {
         subSection = 'ssh';
-        current.ssh = { user: 'root', port: 22, keyPath: '', hostKey: '', password: '' };
+        current.ssh = { user: 'root', keyPath: '', hostKey: '', password: '' };
       } else if (trimmed === 'agent:') {
         subSection = 'agent';
         current.agent = { deployed: false, version: '', status: 'not_deployed', lastDeploy: '' };
@@ -224,7 +222,6 @@ export class NodeManager {
         current.kernelInfo = { installed: false, version: '', installScript: '' };
       } else if (subSection === 'ssh') {
         if (trimmed.startsWith('user:')) current.ssh!.user = this.extractYamlValue(trimmed, 'user');
-        else if (trimmed.startsWith('port:')) current.ssh!.port = parseInt(this.extractYamlValue(trimmed, 'port')) || 22;
         else if (trimmed.startsWith('keyPath:')) current.ssh!.keyPath = this.extractYamlValue(trimmed, 'keyPath');
         else if (trimmed.startsWith('hostKey:')) current.ssh!.hostKey = this.extractYamlValue(trimmed, 'hostKey');
         else if (trimmed.startsWith('password:')) current.ssh!.password = this.extractYamlValue(trimmed, 'password');
@@ -241,8 +238,6 @@ export class NodeManager {
         current.name = this.extractYamlValue(trimmed, 'name');
       } else if (trimmed.startsWith('host:')) {
         current.host = this.extractYamlValue(trimmed, 'host');
-      } else if (trimmed.startsWith('port:') && !line.includes('ssh')) {
-        current.port = parseInt(this.extractYamlValue(trimmed, 'port')) || 443;
       } else if (trimmed.startsWith('secret:')) {
         current.secret = this.extractYamlValue(trimmed, 'secret');
       } else if (trimmed.startsWith('kernel:')) {
@@ -323,7 +318,7 @@ export class NodeManager {
         ...this.signRequest(node, 'GET', '/api/status'),
       };
 
-      const url = `https://${node.host}:${node.port}/api/status`;
+      const url = `https://${node.host}:443/api/status`;
       const response = await fetch(url, {
         method: 'GET',
         headers,
@@ -379,7 +374,7 @@ export class NodeManager {
         ...this.signRequest(node, 'GET', '/api/update'),
       };
 
-      const url = `https://${node.host}:${node.port}/api/update`;
+      const url = `https://${node.host}:443/api/update`;
       const response = await fetch(url, {
         method: 'GET',
         headers,
@@ -411,7 +406,7 @@ export class NodeManager {
         ...this.signRequest(node, 'GET', '/api/health'),
       };
 
-      const url = `https://${node.host}:${node.port}/health`;
+      const url = `https://${node.host}:443/health`;
       const start = Date.now();
       const response = await fetch(url, {
         method: 'GET',

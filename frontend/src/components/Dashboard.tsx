@@ -4,8 +4,7 @@ import { Icon } from '@iconify/react'
 import { useCallback, useEffect, useState } from 'react'
 import { apiService } from '@/lib/api'
 import { useClusterSSE } from '@/lib/useClusterSSE'
-import type { ClusterStatus } from '@/server/types'
-import type { DeployStep } from '@/server/services/deployManager'
+import type { ClusterStatus, DeployStatus } from '@/server/types'
 import { ClusterOverview } from '@/components/cluster/ClusterOverview'
 import { NodeCard } from '@/components/cluster/NodeCard'
 import { BatchActions } from '@/components/cluster/BatchActions'
@@ -25,7 +24,7 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   const [error, setError] = useState<string | null>(initialError)
   const [hasAnimated, setHasAnimated] = useState(false)
   const [showAddNode, setShowAddNode] = useState(false)
-  const [deployProgress, setDeployProgress] = useState<{ nodeName: string; steps: DeployStep[] } | null>(null)
+  const [deployProgress, setDeployProgress] = useState<{ nodeName: string; status: DeployStatus | null } | null>(null)
 
   useEffect(() => {
     setHasAnimated(true)
@@ -60,12 +59,40 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   }, [])
 
   const handleDeploy = useCallback(async (nodeId: string) => {
-    setDeployProgress({ nodeName: nodeId, steps: [{ step: 'connect', status: 'running', message: '正在连接...', progress: 0 }] })
+    const initialStatus: DeployStatus = {
+      nodeId,
+      step: 'connect',
+      status: 'running',
+      message: '正在连接...',
+      progress: 0,
+      startedAt: Date.now(),
+    };
+    setDeployProgress({ nodeName: nodeId, status: initialStatus });
+
     try {
-      await apiService.deployNode(nodeId)
+      // Start deploy (POST returns 202 immediately)
+      await apiService.deployNode(nodeId);
+
+      // Poll for progress every 500ms
+      const pollInterval = setInterval(async () => {
+        try {
+          const result = await apiService.getDeployStatus(nodeId);
+          if (result.success && result.data?.deployments?.[nodeId]) {
+            const status = result.data.deployments[nodeId] as DeployStatus;
+            setDeployProgress({ nodeName: nodeId, status });
+
+            // Stop polling when done or error
+            if (status.status === 'success' || status.status === 'error') {
+              clearInterval(pollInterval);
+            }
+          }
+        } catch {
+          // Silently ignore poll errors, keep trying
+        }
+      }, 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '部署失败')
-      setDeployProgress(null)
+      setError(err instanceof Error ? err.message : '部署失败');
+      setDeployProgress(null);
     }
   }, [])
 
@@ -76,11 +103,9 @@ export default function Dashboard({ initialCluster = null, initialError = null }
       const result = await apiService.addNode({
         name: data.name,
         host: data.host,
-        port: data.port,
         kernel: data.kernel,
         location: data.location,
         sshUser: data.sshUser,
-        sshPort: data.sshPort,
         sshKey: data.sshKey,
         sshPassword: data.sshPassword,
       })
@@ -200,7 +225,7 @@ export default function Dashboard({ initialCluster = null, initialError = null }
         <DeployProgressDialog
           isOpen={!!deployProgress}
           nodeName={deployProgress.nodeName}
-          steps={deployProgress.steps}
+          status={deployProgress.status}
           onClose={() => setDeployProgress(null)}
         />
       )}

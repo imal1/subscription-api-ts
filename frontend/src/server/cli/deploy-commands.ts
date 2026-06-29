@@ -17,17 +17,16 @@ export function formatDeployStatus(nodes: NodeConfig[]): string {
   if (nodes.length === 0) return 'No nodes registered.';
 
   const lines: string[] = [];
-  lines.push('Node ID        Name         Status        Agent Version          Port');
-  lines.push('─'.repeat(80));
+  lines.push('Node ID        Name         Status        Agent Version');
+  lines.push('─'.repeat(70));
 
   for (const node of nodes) {
     const id = (node.id || '').padEnd(15);
     const name = (node.name || '').padEnd(13);
     const status = (node.agent?.status || 'unknown').padEnd(14);
     const version = (node.agent?.version || 'N/A').padEnd(23);
-    const port = String(node.port || 'N/A');
 
-    lines.push(`${id}${name}${status}${version}${port}`);
+    lines.push(`${id}${name}${status}${version}`);
   }
 
   return lines.join('\n');

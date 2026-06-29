@@ -209,11 +209,9 @@ class ApiService {
   async addNode(data: {
     name: string;
     host: string;
-    port: number;
     kernel: string;
     location: string;
     sshUser: string;
-    sshPort: number;
     sshKey: string;
     sshPassword?: string;
   }): Promise<ApiResponse> {
@@ -224,9 +222,25 @@ class ApiService {
     }
   }
 
-  // 获取部署进度 SSE
-  getDeployProgressUrl(nodeId: string): string {
-    return `${API_BASE_URL}/api/cluster/deploy/progress?node=${encodeURIComponent(nodeId)}`;
+  // 获取部署进度（聚合轮询，替代旧 SSE）
+  async getDeployStatus(nodeId?: string): Promise<ApiResponse> {
+    try {
+      const url = nodeId
+        ? `api/cluster/deploy/status?nodes=${encodeURIComponent(nodeId)}`
+        : 'api/cluster/deploy/status';
+      return await apiClient.get(url).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // 获取单个节点部署进度（兼容旧接口）
+  async getDeployProgress(nodeId: string): Promise<ApiResponse> {
+    try {
+      return await apiClient.get(`api/cluster/deploy/progress?node=${encodeURIComponent(nodeId)}`).json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
   // Agent 管理

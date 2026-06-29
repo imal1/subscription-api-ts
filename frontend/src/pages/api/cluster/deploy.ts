@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NodeManager } from '@/server/services/nodeManager';
 import { DeployManager } from '@/server/services/deployManager';
-import type { DeployStep } from '@/server/services/deployManager';
-import { setDeployProgress } from '@/server/services/deployProgressStore';
+import { setDeployStatus } from '@/server/services/deployProgressStore';
 import { logger } from '@/server/utils/logger';
-import type { ApiResponse } from '@/server/types';
+import type { ApiResponse, DeployStatus } from '@/server/types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -33,9 +32,17 @@ export default async function handler(
       return res.status(400).json({ success: false, error: '节点未配置 SSH 信息', timestamp: new Date().toISOString() });
     }
 
-    // Initialize progress tracking
-    const steps: DeployStep[] = [];
-    setDeployProgress(nodeId, steps);
+    // Initialize progress tracking (single DeployStatus per design)
+    const startedAt = Date.now();
+    const initialStatus: DeployStatus = {
+      nodeId: node.id,
+      step: 'connect',
+      status: 'running',
+      message: '正在建立 SSH 连接...',
+      progress: 0,
+      startedAt,
+    };
+    setDeployStatus(nodeId, initialStatus);
 
     // Start deploy asynchronously
     const deployPromise = deployManager.deployToNode(
@@ -44,16 +51,23 @@ export default async function handler(
         ssh: {
           host: node.host,
           user: node.ssh.user,
-          port: node.ssh.port,
           keyPath: node.ssh.keyPath,
           hostKey: node.ssh.hostKey,
           password: node.ssh.password,
         },
-        agentPort: 3001,
+        kernel: node.kernel || 'sing-box',
       },
-      (step: DeployStep) => {
-        steps.push(step);
-        setDeployProgress(nodeId, [...steps]);
+      (step) => {
+        // Map old DeployStep to new DeployStatus format
+        const status: DeployStatus = {
+          nodeId: node.id,
+          step: step.step,
+          status: step.status,
+          message: step.message,
+          progress: step.progress,
+          startedAt,
+        };
+        setDeployStatus(nodeId, status);
       },
     );
 
@@ -67,8 +81,28 @@ export default async function handler(
     // Wait for deploy to finish (in background, after response sent)
     deployPromise.then((result) => {
       logger.info(`Deploy API: 节点 ${nodeId} 部署完成: ${result.success ? '成功' : '失败'} - ${result.message}`);
+      // Update progress store with final status
+      const finalStatus: DeployStatus = {
+        nodeId,
+        step: result.success ? 'done' : 'connect',
+        status: result.success ? 'success' : 'error',
+        message: result.message,
+        progress: result.success ? 100 : 0,
+        startedAt,
+      };
+      setDeployStatus(nodeId, finalStatus);
     }).catch((err) => {
       logger.error(`Deploy API: 节点 ${nodeId} 部署异常: ${err.message}`);
+      // Bug fix: Update progress store with error status so frontend doesn't hang
+      const errorStatus: DeployStatus = {
+        nodeId,
+        step: 'connect',
+        status: 'error',
+        message: `部署异常: ${err.message}`,
+        progress: 0,
+        startedAt,
+      };
+      setDeployStatus(nodeId, errorStatus);
     });
   } catch (error: any) {
     logger.error('部署失败:', error);
