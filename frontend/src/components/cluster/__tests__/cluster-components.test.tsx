@@ -107,7 +107,8 @@ describe('NodeCard', () => {
   it('should expand to show detail on click', () => {
     render(<NodeCard node={mockNode} />);
     fireEvent.click(screen.getByRole('heading', { name: '新加坡' }));
-    expect(screen.getByText('节点详情')).toBeDefined();
+    expect(screen.getByRole('dialog', { name: '新加坡' })).toBeDefined();
+    expect(screen.getByText('节点角色')).toBeDefined();
   });
 });
 
@@ -120,23 +121,27 @@ describe('NodeDetail', () => {
     render(
       <NodeDetail
         node={mockNode}
+        isOpen={true}
+        onClose={onClose}
+        onUpdate={onUpdate}
+        onHealthCheck={onHealthCheck}
+      />
+    );
+    expect(screen.getByText('节点角色')).toBeDefined();
+    expect(screen.getByText('节点源')).toBeDefined();
+  });
+
+  it('should render clash file status', () => {
+    render(
+      <NodeDetail
+        node={{ ...mockNode, nodeId: 'local', name: '本地', location: '本地' }}
+        isOpen={true}
         onClose={onClose}
         onUpdate={onUpdate}
         onHealthCheck={onHealthCheck}
       />
     );
     expect(screen.getByText('订阅文件')).toBeDefined();
-  });
-
-  it('should render clash file status', () => {
-    render(
-      <NodeDetail
-        node={mockNode}
-        onClose={onClose}
-        onUpdate={onUpdate}
-        onHealthCheck={onHealthCheck}
-      />
-    );
     expect(screen.getByText('Clash 配置')).toBeDefined();
   });
 
@@ -144,6 +149,7 @@ describe('NodeDetail', () => {
     render(
       <NodeDetail
         node={mockNode}
+        isOpen={true}
         onClose={onClose}
         onUpdate={onUpdate}
         onHealthCheck={onHealthCheck}
@@ -157,6 +163,7 @@ describe('NodeDetail', () => {
     render(
       <NodeDetail
         node={mockOfflineNode}
+        isOpen={true}
         onClose={onClose}
         onUpdate={onUpdate}
         onHealthCheck={onHealthCheck}

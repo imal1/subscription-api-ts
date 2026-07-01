@@ -49,7 +49,7 @@ jobs:
         run: bun install
 
       - name: Run TypeScript compiler
-        run: npx tsc --noEmit
+        run: cd frontend && bunx tsc --noEmit
 
   build:
     name: Build (Next.js standalone)

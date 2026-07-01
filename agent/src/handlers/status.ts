@@ -1,6 +1,7 @@
 import type { AgentConfig } from '../config';
 import * as fs from 'fs';
 import { hmacVerify } from '../hmac';
+import { discoverKernelConfigFiles, extractNodeUrls } from './urls';
 
 interface IncomingRequest {
   method?: string;
@@ -24,19 +25,10 @@ export async function handleStatus(
   }
 
   try {
-    let nodesCount = 0;
-    let kernelAccessible = false;
-
-    if (fs.existsSync(config.kernel.configPath)) {
-      kernelAccessible = true;
-      try {
-        const raw = fs.readFileSync(config.kernel.configPath, 'utf8');
-        const cfg = JSON.parse(raw);
-        nodesCount = (cfg.outbounds || []).length;
-      } catch {
-        // config exists but can't be parsed
-      }
-    }
+    const hostHeader = req.headers.host;
+    const host = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || '').split(':')[0];
+    const urls = extractNodeUrls(config, host);
+    const kernelAccessible = discoverKernelConfigFiles(config).length > 0;
 
     const subscriptionExists = fs.existsSync('/etc/miobridge-agent/www/subscription.txt');
     const clashExists = fs.existsSync('/etc/miobridge-agent/www/clash.yaml');
@@ -50,7 +42,7 @@ export async function handleStatus(
           rawExists: subscriptionExists,
           mihomoAvailable: fs.existsSync(config.mihomo.path),
           singBoxAccessible: kernelAccessible,
-          nodesCount,
+          nodesCount: urls.length,
           uptime: process.uptime(),
           version: '1.0.0',
         },

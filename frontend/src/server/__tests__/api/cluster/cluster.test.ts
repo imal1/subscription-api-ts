@@ -1,7 +1,7 @@
 // TDD RED phase for Task 5: Cluster API Routes
 // Tests verify the 3 cluster API endpoints
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // The modules don't exist yet — imports will fail until GREEN phase
 import clusterStatusHandler from '@/pages/api/cluster/status';

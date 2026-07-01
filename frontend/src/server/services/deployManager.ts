@@ -1,8 +1,9 @@
 import * as crypto from 'crypto';
 import * as path from 'path';
+import * as fs from 'fs-extra';
 import { Client, type ClientChannel } from 'ssh2';
 import { logger } from '../utils/logger';
-import type { NodeConfig, NodeAgentInfo } from '../types';
+import type { NodeAgentInfo } from '../types';
 
 const KERNEL_INSTALL_SCRIPTS: Record<string, string> = {
   'sing-box': "bash <(wget -qO- -o- https://github.com/233boy/sing-box/raw/main/install.sh)",
@@ -33,15 +34,18 @@ export interface AgentStatus {
 
 export interface DeployTarget {
   nodeId: string;
+  secret: string;
+  agentPort?: number;
   ssh: {
     host: string;
     user: string;
-    port: number;
+    port?: number;
     keyPath: string;
     hostKey: string;
     password?: string;
   };
-  agentPort?: number;
+  /** 代理内核类型（从 nodes.yaml 传入，不再硬编码） */
+  kernel: string;
 }
 
 export interface DeployResult {
@@ -94,8 +98,8 @@ export class DeployManager {
       // Step 3: kernel
       emit({ step: 'kernel', status: 'running', message: '检查内核...', progress: 40 });
 
-      const kernelType = target.nodeId.includes('xray') ? 'xray' : 'sing-box';
-      await this.ensureKernel(ssh, kernelType, emit);
+      const kernelType = target.kernel || 'sing-box';
+      await this.ensureKernel(ssh, target, kernelType, emit);
 
       emit({ step: 'kernel', status: 'success', message: '内核已就绪', progress: 55 });
 
@@ -109,7 +113,7 @@ export class DeployManager {
       // Step 5: start
       emit({ step: 'start', status: 'running', message: '启动 Agent 服务...', progress: 85 });
 
-      await this.startAgent(ssh, emit);
+      await this.startAgent(ssh, target, emit);
 
       emit({ step: 'start', status: 'success', message: 'Agent 已启动', progress: 92 });
 
@@ -145,7 +149,6 @@ export class DeployManager {
         port: target.ssh.port || 22,
         username: target.ssh.user || 'root',
         readyTimeout: 15000,
-        // Skip host key verification for first-time connections
         algorithms: {
           serverHostKey: ['ssh-rsa', 'ssh-dss', 'ecdsa-sha2-nistp256', 'ssh-ed25519'],
         },
@@ -153,7 +156,7 @@ export class DeployManager {
 
       // Auth: prefer key, fallback to password
       if (target.ssh.keyPath) {
-        connectOpts.privateKey = target.ssh.keyPath;
+        connectOpts.privateKey = this.resolvePrivateKey(target.ssh.keyPath);
         if (target.ssh.password) {
           connectOpts.passphrase = target.ssh.password;
         }
@@ -171,12 +174,36 @@ export class DeployManager {
           return hashedKey.toString('base64') === target.ssh.hostKey;
         };
       } else {
-        // Accept any host key on first connect
-        connectOpts.hostVerifier = () => true;
+        // First-time connection: accept key but DO NOT skip verification entirely.
+        // The host key will be captured and persisted back to nodes.yaml for future verification.
+        connectOpts.hostHash = 'sha256';
+        connectOpts.hostVerifier = (hashedKey: Buffer) => {
+          const hostKey = hashedKey.toString('base64');
+          target.ssh.hostKey = hostKey;
+          logger.info(`DeployManager: 首次连接 ${target.ssh.host}，已记录 host key`);
+          return true;
+        };
       }
 
       conn.connect(connectOpts);
     });
+  }
+
+  private resolvePrivateKey(keyOrPath: string): string {
+    const trimmed = keyOrPath.trim();
+    if (trimmed.includes('BEGIN ') || trimmed.includes('\n')) {
+      return keyOrPath;
+    }
+
+    const expandedPath = trimmed.startsWith('~/')
+      ? path.join(process.env.HOME || '', trimmed.slice(2))
+      : trimmed;
+
+    if (fs.existsSync(expandedPath)) {
+      return fs.readFileSync(expandedPath, 'utf8');
+    }
+
+    return keyOrPath;
   }
 
   private execSsh(ssh: Client, command: string): Promise<{ stdout: string; stderr: string; code: number }> {
@@ -195,6 +222,26 @@ export class DeployManager {
         });
       });
     });
+  }
+
+  private execRoot(
+    ssh: Client,
+    target: DeployTarget,
+    command: string,
+  ): Promise<{ stdout: string; stderr: string; code: number }> {
+    if ((target.ssh.user || 'root') === 'root') {
+      return this.execSsh(ssh, command);
+    }
+
+    const rootCommand = target.ssh.password
+      ? `printf ${this.shellQuote(`${target.ssh.password}\n`)} | sudo -S -p '' bash -lc ${this.shellQuote(command)}`
+      : `sudo -n bash -lc ${this.shellQuote(command)}`;
+
+    return this.execSsh(ssh, rootCommand);
+  }
+
+  private shellQuote(value: string): string {
+    return `'${value.replace(/'/g, `'\\''`)}'`;
   }
 
   // ==================== Deploy Steps ====================
@@ -236,6 +283,7 @@ export class DeployManager {
 
   private async ensureKernel(
     ssh: Client,
+    target: DeployTarget,
     kernelType: string,
     emit: (s: DeployStep) => void,
   ): Promise<void> {
@@ -252,9 +300,9 @@ export class DeployManager {
 
       emit({ step: 'kernel', status: 'running', message: `正在安装 ${kernelType} 内核...`, progress: 45 });
 
-      const install = await this.execSsh(ssh, installCmd + ' 2>&1');
+      const install = await this.execRoot(ssh, target, installCmd + ' 2>&1');
 
-      if (install.code !== 0 && !install.stdout.includes('installed') && !install.stdout.includes('success')) {
+      if (install.code !== 0 && !this.isKernelInstallSuccess(install.stdout)) {
         emit({ step: 'kernel', status: 'error', message: `内核安装失败: ${install.stderr || install.stdout}`, progress: 50 });
         throw new Error(`内核安装失败: ${install.stderr || install.stdout}`);
       }
@@ -263,6 +311,16 @@ export class DeployManager {
     } else {
       logger.info(`DeployManager: ${kernelType} 内核已安装`);
     }
+  }
+
+  private isKernelInstallSuccess(stdout: string): boolean {
+    return [
+      'installed',
+      'success',
+      '生成配置文件',
+      '链接 (URL)',
+      '使用协议',
+    ].some(marker => stdout.includes(marker));
   }
 
   private uploadAgent(
@@ -277,13 +335,13 @@ export class DeployManager {
           return reject(err);
         }
 
-        // Create directories
-        const mkdirCmd = `mkdir -p ${AGENT_CONFIG_DIR} /usr/local/bin 2>&1`;
-        this.execSsh(ssh, mkdirCmd).then(() => {
-          // Upload agent binary
+        const tmpAgentPath = `/tmp/miobridge-agent-${target.nodeId}`;
+
+        this.execRoot(ssh, target, `mkdir -p ${AGENT_CONFIG_DIR} /usr/local/bin 2>&1`).then(() => {
+          // Upload agent binary to /tmp first; non-root users may not write to /usr/local/bin via SFTP.
           sftp.fastPut(
             AGENT_LOCAL_BINARY,
-            AGENT_REMOTE_PATH,
+            tmpAgentPath,
             { mode: 0o755 },
             (putErr: Error | undefined) => {
               if (putErr) {
@@ -293,22 +351,24 @@ export class DeployManager {
 
               logger.info('DeployManager: Agent 二进制上传完成');
 
+              const installAgentCmd = `install -m 755 ${tmpAgentPath} ${AGENT_REMOTE_PATH} && rm -f ${tmpAgentPath}`;
+
               // Write agent.yaml
-              const secret = crypto.randomBytes(32).toString('hex');
               const agentYaml = this.generateAgentYaml(
                 target.nodeId,
                 target.nodeId,
-                secret,
-                'sing-box',
+                target.secret,
+                target.kernel || 'sing-box',
+                target.agentPort || 3001,
               );
 
               const writeYamlCmd = `cat > ${AGENT_CONFIG_PATH} << 'YAML_EOF'\n${agentYaml}YAML_EOF\n`;
-              this.execSsh(ssh, writeYamlCmd).then(() => {
+              this.execRoot(ssh, target, installAgentCmd).then(() => this.execRoot(ssh, target, writeYamlCmd)).then(() => {
                 // Write systemd unit
-                const systemdUnit = this.generateSystemdUnit(secret);
+                const systemdUnit = this.generateSystemdUnit(target.secret);
                 const writeUnitCmd = `cat > /etc/systemd/system/miobridge-agent.service << 'UNIT_EOF'\n${systemdUnit}UNIT_EOF\n`;
 
-                this.execSsh(ssh, writeUnitCmd).then(() => {
+                this.execRoot(ssh, target, writeUnitCmd).then(() => {
                   logger.info('DeployManager: agent.yaml 和 systemd unit 已写入');
                   resolve();
                 }).catch(reject);
@@ -320,10 +380,11 @@ export class DeployManager {
     });
   }
 
-  private async startAgent(ssh: Client, emit: (s: DeployStep) => void): Promise<void> {
-    const result = await this.execSsh(
+  private async startAgent(ssh: Client, target: DeployTarget, emit: (s: DeployStep) => void): Promise<void> {
+    const result = await this.execRoot(
       ssh,
-      'systemctl daemon-reload && systemctl enable miobridge-agent 2>&1 && systemctl start miobridge-agent 2>&1 || systemctl restart miobridge-agent 2>&1',
+      target,
+      'systemctl daemon-reload && systemctl enable miobridge-agent 2>&1 && systemctl restart miobridge-agent 2>&1',
     );
 
     if (result.code !== 0) {
@@ -334,7 +395,7 @@ export class DeployManager {
     // Wait a moment for the service to come up
     await new Promise(r => setTimeout(r, 2000));
 
-    const status = await this.execSsh(ssh, 'systemctl is-active miobridge-agent 2>&1');
+    const status = await this.execRoot(ssh, target, 'systemctl is-active miobridge-agent 2>&1');
     if (!status.stdout.includes('active')) {
       emit({ step: 'start', status: 'error', message: `服务未运行: ${status.stdout.trim()}`, progress: 90 });
       throw new Error(`服务状态异常: ${status.stdout.trim()}`);
@@ -348,8 +409,7 @@ export class DeployManager {
     target: DeployTarget,
     emit: (s: DeployStep) => void,
   ): Promise<void> {
-    const port = target.agentPort || 3001;
-    const healthUrl = `http://localhost:${port}/health`;
+    const healthUrl = `http://localhost:${target.agentPort || 3001}/health`;
 
     // Try curl health check from remote host
     const result = await this.execSsh(
@@ -380,6 +440,7 @@ export class DeployManager {
     nodeName: string,
     secret: string,
     kernelType: string,
+    port = 3001,
     kernelConfigPath?: string,
   ): string {
     const configPath = kernelConfigPath || this.getDefaultConfigPath(kernelType);
@@ -396,7 +457,7 @@ kernel:
 mihomo:
   path: "/usr/local/bin/mihomo"
 
-port: 3001
+port: ${port}
 `;
   }
 
@@ -427,7 +488,7 @@ WantedBy=multi-user.target
 
   private getDefaultConfigPath(kernelType: string): string {
     const paths: Record<string, string> = {
-      'sing-box': '/usr/local/etc/sing-box/config.json',
+      'sing-box': '/etc/sing-box/config.json',
       'xray': '/usr/local/etc/xray/config.json',
       'v2ray': '/etc/v2ray/config.json',
     };

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DeployManager } from '../deployManager';
 import { UpdateChecker } from '../updateChecker';
 import { NodeManager } from '../nodeManager';

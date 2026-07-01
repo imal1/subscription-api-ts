@@ -50,17 +50,22 @@ export class MioBridgeService {
                 throw new Error('Mihomo服务未运行或不可访问');
             }
 
+            const sourceUrls: string[] = [];
+            const errors: string[] = [];
+
             const singBoxAvailable = await this.singBoxService.checkSingBoxAvailable();
-            if (!singBoxAvailable) {
-                throw new Error('Sing-box不可用');
+            if (singBoxAvailable) {
+                const localResult = await this.singBoxService.getAllConfigUrls();
+                sourceUrls.push(...localResult.urls);
+                errors.push(...localResult.errors.map(error => `本机: ${error}`));
+            } else {
+                errors.push('本机: Sing-box不可用，跳过本机节点源');
             }
 
-            // 获取节点
-            const { urls, errors } = await this.singBoxService.getAllConfigUrls();
-
-            if (urls.length === 0) {
-                throw new Error('未获取到任何有效节点');
-            }
+            const { NodeManager } = await import('./nodeManager');
+            const remoteResult = await NodeManager.getInstance().collectRemoteNodeUrls();
+            sourceUrls.push(...remoteResult.urls);
+            errors.push(...remoteResult.errors.map(error => `远端: ${error}`));
 
             // 确保目录存在
             await this.ensureDirectories();
@@ -70,7 +75,7 @@ export class MioBridgeService {
             const extractedUrls: string[] = [];
             const protocolStats: { [key: string]: number } = {};
             
-            for (const rawUrl of urls) {
+            for (const rawUrl of sourceUrls) {
                 // 移除ANSI颜色代码 - 使用字符代码27 (ESC)
                 const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
                 const cleanUrl = rawUrl.replace(ansiRegex, '');
@@ -102,18 +107,19 @@ export class MioBridgeService {
                 }
             }
             
-            logger.info(`URL提取结果: 从${urls.length}个原始条目中提取出${extractedUrls.length}个有效代理URL`);
+            const dedupedUrls = Array.from(new Set(extractedUrls));
+            logger.info(`URL提取结果: 从${sourceUrls.length}个原始条目中提取出${dedupedUrls.length}个有效代理URL`);
             logger.info(`协议分布统计: ${JSON.stringify(protocolStats, null, 2)}`);
             
-            if (extractedUrls.length === 0) {
-                throw new Error(`没有找到有效的代理URL。原始URLs: ${urls.slice(0, 3).join(', ')}...`);
+            if (dedupedUrls.length === 0) {
+                throw new Error(`没有找到有效的代理URL。来源错误: ${errors.join('; ') || '无可用节点源'}`);
             }
 
             // 打印前几个URL用于调试
-            logger.info(`前3个有效代理URL: ${extractedUrls.slice(0, 3).join(', ')}`);
+            logger.info(`前3个有效代理URL: ${dedupedUrls.slice(0, 3).join(', ')}`);
 
             // 创建订阅内容 - 只包含纯净的代理URL
-            const subscriptionContent = extractedUrls.join('\n');
+            const subscriptionContent = dedupedUrls.join('\n');
             const encodedContent = Buffer.from(subscriptionContent).toString('base64');
 
             // 保存文件
@@ -180,16 +186,16 @@ export class MioBridgeService {
 
             const result: UpdateResult = {
                 success: true,
-                message: `订阅更新成功，共 ${extractedUrls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
+                message: `订阅更新成功，共 ${dedupedUrls.length} 个节点${clashGenerated ? '' : ' (Clash生成失败)'}`,
                 timestamp: new Date().toISOString(),
-                nodesCount: extractedUrls.length,
+                nodesCount: dedupedUrls.length,
                 clashGenerated,
                 backupCreated: backupFile,
                 warnings: errors.length > 0 ? errors : undefined,
                 errors: clashError ? [`Clash生成失败: ${clashError}`] : undefined
             };
 
-            logger.info(`订阅更新完成: ${extractedUrls.length} 个节点, Clash生成: ${clashGenerated}`);
+            logger.info(`订阅更新完成: ${dedupedUrls.length} 个节点, Clash生成: ${clashGenerated}`);
             return result;
 
         } catch (error: any) {

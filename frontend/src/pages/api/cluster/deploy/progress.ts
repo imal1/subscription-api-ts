@@ -1,45 +1,54 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDeployProgress } from '@/server/services/deployProgressStore';
+import { getDeployStatus } from '@/server/services/deployProgressStore';
+import type { ApiResponse } from '@/server/types';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-
-  const nodeId = (req.query.node as string) || '';
-  let sentCount = 0;
-
-  // Send any already-completed steps
-  const initialSteps = getDeployProgress(nodeId);
-  for (const step of initialSteps) {
-    res.write(`data: ${JSON.stringify(step)}\n\n`);
-    sentCount++;
+/**
+ * GET /api/cluster/deploy/progress?node=<nodeId>
+ *
+ * 单个节点部署进度（JSON 响应，替代旧 SSE 端点）。
+ * 推荐使用新的聚合端点 GET /api/cluster/deploy/status 一次获取所有节点状态。
+ */
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ApiResponse>,
+) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({
+      success: false,
+      error: 'Method Not Allowed',
+      timestamp: new Date().toISOString(),
+    });
   }
 
-  if (initialSteps.length === 0) {
-    res.write(`data: ${JSON.stringify({ step: 'connect', status: 'pending', message: '等待部署开始...', progress: 0 })}\n\n`);
+  try {
+    const nodeId = (req.query.node as string) || '';
+    if (!nodeId) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少 node 参数',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const status = getDeployStatus(nodeId);
+    if (!status) {
+      return res.json({
+        success: true,
+        data: { status: null, message: '该节点没有进行中的部署' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { status },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
   }
-
-  // Poll for progress updates every 500ms
-  const interval = setInterval(() => {
-    const steps = getDeployProgress(nodeId);
-    // Send any new steps since last poll
-    while (sentCount < steps.length) {
-      res.write(`data: ${JSON.stringify(steps[sentCount])}\n\n`);
-      sentCount++;
-    }
-
-    // Check if done
-    const lastStep = steps[steps.length - 1];
-    if (lastStep && (lastStep.step === 'done' || lastStep.status === 'error')) {
-      clearInterval(interval);
-      res.end();
-    }
-  }, 500);
-
-  req.on('close', () => {
-    clearInterval(interval);
-    res.end();
-  });
 }

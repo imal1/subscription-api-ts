@@ -18,22 +18,25 @@ describe('AddNodeForm', () => {
 });
 
 describe('DeployProgressDialog', () => {
-  it('should render progress steps', async () => {
+  it('should render progress with DeployStatus', async () => {
     const { DeployProgressDialog } = await import('@/components/cluster/DeployProgressDialog');
-    const steps = [
-      { step: 'connect' as const, status: 'success' as const, message: '连接成功', progress: 20 },
-      { step: 'bun' as const, status: 'running' as const, message: '安装 Bun...', progress: 40 },
-    ];
+    const status = {
+      nodeId: 'node-sg',
+      step: 'bun' as const,
+      status: 'running' as const,
+      message: '安装 Bun...',
+      progress: 40,
+      startedAt: Date.now(),
+    };
     render(
       React.createElement(DeployProgressDialog, {
         isOpen: true,
         nodeName: '新加坡',
-        steps,
+        status,
         onClose: () => {},
       })
     );
     expect(screen.getByText('正在部署 新加坡')).toBeDefined();
-    expect(screen.getByText('连接成功')).toBeDefined();
     expect(screen.getByText('安装 Bun...')).toBeDefined();
   });
 });

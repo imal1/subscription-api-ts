@@ -1,11 +1,10 @@
 "use client";
 
 import { Icon } from '@iconify/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiService } from '@/lib/api'
 import { useClusterSSE } from '@/lib/useClusterSSE'
-import type { ClusterStatus } from '@/server/types'
-import type { DeployStep } from '@/server/services/deployManager'
+import type { ClusterStatus, DeployStatus } from '@/server/types'
 import { ClusterOverview } from '@/components/cluster/ClusterOverview'
 import { NodeCard } from '@/components/cluster/NodeCard'
 import { BatchActions } from '@/components/cluster/BatchActions'
@@ -25,11 +24,21 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   const [error, setError] = useState<string | null>(initialError)
   const [hasAnimated, setHasAnimated] = useState(false)
   const [showAddNode, setShowAddNode] = useState(false)
-  const [deployProgress, setDeployProgress] = useState<{ nodeName: string; steps: DeployStep[] } | null>(null)
+  const [deployProgress, setDeployProgress] = useState<{ nodeName: string; status: DeployStatus | null } | null>(null)
+  const deployPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearDeployPoll = useCallback(() => {
+    if (deployPollRef.current) {
+      clearInterval(deployPollRef.current)
+      deployPollRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     setHasAnimated(true)
   }, [])
+
+  useEffect(() => clearDeployPoll, [clearDeployPoll])
 
   const handleUpdate = useCallback(async (nodeId: string) => {
     try {
@@ -60,14 +69,45 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   }, [])
 
   const handleDeploy = useCallback(async (nodeId: string) => {
-    setDeployProgress({ nodeName: nodeId, steps: [{ step: 'connect', status: 'running', message: '正在连接...', progress: 0 }] })
+    clearDeployPoll()
+    const initialStatus: DeployStatus = {
+      nodeId,
+      step: 'connect',
+      status: 'running',
+      message: '正在连接...',
+      progress: 0,
+      startedAt: Date.now(),
+    };
+    setDeployProgress({ nodeName: nodeId, status: initialStatus });
+
     try {
-      await apiService.deployNode(nodeId)
+      // Start deploy (POST returns 202 immediately)
+      await apiService.deployNode(nodeId);
+
+      // Poll for progress every 500ms
+      const pollInterval = setInterval(async () => {
+        try {
+          const result = await apiService.getDeployStatus(nodeId);
+          if (result.success && result.data?.deployments?.[nodeId]) {
+            const status = result.data.deployments[nodeId] as DeployStatus;
+            setDeployProgress({ nodeName: nodeId, status });
+
+            // Stop polling when done or error
+            if (status.status === 'success' || status.status === 'error') {
+              clearDeployPoll();
+            }
+          }
+        } catch {
+          // Silently ignore poll errors, keep trying
+        }
+      }, 500);
+      deployPollRef.current = pollInterval;
     } catch (err) {
-      setError(err instanceof Error ? err.message : '部署失败')
-      setDeployProgress(null)
+      clearDeployPoll();
+      setError(err instanceof Error ? err.message : '部署失败');
+      setDeployProgress(null);
     }
-  }, [])
+  }, [clearDeployPoll])
 
   const handleAddNode = useCallback(async (data: NodeFormData) => {
     setShowAddNode(false)
@@ -76,11 +116,9 @@ export default function Dashboard({ initialCluster = null, initialError = null }
       const result = await apiService.addNode({
         name: data.name,
         host: data.host,
-        port: data.port,
         kernel: data.kernel,
         location: data.location,
         sshUser: data.sshUser,
-        sshPort: data.sshPort,
         sshKey: data.sshKey,
         sshPassword: data.sshPassword,
       })
@@ -200,8 +238,11 @@ export default function Dashboard({ initialCluster = null, initialError = null }
         <DeployProgressDialog
           isOpen={!!deployProgress}
           nodeName={deployProgress.nodeName}
-          steps={deployProgress.steps}
-          onClose={() => setDeployProgress(null)}
+          status={deployProgress.status}
+          onClose={() => {
+            clearDeployPoll()
+            setDeployProgress(null)
+          }}
         />
       )}
 

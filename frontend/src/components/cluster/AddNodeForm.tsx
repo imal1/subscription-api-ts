@@ -12,20 +12,18 @@ interface AddNodeFormProps {
 export interface NodeFormData {
   name: string;
   host: string;
-  port: number;
   kernel: 'sing-box' | 'xray' | 'v2ray';
   location: string;
   sshUser: string;
-  sshPort: number;
   sshKey: string;
   sshPassword: string;
 }
 
 export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
   const [form, setForm] = useState<NodeFormData>({
-    name: '', host: '', port: 443,
+    name: '', host: '',
     kernel: 'sing-box', location: '',
-    sshUser: 'root', sshPort: 22, sshKey: '', sshPassword: '',
+    sshUser: 'root', sshKey: '', sshPassword: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -75,12 +73,6 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
                 placeholder="sg.example.com" required />
             </div>
-            <div>
-              <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>端口</label>
-              <input type="number" value={form.port} onChange={e => update('port', parseInt(e.target.value) || 443)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }} />
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -112,12 +104,6 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             <div>
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>SSH 用户</label>
               <input type="text" value={form.sshUser} onChange={e => update('sshUser', e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }} />
-            </div>
-            <div>
-              <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>SSH 端口</label>
-              <input type="number" value={form.sshPort} onChange={e => update('sshPort', parseInt(e.target.value) || 22)}
                 className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }} />
             </div>

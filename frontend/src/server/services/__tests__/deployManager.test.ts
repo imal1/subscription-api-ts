@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NodeManager } from '../nodeManager';
 import { DeployManager } from '../deployManager';
-import type { NodeConfig, NodeSshConfig } from '../../types';
+import type { NodeConfig } from '../../types';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
@@ -13,7 +13,6 @@ function writeNodesYaml(nodes: Partial<NodeConfig>[], filePath: string) {
     lines.push(`  - id: "${n.id}"`);
     if (n.name) lines.push(`    name: "${n.name}"`);
     if (n.host) lines.push(`    host: "${n.host}"`);
-    if (n.port) lines.push(`    port: ${n.port}`);
     if (n.secret) lines.push(`    secret: "${n.secret}"`);
     if (n.kernel) lines.push(`    kernel: "${n.kernel}"`);
     if (n.location) lines.push(`    location: "${n.location}"`);
@@ -21,7 +20,6 @@ function writeNodesYaml(nodes: Partial<NodeConfig>[], filePath: string) {
     if (n.ssh) {
       lines.push(`    ssh:`);
       lines.push(`      user: "${n.ssh.user}"`);
-      lines.push(`      port: ${n.ssh.port}`);
       lines.push(`      keyPath: "${n.ssh.keyPath}"`);
       lines.push(`      hostKey: "${n.ssh.hostKey}"`);
       if (n.ssh.password) lines.push(`      password: "${n.ssh.password}"`);
@@ -58,14 +56,14 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
     it('should return DeployResult with success and message', async () => {
       const result = await deployManager.deployToNode({
         nodeId: 'test-node',
+        secret: 'test-secret',
         ssh: {
           host: '10.0.0.1',
           user: 'root',
-          port: 22,
           keyPath: '/tmp/key',
           hostKey: '',
         },
-        agentPort: 9400,
+        kernel: 'sing-box',
       });
 
       expect(result).toBeDefined();
@@ -79,14 +77,12 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
         id: 'deploy-test',
         name: 'Deploy Test',
         host: '10.0.0.50',
-        port: 443,
         secret: 'secret123',
         kernel: 'sing-box',
         location: 'test',
         enabled: true,
         ssh: {
           user: 'root',
-          port: 22,
           keyPath: '/tmp/key',
           hostKey: '',
         },
@@ -98,26 +94,23 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
         },
       }], tmpNodesFile);
 
-      // Create a fresh NodeManager instance for this test
-      // loadNodes should set up the node
-      const manager = NodeManager.getInstance();
-      const originalPath = (manager as any).NODES_YAML_PATH;
-      // We can't change the path since it's hardcoded, so we test deployToNode directly
-
       // Verify deployToNode accepts our config
       const result = await deployManager.deployToNode({
         nodeId: 'deploy-test',
+        secret: 'test-secret',
         ssh: {
           host: '10.0.0.50',
           user: 'root',
-          port: 22,
           keyPath: '/tmp/key',
           hostKey: '',
         },
-        agentPort: 9400,
+        kernel: 'sing-box',
       });
 
-      expect(result.success || !result.success).toBe(true); // result exists
+      expect(result).toEqual(expect.objectContaining({
+        success: expect.any(Boolean),
+        message: expect.any(String),
+      }));
     });
   });
 
@@ -136,14 +129,12 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
         id: 'auto-deploy-node',
         name: 'Auto Deploy',
         host: '10.0.0.100',
-        port: 443,
         secret: 'secret456',
         kernel: 'xray',
         location: 'auto',
         enabled: true,
         ssh: {
           user: 'root',
-          port: 22,
           keyPath: '/tmp/key',
           hostKey: '',
         },
