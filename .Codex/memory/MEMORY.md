@@ -8,3 +8,4 @@ metadata:
 # Project Memory
 
 - [Bug fixes](./bug-fixes.md)
+- [CI/CD pipeline](./ci-cd-pipeline.md)
