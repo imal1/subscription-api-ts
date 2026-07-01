@@ -12,7 +12,7 @@ export default async function handler(
   }
 
   try {
-    const { name, host, kernel, location, sshUser, sshKey, sshPassword } = req.body || {};
+    const { name, host, port, kernel, location, sshUser, sshKey, sshPassword } = req.body || {};
 
     if (!name || !host) {
       return res.status(400).json({ success: false, error: '缺少必填字段 name 或 host', timestamp: new Date().toISOString() });
@@ -25,6 +25,7 @@ export default async function handler(
       id: '', // will be auto-generated
       name,
       host,
+      port: parseInt(port, 10) || 3001,
       secret: '', // will be auto-generated
       kernel: kernel || 'sing-box',
       location: location || '',
@@ -40,6 +41,7 @@ export default async function handler(
         version: '',
         status: 'not_deployed',
         lastDeploy: '',
+        port: parseInt(port, 10) || 3001,
       },
     };
 

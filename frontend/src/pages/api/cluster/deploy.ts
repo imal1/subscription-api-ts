@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NodeManager } from '@/server/services/nodeManager';
 import { DeployManager } from '@/server/services/deployManager';
-import { setDeployStatus } from '@/server/services/deployProgressStore';
+import { getDeployStatus, setDeployStatus } from '@/server/services/deployProgressStore';
 import { logger } from '@/server/utils/logger';
 import type { ApiResponse, DeployStatus } from '@/server/types';
 
@@ -45,18 +45,28 @@ export default async function handler(
     setDeployStatus(nodeId, initialStatus);
 
     // Start deploy asynchronously
-    const deployPromise = deployManager.deployToNode(
-      {
-        nodeId: node.id,
-        ssh: {
-          host: node.host,
-          user: node.ssh.user,
-          keyPath: node.ssh.keyPath,
-          hostKey: node.ssh.hostKey,
-          password: node.ssh.password,
-        },
-        kernel: node.kernel || 'sing-box',
+    const deployTarget = {
+      nodeId: node.id,
+      secret: node.secret,
+      agentPort: node.port || node.agent?.port || 3001,
+      ssh: {
+        host: node.host,
+        user: node.ssh.user,
+        port: node.ssh.port,
+        keyPath: node.ssh.keyPath,
+        hostKey: node.ssh.hostKey,
+        password: node.ssh.password,
       },
+      kernel: node.kernel || 'sing-box',
+    };
+    const persistRecordedHostKey = async () => {
+      if (!node.ssh?.hostKey && deployTarget.ssh.hostKey) {
+        await nodeManager.updateNodeSshHostKey(node.id, deployTarget.ssh.hostKey);
+      }
+    };
+
+    const deployPromise = deployManager.deployToNode(
+      deployTarget,
       (step) => {
         // Map old DeployStep to new DeployStatus format
         const status: DeployStatus = {
@@ -79,28 +89,42 @@ export default async function handler(
     });
 
     // Wait for deploy to finish (in background, after response sent)
-    deployPromise.then((result) => {
+    deployPromise.then(async (result) => {
+      await persistRecordedHostKey();
+      await nodeManager.updateNodeAgentInfo(node.id, {
+        deployed: result.success,
+        status: result.success ? 'running' : 'error',
+        lastDeploy: new Date().toISOString(),
+        port: deployTarget.agentPort,
+      });
       logger.info(`Deploy API: 节点 ${nodeId} 部署完成: ${result.success ? '成功' : '失败'} - ${result.message}`);
-      // Update progress store with final status
+      const currentStatus = getDeployStatus(nodeId);
       const finalStatus: DeployStatus = {
         nodeId,
-        step: result.success ? 'done' : 'connect',
+        step: result.success ? 'done' : (currentStatus?.step || 'connect'),
         status: result.success ? 'success' : 'error',
         message: result.message,
-        progress: result.success ? 100 : 0,
-        startedAt,
+        progress: result.success ? 100 : (currentStatus?.progress || 0),
+        startedAt: Date.now(),
       };
       setDeployStatus(nodeId, finalStatus);
-    }).catch((err) => {
+    }).catch(async (err) => {
+      await persistRecordedHostKey();
+      await nodeManager.updateNodeAgentInfo(node.id, {
+        deployed: false,
+        status: 'error',
+        lastDeploy: new Date().toISOString(),
+        port: deployTarget.agentPort,
+      });
       logger.error(`Deploy API: 节点 ${nodeId} 部署异常: ${err.message}`);
-      // Bug fix: Update progress store with error status so frontend doesn't hang
+      const currentStatus = getDeployStatus(nodeId);
       const errorStatus: DeployStatus = {
         nodeId,
-        step: 'connect',
+        step: currentStatus?.step || 'connect',
         status: 'error',
         message: `部署异常: ${err.message}`,
-        progress: 0,
-        startedAt,
+        progress: currentStatus?.progress || 0,
+        startedAt: Date.now(),
       };
       setDeployStatus(nodeId, errorStatus);
     });

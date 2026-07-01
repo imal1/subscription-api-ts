@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from '@iconify/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiService } from '@/lib/api'
 import { useClusterSSE } from '@/lib/useClusterSSE'
 import type { ClusterStatus, DeployStatus } from '@/server/types'
@@ -25,10 +25,20 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   const [hasAnimated, setHasAnimated] = useState(false)
   const [showAddNode, setShowAddNode] = useState(false)
   const [deployProgress, setDeployProgress] = useState<{ nodeName: string; status: DeployStatus | null } | null>(null)
+  const deployPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearDeployPoll = useCallback(() => {
+    if (deployPollRef.current) {
+      clearInterval(deployPollRef.current)
+      deployPollRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     setHasAnimated(true)
   }, [])
+
+  useEffect(() => clearDeployPoll, [clearDeployPoll])
 
   const handleUpdate = useCallback(async (nodeId: string) => {
     try {
@@ -59,6 +69,7 @@ export default function Dashboard({ initialCluster = null, initialError = null }
   }, [])
 
   const handleDeploy = useCallback(async (nodeId: string) => {
+    clearDeployPoll()
     const initialStatus: DeployStatus = {
       nodeId,
       step: 'connect',
@@ -83,18 +94,20 @@ export default function Dashboard({ initialCluster = null, initialError = null }
 
             // Stop polling when done or error
             if (status.status === 'success' || status.status === 'error') {
-              clearInterval(pollInterval);
+              clearDeployPoll();
             }
           }
         } catch {
           // Silently ignore poll errors, keep trying
         }
       }, 500);
+      deployPollRef.current = pollInterval;
     } catch (err) {
+      clearDeployPoll();
       setError(err instanceof Error ? err.message : '部署失败');
       setDeployProgress(null);
     }
-  }, [])
+  }, [clearDeployPoll])
 
   const handleAddNode = useCallback(async (data: NodeFormData) => {
     setShowAddNode(false)
@@ -226,7 +239,10 @@ export default function Dashboard({ initialCluster = null, initialError = null }
           isOpen={!!deployProgress}
           nodeName={deployProgress.nodeName}
           status={deployProgress.status}
-          onClose={() => setDeployProgress(null)}
+          onClose={() => {
+            clearDeployPoll()
+            setDeployProgress(null)
+          }}
         />
       )}
 

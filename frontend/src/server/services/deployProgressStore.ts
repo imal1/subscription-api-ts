@@ -1,15 +1,19 @@
 import type { DeployStatus } from '../types';
 
-/** In-memory deploy progress store — single current status per node, 5-min TTL */
-const deployProgress = new Map<string, DeployStatus>();
+/** In-memory deploy progress store — single current status per node. */
+const globalState = globalThis as typeof globalThis & {
+  __MIOBRIDGE_DEPLOY_PROGRESS__?: Map<string, DeployStatus>;
+};
+const deployProgress = globalState.__MIOBRIDGE_DEPLOY_PROGRESS__ ?? new Map<string, DeployStatus>();
+globalState.__MIOBRIDGE_DEPLOY_PROGRESS__ = deployProgress;
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function cleanup(): void {
   const now = Date.now();
-  // Convert to array first to avoid iteration issues
   const entries = Array.from(deployProgress.entries());
   for (const [nodeId, status] of entries) {
-    if (now - status.startedAt > TTL_MS) {
+    const isTerminal = status.status === 'success' || status.status === 'error';
+    if (isTerminal && now - status.startedAt > TTL_MS) {
       deployProgress.delete(nodeId);
     }
   }

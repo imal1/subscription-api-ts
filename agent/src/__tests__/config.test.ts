@@ -66,7 +66,7 @@ kernel:
       const cfg = await loadConfig(CONFIG_PATH);
       expect(cfg.node.id).toBe('minimal');
       expect(cfg.node.secret).toBe('');
-      expect(cfg.kernel.configPath).toBe('/usr/local/etc/sing-box/config.json');
+      expect(cfg.kernel.configPath).toBe('/etc/sing-box/config.json');
       expect(cfg.port).toBe(3001);
     });
   });

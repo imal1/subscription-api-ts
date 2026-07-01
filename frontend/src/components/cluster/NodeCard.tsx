@@ -53,7 +53,6 @@ export function NodeCard({
       <div
         className="garden-card p-5 cursor-pointer transition-all hover:shadow-[var(--shadow-card-hover)]"
         onClick={() => setExpanded(!expanded)}
-        role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter') setExpanded(!expanded); }}
       >
@@ -89,7 +88,7 @@ export function NodeCard({
               {kernelLabel(node.kernel)}
             </span>
             <Icon
-              icon={expanded ? 'ph:caret-up-bold' : 'ph:caret-down-bold'}
+              icon="ph:info-bold"
               className="w-4 h-4"
               style={{ color: 'var(--muted-foreground)' }}
             />
@@ -105,7 +104,7 @@ export function NodeCard({
             <>
               <span className="flex items-center gap-1">
                 <Icon icon="ph:tree-structure" className="w-3.5 h-3.5" />
-                {node.nodesCount ?? '-'} 代理
+                {node.nodesCount ?? '-'} {node.nodeId === 'local' ? '订阅节点' : '代理'}
               </span>
               {node.latency !== undefined && node.latency > 0 && (
                 <span className="flex items-center gap-1">
@@ -170,14 +169,13 @@ export function NodeCard({
         )}
       </div>
 
-      {expanded && (
-        <NodeDetail
-          node={node}
-          onClose={() => setExpanded(false)}
-          onUpdate={onUpdate}
-          onHealthCheck={onHealthCheck}
-        />
-      )}
+      <NodeDetail
+        node={node}
+        isOpen={expanded}
+        onClose={() => setExpanded(false)}
+        onUpdate={onUpdate}
+        onHealthCheck={onHealthCheck}
+      />
     </>
   );
 }

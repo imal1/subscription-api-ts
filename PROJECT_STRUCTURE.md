@@ -69,12 +69,11 @@ miobridge/
 │   ├── nginx.conf.template                # Nginx 配置模板
 │   └── miobridge.service.template # systemd 单元模板
 ├── .github/workflows/deploy.yml           # GitHub Actions 部署
-├── .claude/
-│   ├── CLAUDE.md                          # AI 项目文档
-│   └── roadmap/                           # 开发路线图
+├── agent/                                 # 远程节点 Agent 子包
 ├── docs/
 │   ├── DEPLOYMENT.md                      # 部署指南
-│   └── dashboard-redesign-prd.md          # 仪表盘设计 PRD
+│   ├── CI-CD.md                           # CI/CD 流水线说明
+│   └── superpowers/remaining-gaps.md      # 尚未落地的 Agent 生命周期缺口
 ├── CHANGELOG.md                           # 变更日志
 ├── TROUBLESHOOTING.md                     # 故障排除
 ├── MIGRATION_TO_MIHOMO.md                 # mihomo 迁移指南（历史）

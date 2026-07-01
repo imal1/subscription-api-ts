@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAllDeployStatuses } from '@/server/services/deployProgressStore';
+import { getAllDeployStatuses, getDeployStatus } from '@/server/services/deployProgressStore';
 import type { ApiResponse, DeployStatus } from '@/server/types';
 
 /**
@@ -33,18 +33,17 @@ export default async function handler(
     const nodesParam = (req.query.nodes as string) || '';
     const requestedNodes = nodesParam ? nodesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    const allStatuses = getAllDeployStatuses();
-
     let deployments: Record<string, DeployStatus>;
     if (requestedNodes.length > 0) {
       deployments = {};
       for (const nodeId of requestedNodes) {
-        const status = allStatuses.find(s => s.nodeId === nodeId);
+        const status = getDeployStatus(nodeId);
         if (status) {
           deployments[nodeId] = status;
         }
       }
     } else {
+      const allStatuses = getAllDeployStatuses();
       deployments = {};
       for (const status of allStatuses) {
         deployments[status.nodeId] = status;

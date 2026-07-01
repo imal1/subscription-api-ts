@@ -139,8 +139,8 @@ scripts/
   server-deploy.sh                ← 原子部署脚本
   manage.sh                       ← 管理脚本
 .github/workflows/deploy.yml      ← CI/CD 流水线
-.claude/roadmap/                  ← 开发路线图
-docs/                             ← 文档
+agent/                            ← 远程节点 Agent 子包
+docs/                             ← 部署、CI/CD 与剩余缺口文档
 ```
 
 ## 开发
@@ -153,9 +153,9 @@ bun run start          # 生产启动 (node server.js)
 bun run lint           # 代码检查 (oxlint)
 ```
 
-## 路线图
+## 当前状态
 
-详见 [.claude/roadmap/](./.claude/roadmap/) — v0.1 已达成，v0.2 ~ v1.0 规划中。
+v1.0 多节点控制面、Agent 部署骨架、CI/CD 与 Next.js 全栈 SSR 架构已落地。仍未完成的 Agent 生命周期细节见 [docs/superpowers/remaining-gaps.md](./docs/superpowers/remaining-gaps.md)。
 
 ## 故障排除
 

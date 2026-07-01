@@ -56,6 +56,7 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
     it('should return DeployResult with success and message', async () => {
       const result = await deployManager.deployToNode({
         nodeId: 'test-node',
+        secret: 'test-secret',
         ssh: {
           host: '10.0.0.1',
           user: 'root',
@@ -102,6 +103,7 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
       // Verify deployToNode accepts our config
       const result = await deployManager.deployToNode({
         nodeId: 'deploy-test',
+        secret: 'test-secret',
         ssh: {
           host: '10.0.0.50',
           user: 'root',

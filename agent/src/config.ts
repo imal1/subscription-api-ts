@@ -23,7 +23,7 @@ export interface AgentConfig {
 }
 
 const DEFAULT_CONFIG_PATHS: Record<string, string> = {
-  'sing-box': '/usr/local/etc/sing-box/config.json',
+  'sing-box': '/etc/sing-box/config.json',
   'xray': '/usr/local/etc/xray/config.json',
   'v2ray': '/etc/v2ray/config.json',
 };
@@ -31,7 +31,7 @@ const DEFAULT_CONFIG_PATHS: Record<string, string> = {
 export function getDefaultConfig(): AgentConfig {
   return {
     node: { id: '', name: '', secret: '' },
-    kernel: { type: 'sing-box', configPath: '/usr/local/etc/sing-box/config.json' },
+    kernel: { type: 'sing-box', configPath: '/etc/sing-box/config.json' },
     mihomo: { path: '/usr/local/bin/mihomo' },
     port: 3001,
   };

@@ -4,10 +4,17 @@ import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import InfoRow from '@/components/shared/InfoRow';
 import StatusBadge from '@/components/shared/StatusBadge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { NodeStatus } from '@/server/types';
 
 interface NodeDetailProps {
   node: NodeStatus;
+  isOpen: boolean;
   onClose: () => void;
   onUpdate?: (nodeId: string) => void;
   onHealthCheck?: (nodeId: string) => void;
@@ -15,6 +22,7 @@ interface NodeDetailProps {
 
 export function NodeDetail({
   node,
+  isOpen,
   onClose,
   onUpdate,
   onHealthCheck,
@@ -70,30 +78,17 @@ export function NodeDetail({
     }
   };
 
+  const isLocal = node.nodeId === 'local';
+
   return (
-    <div
-      className="garden-card p-5 mb-3 -mt-2 border-t-0"
-      style={{
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderTop: 'none',
-      }}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h4
-          className="text-sm font-semibold uppercase tracking-widest"
-          style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-display)' }}
-        >
-          节点详情
-        </h4>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-md hover:bg-[var(--muted)] transition-colors"
-          aria-label="关闭"
-        >
-          <Icon icon="ph:x-bold" className="w-4 h-4" style={{ color: 'var(--muted-foreground)' }} />
-        </button>
-      </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[86vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+            <span className={`live-dot ${node.online ? 'live-dot-active' : ''}`} />
+            {node.name}
+          </DialogTitle>
+        </DialogHeader>
 
       {!node.online ? (
         <div className="garden-alert garden-alert-danger mb-4">
@@ -105,27 +100,37 @@ export function NodeDetail({
         </div>
       ) : (
         <div className="space-y-1 divide-y" style={{ borderColor: 'var(--border)' }}>
-          <InfoRow label="订阅文件">
+          {isLocal ? (
+            <>
+              <InfoRow label="订阅文件">
+                <StatusBadge
+                  label={node.subscriptionExists ? '已生成' : '未生成'}
+                  status={node.subscriptionExists ? 'success' : 'danger'}
+                />
+              </InfoRow>
+              <InfoRow label="Clash 配置">
+                <StatusBadge
+                  label={node.clashExists ? '已生成' : '未生成'}
+                  status={node.clashExists ? 'success' : 'danger'}
+                />
+              </InfoRow>
+              <InfoRow label="Mihomo">
+                <StatusBadge
+                  label={node.mihomoAvailable ? '可用' : '不可用'}
+                  status={node.mihomoAvailable ? 'success' : 'danger'}
+                />
+              </InfoRow>
+            </>
+          ) : (
+            <InfoRow label="节点角色">
+              <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                子节点仅提供节点源，订阅与 Clash 配置由主节点统一生成
+              </span>
+            </InfoRow>
+          )}
+          <InfoRow label={isLocal ? '内核可访问' : '节点源'}>
             <StatusBadge
-              label={node.subscriptionExists ? '已生成' : '未生成'}
-              status={node.subscriptionExists ? 'success' : 'danger'}
-            />
-          </InfoRow>
-          <InfoRow label="Clash 配置">
-            <StatusBadge
-              label={node.clashExists ? '已生成' : '未生成'}
-              status={node.clashExists ? 'success' : 'danger'}
-            />
-          </InfoRow>
-          <InfoRow label="Mihomo">
-            <StatusBadge
-              label={node.mihomoAvailable ? '可用' : '不可用'}
-              status={node.mihomoAvailable ? 'success' : 'danger'}
-            />
-          </InfoRow>
-          <InfoRow label="内核可访问">
-            <StatusBadge
-              label={node.kernelAccessible ? '可访问' : '不可访问'}
+              label={node.kernelAccessible ? '可用' : '不可用'}
               status={node.kernelAccessible ? 'success' : 'danger'}
             />
           </InfoRow>
@@ -217,6 +222,7 @@ export function NodeDetail({
           </button>
         )}
       </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -79,6 +79,8 @@ export interface NodeConfig {
   id: string;
   name: string;
   host: string;
+  /** Agent HTTP 端口 */
+  port?: number;
   secret: string;          // HMAC 共享密钥，localhost 可为空
   kernel: KernelType;
   location: string;
@@ -137,6 +139,8 @@ export interface NodesYaml {
 /** 节点 SSH 连接配置 */
 export interface NodeSshConfig {
   user: string;
+  /** SSH 端口，默认 22 */
+  port?: number;
   keyPath: string;
   hostKey: string;
   /** 密码认证（可选，优先使用 keyPath，keyPath 为空时使用密码） */
@@ -149,6 +153,8 @@ export interface NodeAgentInfo {
   version: string;
   status: 'not_deployed' | 'deploying' | 'running' | 'stopped' | 'error';
   lastDeploy: string;
+  /** Agent HTTP 端口，默认 3001 */
+  port?: number;
 }
 
 /** 内核安装信息 */
