@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from '@iconify/react';
 import StatCard from '@/components/shared/StatCard';
 import SectionHeading from '@/components/shared/SectionHeading';
 import type { ClusterStatus } from '@/server/types';

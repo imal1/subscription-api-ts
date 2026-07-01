@@ -1,7 +1,7 @@
 // TDD RED phase for Phase C: SSE Cluster Events endpoint
 // Tests verify the /api/cluster/events SSE endpoint
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // The module doesn't exist yet — import will fail until GREEN phase
 let eventsHandler: any;

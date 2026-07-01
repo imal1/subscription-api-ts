@@ -19,7 +19,7 @@ const getLogDir = (): string => {
         return config.logDir;
     } catch {
         const os = require('os');
-        return path.join(os.homedir(), '.config', 'miobridge', 'log');
+        return path.join(process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge'), 'log');
     }
 };
 

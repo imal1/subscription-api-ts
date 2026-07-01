@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NodeManager } from '../nodeManager';
 import { DeployManager } from '../deployManager';
-import type { NodeConfig, NodeSshConfig } from '../../types';
+import type { NodeConfig } from '../../types';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
@@ -94,12 +94,6 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
         },
       }], tmpNodesFile);
 
-      // Create a fresh NodeManager instance for this test
-      // loadNodes should set up the node
-      const manager = NodeManager.getInstance();
-      const originalPath = (manager as any).NODES_YAML_PATH;
-      // We can't change the path since it's hardcoded, so we test deployToNode directly
-
       // Verify deployToNode accepts our config
       const result = await deployManager.deployToNode({
         nodeId: 'deploy-test',
@@ -113,7 +107,10 @@ describe('Task 6: DeployManager.deployToNode + NodeManager deploy integration', 
         kernel: 'sing-box',
       });
 
-      expect(result.success || !result.success).toBe(true); // result exists
+      expect(result).toEqual(expect.objectContaining({
+        success: expect.any(Boolean),
+        message: expect.any(String),
+      }));
     });
   });
 

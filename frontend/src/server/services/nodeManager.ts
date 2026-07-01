@@ -6,7 +6,8 @@ import { logger } from '../utils/logger';
 import { MioBridgeService } from './mioBridgeService';
 import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml, NodeAgentInfo } from '../types';
 
-const NODES_YAML_PATH = path.join(os.homedir(), '.config', 'miobridge', 'nodes.yaml');
+const CONFIG_DIR = process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge');
+const NODES_YAML_PATH = path.join(CONFIG_DIR, 'nodes.yaml');
 const REMOTE_TIMEOUT_MS = 10_000;
 /** fs.watch 去抖延迟：文件可能连续触发多次 change 事件 */
 const WATCH_DEBOUNCE_MS = 500;

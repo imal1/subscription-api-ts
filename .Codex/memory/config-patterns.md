@@ -9,6 +9,7 @@ metadata:
 
 - Runtime config is `~/.config/miobridge/config.yaml`.
 - Runtime data/log/backup/dist paths are under `~/.config/miobridge/`.
+- `MIOBRIDGE_CONFIG_DIR` can override the runtime base dir for isolated tests.
 - Binary lookup order is configured path, `~/.config/miobridge/bin/`, repo
   `bin/`, then PATH.
 - `PORT` can override the app port for systemd/Next startup.

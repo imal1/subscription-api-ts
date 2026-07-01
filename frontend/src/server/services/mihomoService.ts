@@ -2,10 +2,10 @@ import axios from 'axios';
 import * as fs from 'fs-extra';
 import { execSync } from 'child_process';
 import * as path from 'path';
-import * as os from 'os';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { VERSION } from '../version';
+import { getMioBridgeBaseDir } from './yamlService';
 
 interface ProxyConfig {
     name: string;
@@ -37,12 +37,12 @@ export class MihomoService {
                 this.mihomoPath = fullConfig.binaries.mihomo_path;
             } else {
                 // 使用默认路径
-                const basePath = path.join(os.homedir(), '.config', 'miobridge', 'bin');
+                const basePath = path.join(getMioBridgeBaseDir(), 'bin');
                 this.mihomoPath = path.join(basePath, 'mihomo');
             }
 
             // 配置文件路径
-            const configDir = path.join(os.homedir(), '.config', 'miobridge', 'mihomo');
+            const configDir = path.join(getMioBridgeBaseDir(), 'mihomo');
             this.configPath = path.join(configDir, 'config.yaml');
             
             // 确保目录存在
@@ -50,9 +50,9 @@ export class MihomoService {
             fs.ensureDirSync(path.dirname(this.configPath));
         } catch (error) {
             // 回退到默认路径
-            const basePath = path.join(os.homedir(), '.config', 'miobridge', 'bin');
+            const basePath = path.join(getMioBridgeBaseDir(), 'bin');
             this.mihomoPath = path.join(basePath, 'mihomo');
-            const configDir = path.join(os.homedir(), '.config', 'miobridge', 'mihomo');
+            const configDir = path.join(getMioBridgeBaseDir(), 'mihomo');
             this.configPath = path.join(configDir, 'config.yaml');
             
             // 确保目录存在
@@ -756,8 +756,7 @@ export class MihomoService {
      * 获取 yq 工具路径
      */
     private getYqPath(): string {
-        const baseDir = path.join(os.homedir(), '.config', 'subscription');
-        const yqPath = path.join(baseDir, 'bin', 'yq');
+        const yqPath = path.join(getMioBridgeBaseDir(), 'bin', 'yq');
         
         // 检查 BASE_DIR/bin/yq 是否存在
         if (fs.existsSync(yqPath)) {

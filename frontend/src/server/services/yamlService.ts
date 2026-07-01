@@ -7,6 +7,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { logger } from '../utils/logger';
 
+export function getMioBridgeBaseDir(): string {
+    return process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge');
+}
+
 export class YamlService {
     private static instance: YamlService;
 
@@ -23,23 +27,21 @@ export class YamlService {
      * 获取配置文件路径
      */
     private getConfigPath(): string {
-        const baseDir = path.join(os.homedir(), '.config', 'miobridge');
-        return path.join(baseDir, 'config.yaml');
+        return path.join(getMioBridgeBaseDir(), 'config.yaml');
     }
 
     /**
      * 获取 yq 工具路径
      */
     private getYqPath(): string {
-        const baseDir = path.join(os.homedir(), '.config', 'miobridge');
-        return path.join(baseDir, 'bin', 'yq');
+        return path.join(getMioBridgeBaseDir(), 'bin', 'yq');
     }
 
     /**
      * 获取基础目录
      */
     private getSubscriptionBaseDir(): string {
-        return path.join(os.homedir(), '.config', 'miobridge');
+        return getMioBridgeBaseDir();
     }
 
     /**

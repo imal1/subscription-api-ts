@@ -12,7 +12,7 @@ export default async function handler(
   }
 
   try {
-    const { nodeId, kernelType } = req.body || {};
+    const { kernelType } = req.body || {};
     if (!kernelType) {
       return res.status(400).json({ success: false, error: '缺少 kernelType', timestamp: new Date().toISOString() });
     }

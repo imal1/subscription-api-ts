@@ -1,5 +1,3 @@
-import { Icon } from '@iconify/react'
-
 interface StatusBadgeProps {
   label: string
   status: 'success' | 'warning' | 'danger' | 'info'

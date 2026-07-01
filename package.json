@@ -15,6 +15,7 @@
     "start": "node frontend/.next/standalone/frontend/server.js",
     "lint": "oxlint frontend/src/",
     "lint:fix": "oxlint --fix frontend/src/",
+    "e2e:distributed": "bash scripts/e2e-distributed.sh",
     "test": "echo 'Tests not configured'",
     "clean": "rm -rf frontend/.next",
     "install:deps": "bun install",
