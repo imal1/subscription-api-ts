@@ -9,3 +9,7 @@ metadata:
 
 - [Bug fixes](./bug-fixes.md)
 - [CI/CD pipeline](./ci-cd-pipeline.md)
+- [Project architecture](./project-architecture.md)
+- [Deployment flow](./deployment-flow.md)
+- [Config patterns](./config-patterns.md)
+- [Coding conventions](./coding-conventions.md)
