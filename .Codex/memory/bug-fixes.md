@@ -7,6 +7,8 @@ metadata:
 
 # Bug Fixes
 
+- 2026-07-02: Homepage Dashboard loads client-side to avoid Pages Router SSR
+  tracing Recharts/Redux Toolkit ESM incompletely in standalone/Vercel builds.
 - 2026-07-01: Deploy progress polling now preserves active/failed state, terminal
   timestamps, and clears dashboard pollers reliably.
 - 2026-07-01: Main node owns generated subscription artifacts and aggregates

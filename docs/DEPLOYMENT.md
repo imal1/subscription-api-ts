@@ -1,37 +1,46 @@
 # Deployment
 
-Production runs the Next.js standalone server with systemd behind Nginx.
+Production runs on Vercel at `https://miobridge.vercel.app/`.
 
 ## Runtime
 
-- App root: `~/.config/miobridge/dist`
-- Entrypoint: `~/.config/miobridge/dist/frontend/server.js`
-- Env: `PORT=<config port>`, `HOSTNAME=0.0.0.0`, `NODE_ENV=production`
-- Data/config/logs: `~/.config/miobridge/`
+- App: Next.js Pages Router service under `frontend/`
+- Runtime: Vercel Node.js functions
+- Project link: `.vercel/project.json`
+- Public health check: `https://miobridge.vercel.app/api/health`
+
+Generated subscription artifacts still use the app runtime paths defined by the
+server services. Vercel deployments are ephemeral, so production persistence
+should be handled through Vercel-managed environment/config and durable external
+storage when that becomes necessary.
 
 ## Normal Flow
 
+Production deployments are handled by Vercel Git Integration:
+
+1. Push to `main`.
+2. Vercel detects the connected GitHub repository update.
+3. Vercel installs dependencies, builds the project, and publishes production.
+
+GitHub Actions no longer deploys production and no longer needs SSH deployment
+secrets or a Vercel CLI token.
+
+## Local Verification
+
 ```bash
+bun install
+bun run lint
+bun run typecheck
 bun run build
-scripts/manage.sh install
-sudo systemctl restart miobridge
-curl -fsS http://127.0.0.1:3001/api/health
 ```
 
-GitHub Actions performs the same flow remotely with an atomic release symlink
-and rollback on failed health check.
-
-## Server Checks
+## Checks
 
 ```bash
-sudo systemctl status miobridge
-sudo journalctl -u miobridge -n 100 --no-pager
-ss -tlnp | grep 3001
-readlink ~/.config/miobridge/dist
+curl -fsS https://miobridge.vercel.app/api/health
 ```
 
-## Required Binaries
+Use the Vercel dashboard for deployment status, runtime logs, rollbacks, and
+project settings.
 
-Place `mihomo` and `yq` in `~/.config/miobridge/bin/` or make them available on
-PATH. `sing-box` is optional for dashboard rendering but needed for local source
-extraction.
+The old systemd/Nginx server flow is no longer used for the main node.

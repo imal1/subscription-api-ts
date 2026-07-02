@@ -7,6 +7,16 @@ metadata:
 
 # CI/CD Pipeline
 
+## 2026-07-02 — Production deploys to Vercel
+
+Production deploys now use Vercel Git Integration, not GitHub Actions deploy
+steps. Pushes to `main` should be built and published by the connected Vercel
+project. GitHub Actions no longer uses SSH, tarball upload, server symlink
+switching, systemd restart, or Vercel CLI.
+
+The old SSH `deploy.yml` and scheduled SSH `health-check.yml` workflows were
+removed.
+
 ## 2026-07-01 — Type check runs in the Next.js workspace
 
 The repository root still contains a migration-era `tsconfig.json` that points

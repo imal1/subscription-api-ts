@@ -4,7 +4,7 @@
 
 > 基于 mihomo 的分布式订阅转换与控制面板。MioBridge 将 sing-box、Xray、
 > V2Ray 节点源聚合为 Clash 兼容输出，并提供 SSR 仪表盘、远程 Agent
-> 支持和生产环境原子部署流程。
+> 支持和 Vercel 生产部署流程。
 
 MioBridge 是一个单体 Next.js 全栈服务。仪表盘、API 路由、定时任务和后端
 转换服务都位于 `frontend/`。生产环境直接运行 Next standalone 输出，不需要
@@ -18,7 +18,7 @@ MioBridge 是一个单体 Next.js 全栈服务。仪表盘、API 路由、定时
 - **HMAC 控制面**：主节点通过签名 HTTP 请求访问远程 Agent
 - **SSR 仪表盘**：Next.js Pages Router 页面，使用 Botanical Garden 主题
 - **定时刷新**：支持自动更新，也可通过 API 或页面手动触发
-- **原子部署**：GitHub Actions 构建、SSH 上传、软链接切换、健康检查和失败回滚
+- **Vercel 部署**：Vercel Git Integration 将推送部署到生产环境
 
 ## 技术栈
 
@@ -30,7 +30,7 @@ MioBridge 是一个单体 Next.js 全栈服务。仪表盘、API 路由、定时
 | 转换 | mihomo |
 | 配置 | `~/.config/miobridge` 下的 YAML 文件 |
 | Agent | Bun 编译的远程节点服务 |
-| 部署 | systemd、Nginx、GitHub Actions、SSH |
+| 部署 | Vercel、GitHub Actions |
 
 ## 快速开始
 
@@ -112,21 +112,18 @@ docs/                        部署和运维文档
 
 ## 部署
 
-生产部署通常由推送 `main` 触发。工作流会构建 Next.js standalone 输出，上传到
-服务器，原子切换运行时软链接，重启 `miobridge`，并在结束前执行健康检查。
+生产部署通常由推送 `main` 触发。Vercel Git Integration 会构建已连接项目，
+并发布生产部署。
 
 完整部署说明见 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)，CI/CD 说明见
 [docs/CI-CD.md](./docs/CI-CD.md)。
 
 ## 运维
 
-部署主机上的常用命令：
+常用生产检查：
 
 ```bash
-sudo systemctl status miobridge
-sudo journalctl -u miobridge -n 100 --no-pager
-tail -n 100 ~/.config/miobridge/log/combined.log
-readlink ~/.config/miobridge/dist
+curl -fsS https://miobridge.vercel.app/api/health
 ```
 
 故障排查见 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)。

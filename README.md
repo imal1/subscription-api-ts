@@ -5,7 +5,7 @@
 > A distributed subscription converter and control plane powered by mihomo.
 > MioBridge aggregates sing-box, Xray, and V2Ray node sources into
 > Clash-compatible outputs with an SSR dashboard, remote Agent support, and
-> atomic production deployment.
+> Vercel production deployment.
 
 MioBridge is a single Next.js full-stack service. The dashboard, API routes,
 scheduled jobs, and backend conversion services all live under `frontend/`.
@@ -20,7 +20,7 @@ server.
 - **HMAC control plane**: the main node talks to Agents over signed HTTP requests
 - **SSR dashboard**: Next.js Pages Router UI using the Botanical Garden theme
 - **Scheduled refresh**: automatic subscription updates plus manual API/UI triggers
-- **Atomic deployment**: GitHub Actions build, SSH upload, symlink switch, health check, rollback
+- **Vercel deployment**: Vercel Git Integration deploys pushes to production
 
 ## Stack
 
@@ -32,7 +32,7 @@ server.
 | Conversion | mihomo |
 | Config | YAML files under `~/.config/miobridge` |
 | Agent | Bun-compiled remote node service |
-| Deploy | systemd, Nginx, GitHub Actions, SSH |
+| Deploy | Vercel, GitHub Actions |
 
 ## Quick Start
 
@@ -114,23 +114,18 @@ docs/                        deployment and operations documentation
 
 ## Deployment
 
-Production deployments are normally triggered by pushing `main`. The workflow
-builds the standalone Next.js output, uploads it to the server, switches the
-runtime symlink atomically, restarts `miobridge`, and verifies health before
-finishing.
+Production deployments are normally triggered by pushing `main`. Vercel Git
+Integration builds the connected project and promotes the production deployment.
 
 Detailed setup is in [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md). CI/CD notes are
 in [docs/CI-CD.md](./docs/CI-CD.md).
 
 ## Operations
 
-Useful commands on a deployed host:
+Useful production checks:
 
 ```bash
-sudo systemctl status miobridge
-sudo journalctl -u miobridge -n 100 --no-pager
-tail -n 100 ~/.config/miobridge/log/combined.log
-readlink ~/.config/miobridge/dist
+curl -fsS https://miobridge.vercel.app/api/health
 ```
 
 For troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
