@@ -1,16 +1,21 @@
-import { Icon } from '@iconify/react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from '@iconify/react'
 import { useAppContext } from '@/context/AppContext'
 import ThemeToggle from '@/components/ThemeToggle'
+import { NAV_ITEMS, type NavIcon } from './navigation'
 
-const NAV_ITEMS = [
-  { href: '/',         icon: 'ph:gauge-bold',     label: '仪表盘' },
-  { href: '/actions',  icon: 'ph:lightning-bold',  label: '操作' },
-  { href: '/api-docs', icon: 'ph:globe-bold',      label: 'API 文档' },
-]
+const ICONS: Record<NavIcon, string> = {
+  overview: 'ph:gauge-bold',
+  subscription: 'ph:arrows-clockwise-bold',
+  nodes: 'ph:hard-drives-bold',
+  deploy: 'ph:rocket-launch-bold',
+  logs: 'ph:terminal-window-bold',
+  config: 'ph:sliders-horizontal-bold',
+  api: 'ph:globe-bold',
+}
 
 export default function MobileDrawer() {
   const { mobileDrawerOpen, setMobileDrawerOpen } = useAppContext()
@@ -61,7 +66,6 @@ export default function MobileDrawer() {
         style={{
           width: '280px',
           background: 'var(--sidebar)',
-          borderRight: '1px solid var(--sidebar-border)',
           boxShadow: '4px 0 24px rgba(0,0,0,0.12)',
           transform: mobileDrawerOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 200ms cubic-bezier(0.16, 1, 0.3, 1)',
@@ -70,7 +74,7 @@ export default function MobileDrawer() {
         {/* Header */}
         <div
           className="flex items-center justify-between px-4"
-          style={{ borderBottom: '1px solid var(--sidebar-border)', minHeight: '56px' }}
+          style={{ minHeight: '56px' }}
         >
           <div className="flex items-center gap-2">
             <Icon
@@ -116,7 +120,7 @@ export default function MobileDrawer() {
                     style={{ top: '50%', transform: 'translateY(-50%)', width: '3px', height: '60%', background: 'var(--fern)' }}
                   />
                 )}
-                <Icon icon={item.icon} className="w-5 h-5 flex-shrink-0" />
+                <Icon icon={ICONS[item.icon]} className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm font-medium">{item.label}</span>
               </Link>
             )
@@ -124,7 +128,7 @@ export default function MobileDrawer() {
         </nav>
 
         {/* Bottom */}
-        <div className="border-t p-4 flex items-center gap-3" style={{ borderColor: 'var(--sidebar-border)' }}>
+        <div className="p-4 flex items-center gap-3">
           <ThemeToggle />
           <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>切换主题</span>
         </div>

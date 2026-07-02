@@ -1,13 +1,8 @@
-import { Icon } from '@iconify/react'
 import { useRouter } from 'next/router'
+import { Icon } from '@iconify/react'
 import ThemeToggle from '@/components/ThemeToggle'
 import { useAppContext } from '@/context/AppContext'
-
-const PAGE_TITLES: Record<string, string> = {
-  '/':         '仪表盘',
-  '/actions':  '操作',
-  '/api-docs': 'API 文档',
-}
+import { PAGE_TITLES } from './navigation'
 
 export default function MobileHeader() {
   const { setMobileDrawerOpen } = useAppContext()
@@ -20,8 +15,7 @@ export default function MobileHeader() {
       style={{
         height: '56px',
         background: 'var(--background)',
-        borderBottom: '1px solid var(--border)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        boxShadow: '0 2px 14px rgba(74,124,89,0.06)',
       }}
     >
       <button

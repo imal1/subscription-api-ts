@@ -22,22 +22,29 @@
   /* Semantic tokens */
   --background:          var(--cream);
   --foreground:          #1a1d1a;
-  --card:                #ffffff;
+  --surface:             #fffdf8;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low:    #fffdf8;
+  --surface-container:        #fafaf8;
+  --surface-container-high:   #e8f0ea;
+  --outline-variant:     transparent;
+  --card:                var(--surface-container-low);
+  --card-elevated:       var(--surface-container-lowest);
   --card-foreground:     #1a1d1a;
-  --popover:             #ffffff;
+  --popover:             var(--surface-container-lowest);
   --popover-foreground:  #1a1d1a;
   --primary:             var(--fern);
   --primary-foreground:  #ffffff;
   --secondary:           var(--fern-pale);
   --secondary-foreground: var(--fern-dark);
-  --muted:               #f0ede5;
+  --muted:               #edf5ef;
   --muted-foreground:    #6b736b;
   --accent:              var(--marigold);
   --accent-foreground:   #1a1d1a;
   --destructive:         var(--terracotta);
   --destructive-foreground: #ffffff;
-  --border:              #e2ded6;
-  --input:               #e2ded6;
+  --border:              var(--outline-variant);
+  --input:               var(--outline-variant);
   --ring:                var(--fern);
 
   /* Status */
@@ -60,9 +67,9 @@
   --font-mono:    "JetBrains Mono", "SF Mono", "Cascadia Code", monospace;
 
   /* Shadows */
-  --shadow-card:        0 1px 3px rgba(0,0,0,0.04);
-  --shadow-card-hover:  0 4px 20px rgba(0,0,0,0.07);
-  --shadow-elevated:    0 12px 40px rgba(0,0,0,0.10);
+  --shadow-card:        0 2px 8px rgba(74, 124, 89, 0.06), 0 10px 24px rgba(26, 29, 26, 0.04);
+  --shadow-card-hover:  0 4px 12px rgba(74, 124, 89, 0.08), 0 14px 30px rgba(26, 29, 26, 0.05);
+  --shadow-elevated:    0 12px 34px rgba(74, 124, 89, 0.10);
 
   /* Sidebar */
   --sidebar:             var(--cream);
@@ -77,11 +84,18 @@
 
 /* ── Dark Theme ── */
 .dark {
-  --background:          #161e18;
+  --background:          #101710;
   --foreground:          #dce4dc;
-  --card:                #1e2821;
+  --surface:             #121a15;
+  --surface-container-lowest: #18211b;
+  --surface-container-low:    #1f2a22;
+  --surface-container:        #263229;
+  --surface-container-high:   #303d33;
+  --outline-variant:     transparent;
+  --card:                var(--surface-container);
+  --card-elevated:       var(--surface-container-high);
   --card-foreground:     #dce4dc;
-  --popover:             #243028;
+  --popover:             var(--surface-container);
   --popover-foreground:  #dce4dc;
   --primary:             var(--fern-light);
   --primary-foreground:  #111912;
@@ -93,8 +107,8 @@
   --accent-foreground:   #111912;
   --destructive:         #e07055;
   --destructive-foreground: #111912;
-  --border:              #2e3a31;
-  --input:               #2e3a31;
+  --border:              var(--outline-variant);
+  --input:               var(--outline-variant);
   --ring:                var(--fern-light);
 
   --success-bg:     #1a2e1e;
@@ -106,9 +120,9 @@
   --info-bg:        #16262e;
   --info-border:    #2a4a5a;
 
-  --shadow-card:       0 1px 3px rgba(0,0,0,0.25);
-  --shadow-card-hover: 0 4px 20px rgba(0,0,0,0.40);
-  --shadow-elevated:   0 12px 40px rgba(0,0,0,0.55);
+  --shadow-card:       0 1px 2px rgba(0,0,0,0.36), 0 1px 3px rgba(0,0,0,0.22);
+  --shadow-card-hover: 0 2px 5px rgba(0,0,0,0.42), 0 1px 3px rgba(0,0,0,0.26);
+  --shadow-elevated:   0 6px 18px rgba(0,0,0,0.44);
 
   --sidebar:             #121a15;
   --sidebar-foreground:  #dce4dc;
@@ -116,7 +130,7 @@
   --sidebar-primary-foreground: #111912;
   --sidebar-accent:      #243028;
   --sidebar-accent-foreground: #dce4dc;
-  --sidebar-border:      #2e3a31;
+  --sidebar-border:      var(--border);
   --sidebar-ring:        var(--fern-light);
 }
 
@@ -130,6 +144,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-card-elevated: var(--card-elevated);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -148,6 +163,12 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-surface: var(--surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-outline-variant: var(--outline-variant);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -229,13 +250,15 @@ body {
 
 /* Card */
 .garden-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--card-elevated);
+  border-radius: 28px;
   box-shadow: var(--shadow-card);
-  transition: box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-.garden-card:hover { box-shadow: var(--shadow-card-hover); }
+.garden-card:hover {
+  background: var(--card-elevated);
+  box-shadow: var(--shadow-card-hover);
+}
 
 /* Section heading + decorative rule */
 .section-rule {
@@ -259,12 +282,11 @@ body {
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 10px;
-  border: 1px solid;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   margin-bottom: 1.25rem;
 }
-.garden-alert-success { color: var(--fern-dark);     background: var(--success-bg); border-color: var(--success-border); }
-.garden-alert-danger  { color: var(--terracotta);    background: var(--danger-bg);  border-color: var(--danger-border); }
+.garden-alert-success { color: var(--fern-dark);     background: var(--success-bg); }
+.garden-alert-danger  { color: var(--terracotta);    background: var(--danger-bg); }
 
 /* Status badge chip */
 .stats-badge {
@@ -275,12 +297,11 @@ body {
   border-radius: 6px;
   font-size: 0.8125rem;
   font-weight: 500;
-  border: 1px solid;
 }
-.stats-badge-success { color: var(--success); background: var(--success-bg); border-color: var(--success-border); }
-.stats-badge-warning { color: var(--warning); background: var(--warning-bg); border-color: var(--warning-border); }
-.stats-badge-danger  { color: var(--danger);  background: var(--danger-bg);  border-color: var(--danger-border); }
-.stats-badge-info    { color: var(--info);    background: var(--info-bg);    border-color: var(--info-border); }
+.stats-badge-success { color: var(--success); background: var(--success-bg); }
+.stats-badge-warning { color: var(--warning); background: var(--warning-bg); }
+.stats-badge-danger  { color: var(--danger);  background: var(--danger-bg); }
+.stats-badge-info    { color: var(--info);    background: var(--info-bg); }
 
 /* Live dot */
 .live-dot {
@@ -302,14 +323,11 @@ body {
   letter-spacing: 0.06em;
   color: var(--muted-foreground);
   padding: 0.625rem 1rem;
-  border-bottom: 1px solid var(--border);
 }
 .garden-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
 }
-.garden-table tr:last-child td { border-bottom: none; }
 .garden-table tbody tr:hover td { background: var(--muted); }
 
 /* ── Sidebar layout offsets (avoids inline style tag hydration issues) ── */

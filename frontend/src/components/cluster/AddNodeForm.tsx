@@ -60,8 +60,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
           <div>
             <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>节点名称</label>
             <input type="text" value={form.name} onChange={e => update('name', e.target.value)}
-              className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+              className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+              style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}
               placeholder="如: 新加坡" required />
           </div>
 
@@ -69,8 +69,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             <div>
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>主机地址</label>
               <input type="text" value={form.host} onChange={e => update('host', e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+                className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+                style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}
                 placeholder="sg.example.com" required />
             </div>
           </div>
@@ -79,8 +79,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             <div>
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>内核类型</label>
               <select value={form.kernel} onChange={e => update('kernel', e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+                className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+                style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}>
                 <option value="sing-box">Sing-Box</option>
                 <option value="xray">Xray</option>
                 <option value="v2ray">V2Ray</option>
@@ -89,13 +89,13 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             <div>
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>地域标签</label>
               <input type="text" value={form.location} onChange={e => update('location', e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+                className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+                style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}
                 placeholder="如: 东京" required />
             </div>
           </div>
 
-          <hr style={{ borderColor: 'var(--border)' }} />
+          <div className="h-2" />
 
           {/* SSH info */}
           <h4 className="text-sm font-semibold" style={{ color: 'var(--muted-foreground)' }}>SSH 连接信息</h4>
@@ -104,8 +104,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             <div>
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>SSH 用户</label>
               <input type="text" value={form.sshUser} onChange={e => update('sshUser', e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }} />
+                className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+                style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }} />
             </div>
           </div>
 
@@ -115,8 +115,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
             </label>
             <textarea value={form.sshKey} onChange={e => update('sshKey', e.target.value)}
               rows={3}
-              className="w-full mt-1 px-3 py-2 rounded-lg border text-sm font-mono"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+              className="w-full mt-1 px-3 py-2 rounded-2xl text-sm font-mono"
+              style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" />
           </div>
 
@@ -125,8 +125,8 @@ export function AddNodeForm({ isOpen, onClose, onSubmit }: AddNodeFormProps) {
               SSH 密码 <span className="text-xs opacity-70">(密钥为空时使用密码认证)</span>
             </label>
             <input type="password" value={form.sshPassword} onChange={e => update('sshPassword', e.target.value)}
-              className="w-full mt-1 px-3 py-2 rounded-lg border text-sm"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+              className="w-full mt-1 px-3 py-2 rounded-2xl text-sm"
+              style={{ backgroundColor: 'var(--surface-container-lowest)', color: 'var(--foreground)' }}
               placeholder="SSH 登录密码" />
           </div>
 

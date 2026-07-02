@@ -124,7 +124,7 @@ export function NodeCard({
 
         {/* Agent deployment actions — only for remote nodes */}
         {node.nodeId !== 'local' && (
-          <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="flex gap-2 mt-3 pt-3">
             {needsDeploy && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDeploy?.(node.nodeId); }}

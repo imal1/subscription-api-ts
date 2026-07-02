@@ -73,6 +73,13 @@ export interface ConvertResult {
   timestamp: string;
 }
 
+export interface LogsResult {
+  file: string;
+  files: string[];
+  lines: string[];
+  updatedAt: string;
+}
+
 // 自定义错误类
 export class ApiError extends Error {
   constructor(
@@ -137,8 +144,38 @@ class ApiService {
   // 获取配置列表
   async getConfigs(): Promise<string[]> {
     try {
-      const response = await apiClient.get('api/configs').json<ApiResponse<string[]>>();
-      return response.data || [];
+      const response = await apiClient.get('api/configs').json<ApiResponse<string[] | { configs: string[] }>>();
+      const data = response.data;
+      return Array.isArray(data) ? data : data?.configs || [];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async updateConfigs(configs: string[]): Promise<ApiResponse<{ configs: string[]; count: number }>> {
+    try {
+      return await apiClient.post('api/configs', { json: { configs } }).json<ApiResponse<{ configs: string[]; count: number }>>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async getFrontendConfig(): Promise<ApiResponse> {
+    try {
+      return await apiClient.get('api/yaml/frontend').json<ApiResponse>();
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async getLogs(file?: string, level?: string, query?: string): Promise<ApiResponse<LogsResult>> {
+    try {
+      const params = new URLSearchParams();
+      if (file) params.set('file', file);
+      if (level && level !== 'all') params.set('level', level);
+      if (query) params.set('q', query);
+      const suffix = params.toString() ? `?${params.toString()}` : '';
+      return await apiClient.get(`api/logs${suffix}`).json<ApiResponse<LogsResult>>();
     } catch (error) {
       return this.handleError(error);
     }
