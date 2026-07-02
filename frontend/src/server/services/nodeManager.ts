@@ -1,12 +1,12 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import * as os from 'os';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
 import { MioBridgeService } from './mioBridgeService';
+import { getMioBridgeBaseDir } from '../runtimePaths';
 import type { NodeConfig, NodeStatus, ClusterStatus, NodesYaml, NodeAgentInfo } from '../types';
 
-const CONFIG_DIR = process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge');
+const CONFIG_DIR = getMioBridgeBaseDir();
 const NODES_YAML_PATH = path.join(CONFIG_DIR, 'nodes.yaml');
 const REMOTE_TIMEOUT_MS = 10_000;
 /** fs.watch 去抖延迟：文件可能连续触发多次 change 事件 */

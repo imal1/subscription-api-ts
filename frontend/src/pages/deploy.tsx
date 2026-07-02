@@ -182,9 +182,9 @@ export default function DeployPage({ initialCluster, initialDeployments, initial
 }
 
 export const getServerSideProps: GetServerSideProps<DeployPageProps> = async () => {
-  const { NodeManager } = await import('@/server/services/nodeManager')
-  const { getAllDeployStatuses } = await import('@/server/services/deployProgressStore')
   try {
+    const { NodeManager } = await import('@/server/services/nodeManager')
+    const { getAllDeployStatuses } = await import('@/server/services/deployProgressStore')
     const cluster = await NodeManager.getInstance().getClusterStatus()
     const deployments: Record<string, DeployStatus> = {}
     for (const status of getAllDeployStatuses()) deployments[status.nodeId] = status

@@ -7,6 +7,9 @@ metadata:
 
 # Bug Fixes
 
+- 2026-07-02: SSR pages catch service import failures, browser-only ConvertModal
+  loads client-side, and `/api/logs` returns structured fallback data instead
+  of surfacing filesystem errors as page/API 500s.
 - 2026-07-02: Homepage Dashboard loads client-side to avoid Pages Router SSR
   tracing Recharts/Redux Toolkit ESM incompletely in standalone/Vercel builds.
 - 2026-07-01: Deploy progress polling now preserves active/failed state, terminal

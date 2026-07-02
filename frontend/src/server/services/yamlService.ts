@@ -4,12 +4,10 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { logger } from '../utils/logger';
+import { getMioBridgeBaseDir } from '../runtimePaths';
 
-export function getMioBridgeBaseDir(): string {
-    return process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge');
-}
+export { getMioBridgeBaseDir } from '../runtimePaths';
 
 export class YamlService {
     private static instance: YamlService;

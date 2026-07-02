@@ -331,8 +331,8 @@ export default function NodesPage({ initialCluster, initialError }: NodesPagePro
 }
 
 export const getServerSideProps: GetServerSideProps<NodesPageProps> = async () => {
-  const { NodeManager } = await import('@/server/services/nodeManager')
   try {
+    const { NodeManager } = await import('@/server/services/nodeManager')
     const cluster = await NodeManager.getInstance().getClusterStatus()
     return { props: { initialCluster: JSON.parse(JSON.stringify(cluster)), initialError: null } }
   } catch (error) {

@@ -1,5 +1,7 @@
 import winston from 'winston';
+import * as fs from 'fs';
 import * as path from 'path';
+import { getMioBridgeBaseDir } from '../runtimePaths';
 
 // 获取日志级别 - 使用默认值避免循环依赖
 const getLogLevel = (): string => {
@@ -18,10 +20,16 @@ const getLogDir = (): string => {
         const { config } = require('../config');
         return config.logDir;
     } catch {
-        const os = require('os');
-        return path.join(process.env.MIOBRIDGE_CONFIG_DIR || path.join(os.homedir(), '.config', 'miobridge'), 'log');
+        return path.join(getMioBridgeBaseDir(), 'log');
     }
 };
+
+const logDir = getLogDir();
+try {
+    fs.mkdirSync(logDir, { recursive: true });
+} catch {
+    // File transports may be unavailable in restricted runtimes; console logging still works.
+}
 
 const logFormat = winston.format.combine(
     winston.format.timestamp({
@@ -39,13 +47,13 @@ export const logger = winston.createLogger({
     defaultMeta: { service: 'miobridge' },
     transports: [
         new winston.transports.File({
-            filename: path.join(getLogDir(), 'error.log'),
+            filename: path.join(logDir, 'error.log'),
             level: 'error',
             maxsize: 5242880, // 5MB
             maxFiles: 5
         }),
         new winston.transports.File({
-            filename: path.join(getLogDir(), 'combined.log'),
+            filename: path.join(logDir, 'combined.log'),
             maxsize: 5242880, // 5MB
             maxFiles: 5
         })

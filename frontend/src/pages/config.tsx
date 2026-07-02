@@ -148,9 +148,9 @@ export default function ConfigPage({ initialStatus, initialConfigs, frontendConf
 }
 
 export const getServerSideProps: GetServerSideProps<ConfigPageProps> = async () => {
-  const { MioBridgeService } = await import('@/server/services/mioBridgeService')
-  const { config, getFrontendConfig } = await import('@/server/config')
   try {
+    const { MioBridgeService } = await import('@/server/services/mioBridgeService')
+    const { config, getFrontendConfig } = await import('@/server/config')
     const status = await MioBridgeService.getInstance().getStatus()
     return {
       props: {

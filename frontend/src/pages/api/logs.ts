@@ -12,6 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ success: false, error: 'Method Not Allowed', timestamp: new Date().toISOString() })
   }
 
+  const fallbackFile = typeof req.query.file === 'string' && ALLOWED_FILES.includes(req.query.file)
+    ? req.query.file
+    : 'combined.log'
+
   try {
     await fs.ensureDir(config.logDir)
     const existing = (await Promise.all(ALLOWED_FILES.map(async file => {
@@ -48,6 +52,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() })
+    res.json({
+      success: true,
+      data: {
+        file: fallbackFile,
+        files: ALLOWED_FILES,
+        lines: [`日志暂不可用: ${error?.message || '无法读取日志目录'}`],
+        updatedAt: new Date().toISOString(),
+      },
+      message: '日志暂不可用',
+      timestamp: new Date().toISOString(),
+    })
   }
 }

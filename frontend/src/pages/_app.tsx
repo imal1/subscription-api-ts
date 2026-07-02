@@ -1,12 +1,16 @@
 import type { AppProps } from 'next/app'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { AnimatePresence, motion } from 'motion/react'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { AppProvider, useAppContext } from '@/context/AppContext'
 import AppLayout from '@/components/layout/AppLayout'
-import ConvertModal from '@/components/ConvertModal'
 import { Toaster } from '@/components/ui/sonner'
 import '@/styles/globals.css'
+
+const ConvertModal = dynamic(() => import('@/components/ConvertModal'), {
+  ssr: false,
+})
 
 const pageTransition = {
   initial: { opacity: 0, y: 10, filter: 'blur(2px)' },
