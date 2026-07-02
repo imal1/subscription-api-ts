@@ -9,7 +9,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] transition-all duration-300 hover:border-[var(--fern)] hover:text-[var(--foreground)]"
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--surface-container)] text-[var(--muted-foreground)] transition-all duration-300 hover:bg-[var(--surface-container-high)] hover:text-[var(--foreground)]"
       aria-label={theme === "light" ? "切换到夜间模式" : "切换到日间模式"}
       title={theme === "light" ? "夜间模式" : "日间模式"}
     >

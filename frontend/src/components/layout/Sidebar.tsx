@@ -1,19 +1,24 @@
-import { Icon } from '@iconify/react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { memo } from 'react'
+import { Icon } from '@iconify/react'
 import ThemeToggle from '@/components/ThemeToggle'
 import { useAppContext } from '@/context/AppContext'
+import { NAV_ITEMS, type NavIcon } from './navigation'
 
-const NAV_ITEMS = [
-  { href: '/',         icon: 'ph:gauge-bold',     label: '仪表盘' },
-  { href: '/actions',  icon: 'ph:lightning-bold',  label: '操作' },
-  { href: '/api-docs', icon: 'ph:globe-bold',      label: 'API 文档' },
-]
+const ICONS: Record<NavIcon, string> = {
+  overview: 'ph:gauge-bold',
+  subscription: 'ph:arrows-clockwise-bold',
+  nodes: 'ph:hard-drives-bold',
+  deploy: 'ph:rocket-launch-bold',
+  logs: 'ph:terminal-window-bold',
+  config: 'ph:sliders-horizontal-bold',
+  api: 'ph:globe-bold',
+}
 
 interface NavItemProps {
   href: string
-  icon: string
+  icon: NavIcon
   label: string
   isActive: boolean
   isCollapsed: boolean
@@ -53,7 +58,7 @@ function NavItem({ href, icon, label, isActive, isCollapsed }: NavItemProps) {
         }}
       />
 
-      <Icon icon={icon} className="w-5 h-5 flex-shrink-0" />
+      <Icon icon={ICONS[icon]} className="w-5 h-5 flex-shrink-0" />
 
       {/* Label fades in/out */}
       <span
@@ -81,8 +86,7 @@ const Sidebar = memo(function Sidebar() {
         width: sidebarCollapsed ? '64px' : '240px',
         transition: 'width 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         background: 'var(--sidebar)',
-        borderRight: '1px solid var(--sidebar-border)',
-        boxShadow: '1px 0 8px rgba(0,0,0,0.04)',
+        boxShadow: '2px 0 18px rgba(74,124,89,0.06)',
       }}
     >
       {/* Logo */}
@@ -92,7 +96,6 @@ const Sidebar = memo(function Sidebar() {
           padding: sidebarCollapsed ? '1.25rem 0' : '1.25rem 1rem',
           justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
           gap: '0.625rem',
-          borderBottom: '1px solid var(--sidebar-border)',
           minHeight: '64px',
           transition: 'padding 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
@@ -131,8 +134,7 @@ const Sidebar = memo(function Sidebar() {
 
       {/* Bottom controls */}
       <div
-        className="border-t py-3 space-y-1"
-        style={{ borderColor: 'var(--sidebar-border)' }}
+        className="py-3 space-y-1"
       >
         {/* Theme toggle */}
         <div

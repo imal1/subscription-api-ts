@@ -9,7 +9,7 @@ interface StatCardProps {
 }
 
 export default function StatCard({ label, value, sub, icon, status }: StatCardProps) {
-  const borderColor = {
+  const iconColor = {
     success: 'var(--fern)',
     warning: 'var(--marigold)',
     danger:  'var(--terracotta)',
@@ -17,7 +17,7 @@ export default function StatCard({ label, value, sub, icon, status }: StatCardPr
   }[status]
 
   return (
-    <div className="garden-card p-5" style={{ borderLeft: `3px solid ${borderColor}` }}>
+    <div className="garden-card p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--muted-foreground)' }}>
@@ -32,8 +32,8 @@ export default function StatCard({ label, value, sub, icon, status }: StatCardPr
             </p>
           )}
         </div>
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
-          <Icon icon={icon} className="w-[18px] h-[18px]" style={{ color: 'var(--foreground)' }} />
+        <div className="flex-shrink-0 w-9 h-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
+          <Icon icon={icon} className="w-[18px] h-[18px]" style={{ color: iconColor }} />
         </div>
       </div>
     </div>

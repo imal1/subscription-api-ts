@@ -99,7 +99,7 @@ export function NodeDetail({
           </div>
         </div>
       ) : (
-        <div className="space-y-1 divide-y" style={{ borderColor: 'var(--border)' }}>
+        <div className="space-y-2">
           {isLocal ? (
             <>
               <InfoRow label="订阅文件">
@@ -161,7 +161,7 @@ export function NodeDetail({
 
       {/* Agent deployment info — only for remote nodes */}
       {node.nodeId !== 'local' && node.agent && (
-        <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="mt-4 rounded-2xl bg-[var(--surface-container)] p-3">
           <h4
             className="text-xs font-semibold uppercase tracking-widest mb-2"
             style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-display)' }}
@@ -190,7 +190,7 @@ export function NodeDetail({
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-3 mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="flex gap-3 mt-4">
         {onUpdate && (
           <button
             onClick={handleUpdate}

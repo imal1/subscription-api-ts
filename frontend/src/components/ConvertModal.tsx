@@ -144,7 +144,7 @@ const ConvertModal = ({ isOpen, onClose }: ConvertModalProps) => {
               </div>
             </div>
 
-            <div className="flex-1 min-h-[420px] border border-[var(--border)] rounded-xl overflow-hidden">
+            <div className="flex-1 min-h-[420px] rounded-3xl overflow-hidden bg-[var(--surface-container-lowest)] shadow-[var(--shadow-card)]">
               <Editor
                 height="100%"
                 defaultLanguage="yaml"

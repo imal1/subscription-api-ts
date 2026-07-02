@@ -120,7 +120,9 @@ export default function ActionsPage() {
               key={file.name}
               className="flex items-center justify-between px-5 py-4 transition-colors duration-150"
               style={{
-                borderBottom: i < FILES.length - 1 ? '1px solid var(--border)' : 'none',
+                marginBottom: i < FILES.length - 1 ? '0.25rem' : 0,
+                backgroundColor: 'var(--surface-container-lowest)',
+                borderRadius: '1rem',
               }}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--muted)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
