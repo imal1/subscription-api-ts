@@ -35,12 +35,12 @@ export default function ActionsPage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-4xl mx-auto space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
       {/* Card 1: Update subscription */}
       <section>
         <SectionHeading icon="ph:arrows-clockwise-bold" title="更新订阅" desc="从源获取最新节点并重新生成配置文件" />
         <div className="garden-card p-5 space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
               onClick={handleUpdate}
               disabled={updating}
@@ -58,7 +58,7 @@ export default function ActionsPage() {
               {updating ? '更新中…' : '立即更新'}
             </Button>
             {updating && (
-              <span className="text-sm animate-breathe" style={{ color: 'var(--muted-foreground)' }}>
+              <span className="animate-breathe text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 正在拉取最新节点…
               </span>
             )}
@@ -118,7 +118,7 @@ export default function ActionsPage() {
           {FILES.map((file, i) => (
             <div
               key={file.name}
-              className="flex items-center justify-between px-5 py-4 transition-colors duration-150"
+              className="flex flex-col gap-3 px-5 py-4 transition-colors duration-150 sm:flex-row sm:items-center sm:justify-between"
               style={{
                 marginBottom: i < FILES.length - 1 ? '0.25rem' : 0,
                 backgroundColor: 'var(--surface-container-lowest)',
@@ -127,22 +127,22 @@ export default function ActionsPage() {
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--muted)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: 'var(--secondary)' }}
                 >
                   <Icon icon={file.icon} className="w-4 h-4" style={{ color: 'var(--fern)' }} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{file.label}</p>
-                  <p className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{file.name}</p>
+                  <p className="truncate font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{file.name}</p>
                 </div>
               </div>
               <Button
                 variant="outline"
                 onClick={() => handleDownload(file.name)}
-                className="gap-1.5 h-8 px-3 text-xs rounded-lg"
+                className="h-8 gap-1.5 rounded-lg px-3 text-xs sm:self-auto"
               >
                 <Icon icon="ph:download-simple" className="w-3.5 h-3.5" />
                 下载
@@ -156,14 +156,14 @@ export default function ActionsPage() {
       <section>
         <SectionHeading icon="ph:code-bold" title="订阅转换" desc="将原始订阅链接转换为 Clash 配置" />
         <div className="garden-card p-5">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div
               className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: 'var(--secondary)' }}
             >
               <Icon icon="ph:magic-wand-bold" className="w-5 h-5" style={{ color: 'var(--fern)' }} />
             </div>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>在线转换器</h3>
               <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>
                 粘贴原始订阅内容，即时转换为 Clash YAML 配置，支持多种协议。

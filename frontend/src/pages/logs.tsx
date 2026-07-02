@@ -71,8 +71,8 @@ export default function LogsPage() {
         </Alert>
       ) : null}
 
-      <Card className="min-h-[72vh]">
-        <ResizablePanelGroup direction="horizontal" className="min-h-[72vh] rounded-lg">
+      <Card className="min-h-0 md:min-h-[72vh]">
+        <ResizablePanelGroup direction="horizontal" className="min-h-0 rounded-lg md:min-h-[72vh]">
           <ResizablePanel defaultSize={28} minSize={22}>
             <CardHeader>
               <CardTitle className="text-base">过滤器</CardTitle>
@@ -105,7 +105,7 @@ export default function LogsPage() {
               <CardDescription>{logs ? `${logs.file} · ${logs.lines.length} 行 · ${new Date(logs.updatedAt).toLocaleString('zh-CN')}` : '等待加载'}</CardDescription>
             </CardHeader>
             <CardContent>
-              <pre className="max-h-[60vh] overflow-auto rounded-3xl bg-[var(--surface-container-lowest)] p-4 font-mono text-xs leading-6 text-foreground shadow-[var(--shadow-card)]">
+              <pre className="max-h-[58vh] overflow-auto rounded-2xl bg-[var(--surface-container-lowest)] p-4 font-mono text-xs leading-6 text-foreground shadow-[var(--shadow-card)] md:max-h-[60vh] md:rounded-3xl">
                 {logs?.lines.length ? logs.lines.join('\n') : '暂无日志内容'}
               </pre>
             </CardContent>

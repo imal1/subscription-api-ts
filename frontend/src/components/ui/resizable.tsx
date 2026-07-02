@@ -14,7 +14,13 @@ const ResizablePanelGroup = ({
   <Group
     orientation={direction}
     data-panel-group-direction={direction}
-    className={cn("flex h-full w-full data-[panel-group-direction=vertical]:flex-col", className)}
+    className={cn(
+      "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
+      "max-md:!h-auto max-md:!min-h-0 max-md:!flex-col max-md:!overflow-visible max-md:gap-4",
+      "[&>[data-panel]]:max-md:!w-full [&>[data-panel]]:max-md:!max-w-none [&>[data-panel]]:max-md:!flex-none [&>[data-panel]]:max-md:!overflow-visible",
+      "[&>[data-separator]]:max-md:!hidden",
+      className,
+    )}
     {...props}
   />
 )

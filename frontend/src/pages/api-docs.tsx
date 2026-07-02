@@ -42,7 +42,7 @@ export default function ApiDocsPage() {
   }, [])
 
   return (
-    <div className="px-6 py-8 max-w-4xl mx-auto space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
       {result && (
         <div className={`garden-alert ${result.startsWith('✓') ? 'garden-alert-success' : 'garden-alert-danger'}`}>
           <Icon icon={result.startsWith('✓') ? 'ph:check-circle-bold' : 'ph:x-circle-bold'} className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -53,43 +53,45 @@ export default function ApiDocsPage() {
       <section>
         <SectionHeading icon="ph:globe-bold" title="API 端点" desc="全部可用接口与快速操作" />
         <div className="garden-card overflow-hidden">
-          <table className="garden-table">
-            <thead>
-              <tr>
-                <th>方法</th>
-                <th>端点</th>
-                <th>描述</th>
-                <th className="text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ENDPOINTS.map(ep => (
-                <tr key={ep.path}>
-                  <td><MethodBadge method={ep.method} /></td>
-                  <td>
-                    <code className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground)' }}>
-                      {ep.path}
-                    </code>
-                  </td>
-                  <td style={{ color: 'var(--muted-foreground)' }}>{ep.desc}</td>
-                  <td className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-lg text-xs h-8"
-                      disabled={updating && ep.path === '/api/update'}
-                      onClick={() => handleAction(ep)}
-                    >
-                      {updating && ep.path === '/api/update'
-                        ? <Icon icon="ph:spinner" className="w-3 h-3 animate-spin" />
-                        : ep.actionLabel
-                      }
-                    </Button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="garden-table min-w-[560px]">
+              <thead>
+                <tr>
+                  <th>方法</th>
+                  <th>端点</th>
+                  <th>描述</th>
+                  <th className="text-right">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ENDPOINTS.map(ep => (
+                  <tr key={ep.path}>
+                    <td><MethodBadge method={ep.method} /></td>
+                    <td>
+                      <code className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground)' }}>
+                        {ep.path}
+                      </code>
+                    </td>
+                    <td style={{ color: 'var(--muted-foreground)' }}>{ep.desc}</td>
+                    <td className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-lg text-xs"
+                        disabled={updating && ep.path === '/api/update'}
+                        onClick={() => handleAction(ep)}
+                      >
+                        {updating && ep.path === '/api/update'
+                          ? <Icon icon="ph:spinner" className="h-3 w-3 animate-spin" />
+                          : ep.actionLabel
+                        }
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

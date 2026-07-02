@@ -207,8 +207,8 @@ export default function Dashboard({ initialCluster = null, initialStatus = null,
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base">健康度</CardTitle>
             <CardDescription>产物、二进制和集群规模的概览图。</CardDescription>
@@ -255,15 +255,15 @@ export default function Dashboard({ initialCluster = null, initialStatus = null,
           </CardContent>
         </Card>
 
-        <Card className="min-h-[360px]">
-          <ResizablePanelGroup direction="horizontal" className="min-h-[360px] rounded-[28px]">
+        <Card className="min-h-0 min-w-0 md:min-h-[360px]">
+          <ResizablePanelGroup direction="horizontal" className="min-h-0 rounded-[28px] md:min-h-[360px]">
             <ResizablePanel defaultSize={58} minSize={42}>
               <Tabs defaultValue="files" className="h-full">
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <CardTitle className="text-base">运行工作台</CardTitle>
-                      <CardDescription>拖动中线调整产物和建议区域。</CardDescription>
+                      <CardDescription>桌面可拖动中线调整产物和建议区域。</CardDescription>
                     </div>
                     <TabsList>
                       <TabsTrigger value="files">产物</TabsTrigger>
@@ -274,7 +274,7 @@ export default function Dashboard({ initialCluster = null, initialStatus = null,
                 <CardContent className="space-y-3">
                   <TabsContent value="files" className="mt-0 space-y-3">
                     {FILES.map(file => (
-                      <div key={file.name} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--surface-container)] p-3">
+                      <div key={file.name} className="flex flex-col gap-3 rounded-2xl bg-[var(--surface-container)] p-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{file.label}</p>
                           <p className="truncate font-mono text-xs text-muted-foreground">/{file.name}</p>

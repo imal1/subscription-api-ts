@@ -122,11 +122,11 @@ export default function SubscriptionPage() {
         </Alert>
       ) : null}
 
-      <Card className="min-h-[680px]">
-        <ResizablePanelGroup direction="horizontal" className="min-h-[680px] rounded-lg">
+      <Card className="min-h-0 md:min-h-[680px]">
+        <ResizablePanelGroup direction="horizontal" className="min-h-0 rounded-lg md:min-h-[680px]">
           <ResizablePanel defaultSize={48} minSize={32}>
           <CardHeader>
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="text-base">原始订阅文本</CardTitle>
                 <CardDescription>支持 vmess、vless、ss、trojan、hysteria2、tuic。</CardDescription>
@@ -136,7 +136,7 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
             <Textarea
-              className="min-h-[460px] flex-1 resize-none font-mono text-sm"
+              className="min-h-[300px] flex-1 resize-none font-mono text-sm md:min-h-[460px]"
               value={inputText}
               onChange={event => setInputText(event.target.value)}
               placeholder="粘贴原始节点链接，每行一条…"
@@ -151,7 +151,7 @@ export default function SubscriptionPage() {
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={52} minSize={34}>
           <CardHeader>
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="text-base">Clash YAML 预览</CardTitle>
                 <CardDescription>转换结果只在浏览器中预览，保存以服务端更新订阅为准。</CardDescription>
@@ -163,7 +163,7 @@ export default function SubscriptionPage() {
             </div>
           </CardHeader>
           <CardContent className="min-h-0 flex-1">
-            <div className="h-[540px] overflow-hidden rounded-3xl bg-[var(--surface-container-lowest)] shadow-[var(--shadow-card)]">
+            <div className="h-[360px] overflow-hidden rounded-2xl bg-[var(--surface-container-lowest)] shadow-[var(--shadow-card)] md:h-[540px] md:rounded-3xl">
               <Editor
                 height="100%"
                 defaultLanguage="yaml"
