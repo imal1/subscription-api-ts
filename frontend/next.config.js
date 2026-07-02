@@ -6,10 +6,13 @@ try {
   gitCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
 } catch { /* not a git repo or git not available */ }
 
+const isVercel = process.env.VERCEL === '1'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 以独立 Node 服务运行（生产: node .next/standalone/frontend/server.js），支持 SSR
-  output: 'standalone',
+  // Vercel 托管部署使用平台自己的 Next.js builder，不生成 standalone 服务器。
+  ...(isVercel ? {} : { output: 'standalone' }),
   // monorepo（bun workspace）下依赖被提升到仓库根 node_modules，
   // 显式指定 tracing 根，确保 standalone 正确打包依赖（否则会误选 ~ 目录）
   outputFileTracingRoot: path.join(__dirname, '..'),

@@ -11,5 +11,7 @@ metadata:
 - Vercel Git Integration builds and publishes production when `main` is pushed.
 - GitHub Actions is a CI gate only; it does not deploy and does not install or
   run Vercel CLI.
+- `frontend/next.config.js` enables `output: 'standalone'` only outside Vercel;
+  Vercel uses its native Next.js builder output.
 - The old server main-node flow, systemd restart, SSH upload, symlink switch,
   and scheduled SSH health check are no longer used for production.
